@@ -19,9 +19,11 @@ import org.springframework.stereotype.Component;
 public class JobRadarCli implements ApplicationRunner {
 
     private final FetchCommand fetch;
+    private final ScreenCommand screen;
 
-    public JobRadarCli(FetchCommand fetch) {
+    public JobRadarCli(FetchCommand fetch, ScreenCommand screen) {
         this.fetch = fetch;
+        this.screen = screen;
     }
 
     @Override
@@ -39,7 +41,8 @@ public class JobRadarCli implements ApplicationRunner {
 
         switch (command) {
             case "fetch" -> fetch.run(options);
-            case "screen", "digest", "run", "probe", "sheet-append" ->
+            case "screen" -> screen.run(options);
+            case "digest", "run", "probe", "sheet-append" ->
                     System.out.println("'" + command + "' is not implemented yet.");
             default -> {
                 System.out.println("Unknown command: " + command);
@@ -72,7 +75,7 @@ public class JobRadarCli implements ApplicationRunner {
                   fetch                                   fetch all active boards
                   fetch --source=GREENHOUSE               fetch one ATS
                   fetch --source=GREENHOUSE --token=stripe   fetch one board
-                  screen                                  apply filters      (milestone 3)
+                  screen                                  apply filters, set verdicts
                   digest                                  write today's digest (milestone 4)
                   run                                     fetch + screen + digest
                   probe --tokens=a,b,c                    test candidate tokens (milestone 7)

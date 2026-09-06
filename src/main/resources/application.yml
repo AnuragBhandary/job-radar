@@ -41,19 +41,38 @@ job-radar:
       netherlands-cities:
         [amsterdam, utrecht, rotterdam, eindhoven, the hague, den haag,
          netherlands, nederland, holland]
-      remote-markers: [remote, anywhere, distributed, work from home]
+      # "distributed" was here and had to be removed: it matched "Distributed
+      # Systems" in a job title, which made a Malmö role read as globally remote.
+      # A remote marker has to be a word about working arrangements, not one that
+      # also happens to be core software vocabulary.
+      remote-markers: [remote, work from home, work from anywhere, distributed team]
 
-      # The expensive trap. A posting reading "Remote (Argentina)" is remote
-      # WITHIN Argentina - the country is a hiring restriction, not a perk.
-      # Any of these appearing alongside "remote" disqualifies the posting.
-      # Several applications were made to such roles by mistake before this
-      # tool existed.
-      remote-country-trap:
+      # The expensive trap, and the reason this list is long. A posting reading
+      # "Remote (Argentina)" is remote WITHIN Argentina - the country is a hiring
+      # restriction, not a perk - and "Remote, London" is no more reachable from
+      # Mumbai than "London" is. Any of these appearing without one of the target
+      # locations above disqualifies the posting. Several applications were made
+      # to country-locked remote roles by mistake before this tool existed.
+      # Matched on word boundaries, so "us" does not fire inside "Columbus".
+      excluded-locations:
         [argentina, mexico, brazil, brasil, colombia, chile, peru, uruguay,
-         canada, united states, usa, u.s., philippines, indonesia, vietnam,
-         nigeria, kenya, egypt, south africa, poland, portugal, spain, romania,
-         ukraine, serbia, turkey, japan, korea, singapore, australia,
-         new zealand, united kingdom, uk only, emea only, latam, apac, us only]
+         costa rica, canada, united states, usa, u.s., us, philippines,
+         indonesia, vietnam, malaysia, thailand, nigeria, kenya, egypt, ghana,
+         south africa, poland, portugal, spain, romania, ukraine, serbia,
+         bulgaria, croatia, turkey, greece, israel, japan, korea, china,
+         taiwan, singapore, australia, new zealand, united kingdom, uk,
+         france, italy, sweden, denmark, norway, finland, switzerland,
+         austria, belgium, czech, hungary, uae, dubai, saudi, qatar,
+         emea, latam, apac, americas, anz,
+         london, paris, madrid, barcelona, milan, rome, zurich, geneva,
+         stockholm, copenhagen, oslo, helsinki, warsaw, prague, budapest,
+         bucharest, sofia, lisbon, vienna, brussels, zagreb, tel aviv,
+         toronto, vancouver, montreal, new york, san francisco, seattle,
+         austin, boston, chicago, denver, atlanta, los angeles, miami,
+         mexico city, sao paulo, bogota, buenos aires, lima, santiago,
+         sydney, melbourne, auckland, tokyo, seoul, shanghai, beijing,
+         manila, jakarta, ho chi minh, kuala lumpur, bangkok, cairo, lagos,
+         nairobi, cape town, johannesburg, dublin ohio]
 
     title-include:
       [software, backend, back-end, back end, full-stack, fullstack, full stack,
@@ -62,11 +81,26 @@ job-radar:
 
     # "ii" and "iii" are matched as whole words elsewhere; listing them here
     # would also reject "Engineer II" spelled inside another word.
+    # Grown from the first screening run over the real corpus, where the bare
+    # token "engineer" pulled in three distinct kinds of non-match:
+    #   - hardware and defence engineering (Helsing alone contributed 31 of the
+    #     first 80 candidates: avionics, RF, EMC, stress, camera, electronics).
+    #     A different discipline, not a near miss.
+    #   - customer-facing "engineer" titles: solution, presales, escalations,
+    #     technical services, onboarding.
+    #   - Celonis's Associate ladder, which is Value Engineer, not software.
+    # And one genuinely funny one: HelloFresh's "Junior Recipe Developer".
     title-exclude:
       [senior, staff, principal, lead, manager, director, sales, account,
        marketing, recruiter, vp, head of, solution consultant, support, field,
        customer success, intern, working student, werkstudent, praktikum,
-       mid-level, midlevel, intermediate, architect, sr., sr ]
+       mid-level, midlevel, intermediate, architect, sr., sr ,
+       value engineer, solution engineer, solutions engineer, presales,
+       pre-sales, escalations, technical services, onboarding engineer,
+       recipe,
+       hardware, firmware, embedded, avionics, electronics, electrical,
+       mechanical, radio, wireless, optical, thermal, hydraulic, structural,
+       stress, camera, emc, emi, electromagnetic, rf]
 
     # Boost, never a requirement. Historically the only reliable source of
     # eligible roles, but requiring them would discard everything else.
@@ -108,6 +142,12 @@ spring:
     properties:
       hibernate:
         dialect: com.anuragbhandary.jobradar.config.SqliteDialect
+        hbm2ddl:
+          # Fail loudly on a DDL statement the database rejects. Hibernate's
+          # default is to log and continue, which has now hidden two real schema
+          # bugs in this project: a dropped unique constraint, and an ADD COLUMN
+          # that SQLite refused. Both surfaced much later as something else.
+          halt_on_error: true
     open-in-view: false
 
 logging:
