@@ -83,7 +83,8 @@ public record AppProperties(
             List<String> irelandCities,
             List<String> netherlandsCities,
             List<String> remoteMarkers,
-            List<String> excludedLocations) {
+            List<String> excludedLocations,
+            List<String> falseFriends) {
     }
 
     /**

@@ -80,7 +80,19 @@ job-radar:
          mexico city, sao paulo, bogota, buenos aires, lima, santiago,
          sydney, melbourne, auckland, tokyo, seoul, shanghai, beijing,
          manila, jakarta, ho chi minh, kuala lumpur, bangkok, cairo, lagos,
-         nairobi, cape town, johannesburg, dublin ohio]
+         nairobi, cape town, johannesburg]
+
+      # Place names that read as a target city and are not. Checked before the
+      # target lists rather than alongside the exclusions, because "dublin" on
+      # its own matches Ireland and returns immediately - which is why the old
+      # "dublin ohio" entry in excluded-locations never fired once.
+      # Matched on adjacency after punctuation is flattened, so "Dublin, Ohio" is
+      # caught while "Dublin, Ireland; Columbus, Ohio" is not.
+      false-friends:
+        ["dublin ohio", "dublin oh", "dublin california", "dublin ca",
+         "dublin georgia", "berlin connecticut", "berlin ct",
+         "berlin new hampshire", "berlin maryland", "berlin wisconsin",
+         "hamburg new york", "hamburg pennsylvania", "hamburg new jersey"]
 
     title-include:
       [software, backend, back-end, back end, full-stack, fullstack, full stack,
@@ -109,6 +121,16 @@ job-radar:
        hardware, firmware, embedded, avionics, electronics, electrical,
        mechanical, radio, wireless, optical, thermal, hydraulic, structural,
        stress, camera, emc, emi, electromagnetic, rf,
+       # Found by the first Workday run. NXP is a semiconductor company and
+       # Philips a medical-device one, so their "engineer" titles are chip design
+       # and physics, not software - the same class of miss as Helsing's avionics.
+       asic, fpga, rtl, silicon, analog, semiconductor, wafer,
+       verification engineer, physical design, design engineer, dsp, physics,
+       # "Remote Service Engineer - CT" is a field engineer who drives to
+       # hospitals to fix scanners. It arrived classified as globally remote,
+       # because "remote" in the title reads as a working arrangement and here it
+       # is the first word of a job title. Same shape as the "distributed" bug.
+       service engineer,
        forward deployed,
        # Found by the first multi-ATS run: "Legal Counsel, EU Employment Law
        # (Platform Workers)" matched on the include token "platform".
@@ -147,7 +169,9 @@ job-radar:
   # Salary floors. See AppProperties.SalaryFloors for why these numbers are
   # shaped the way they are - they look wrong without the reasoning.
   # The three European figures are legal visa thresholds and are re-indexed
-  # annually. Re-verify at source on or after verify-by.
+  # annually, on 1 January. Re-verify at source on or after verify-by - which is
+  # deliberately just before that reset, not after it: the previous 2027-03-01
+  # would have run two months of digests on stale thresholds without saying so.
   # ---------------------------------------------------------------------------
   salary-floors:
     mumbai-inr: 700000
@@ -156,7 +180,7 @@ job-radar:
     ireland-eur: 40904
     netherlands-eur: 52284
     dublin-comfort-eur: 48000
-    verify-by: 2027-03-01
+    verify-by: 2027-01-01
 
 spring:
   application:

@@ -48,6 +48,17 @@ public class GeoFilter {
             return new GeoResult(Country.OTHER, FilterVerdict.reject("no location given"));
         }
 
+        // Checked before anything else, because the target lists would otherwise
+        // claim these first and no later rule would get a say. "Dublin, Ohio"
+        // matches ireland-cities on "dublin" and is accepted as Ireland; the
+        // "dublin ohio" entry that used to sit in excluded-locations could never
+        // fire, because acceptance had already happened one branch earlier.
+        String falseFriend = firstPhrase(flatten(haystack), geo.falseFriends());
+        if (falseFriend != null) {
+            return new GeoResult(Country.OTHER, FilterVerdict.reject(
+                    "reads as a target city but is not: '" + falseFriend + "'"));
+        }
+
         boolean remote = containsAny(haystack, geo.remoteMarkers());
 
         // Target locations win over the exclusion list, so a posting open in both
@@ -96,6 +107,32 @@ public class GeoFilter {
     public boolean isMumbai(String location) {
         return location != null
                 && containsAny(location.toLowerCase(Locale.ROOT), geo.mumbaiCities());
+    }
+
+    /**
+     * Punctuation to single spaces, so "Dublin, Ohio" reads as the contiguous
+     * phrase "dublin ohio".
+     *
+     * <p>Adjacency is the whole point. A posting open in "Dublin, Ireland;
+     * Columbus, Ohio" contains both words and is genuinely Irish, so a false
+     * friend has to be the city and the qualifier sitting next to each other -
+     * not merely present in the same string.
+     */
+    private static String flatten(String haystack) {
+        return haystack.replaceAll("[^a-z0-9]+", " ").trim();
+    }
+
+    /** First phrase occurring literally in the already-flattened haystack. */
+    private static String firstPhrase(String flattened, List<String> phrases) {
+        if (phrases == null) {
+            return null;
+        }
+        for (String phrase : phrases) {
+            if (flattened.contains(phrase)) {
+                return phrase;
+            }
+        }
+        return null;
     }
 
     private boolean containsAny(String haystack, List<String> needles) {
