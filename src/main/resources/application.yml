@@ -114,6 +114,11 @@ job-radar:
     # edit rather than a re-seed.
     excluded-boards:
       helsing: "defence sector - roles require EU citizenship or security clearance"
+      # Published bands run EUR 3,700-6,500/month against a EUR 4,357 kennismigrant
+      # floor. The top of that band clears comfortably; the bottom does not, and a
+      # new graduate is offered the bottom - so an offer may not support the permit
+      # at all. Many of its ads are also Dutch-language only.
+      Coolblue: "salary band starts below the kennismigrant floor; a junior offer may not support the permit"
 
     # Boost, never a requirement. Historically the only reliable source of
     # eligible roles, but requiring them would discard everything else.

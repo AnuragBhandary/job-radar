@@ -85,6 +85,12 @@ public class DigestWriter {
                     out.append("- ").append(count).append(" — ").append(reason).append('\n'));
         }
 
+        if (digest.suppressedAlreadyApplied() > 0) {
+            out.append("\n_")
+                    .append(digest.suppressedAlreadyApplied())
+                    .append(" candidate(s) hidden — already applied to that company._\n");
+        }
+
         out.append("\n## Board health\n");
         boolean anyProblem = false;
         for (BoardToken board : digest.boards()) {
