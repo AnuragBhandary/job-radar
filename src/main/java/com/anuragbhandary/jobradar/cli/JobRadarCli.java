@@ -24,16 +24,19 @@ public class JobRadarCli implements ApplicationRunner {
     private final RunCommand runCommand;
     private final SheetAppendCommand sheetAppend;
     private final SheetListCommand sheetList;
+    private final ProbeCommand probe;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
-            SheetAppendCommand sheetAppend, SheetListCommand sheetList) {
+            SheetAppendCommand sheetAppend, SheetListCommand sheetList,
+            ProbeCommand probe) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
         this.runCommand = runCommand;
         this.sheetAppend = sheetAppend;
         this.sheetList = sheetList;
+        this.probe = probe;
     }
 
     @Override
@@ -56,8 +59,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "run" -> runCommand.run(options);
             case "sheet-append" -> sheetAppend.run(options);
             case "sheet-list" -> sheetList.run(options);
-            case "probe" ->
-                    System.out.println("'" + command + "' is not implemented yet.");
+            case "probe" -> probe.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -92,7 +94,7 @@ public class JobRadarCli implements ApplicationRunner {
                   screen                                  apply filters, set verdicts
                   digest                                  write today's digest
                   run                                     fetch + screen + digest
-                  probe --tokens=a,b,c                    test candidate tokens (milestone 7)
+                  probe --tokens=a,b,c [--add]            test candidate tokens
                   sheet-list                              print the tracker (read-only)
                   sheet-append --posting-id=123           append to the tracker
                 """);

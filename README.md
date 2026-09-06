@@ -7,9 +7,10 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 6 of 8.** Five ATS integrations across 93 boards, screening
-> 8,683 postings into a daily digest, with the Google Sheets tracker read to
-> suppress companies already applied to. Token probing and scheduling to go.
+> **Status: Milestone 7 of 8.** Five ATS integrations across 98 boards, screening
+> 8,771 postings into a daily digest, reading the Google Sheets tracker to
+> suppress companies already applied to, and probing candidate tokens to find
+> boards that are on no list. Scheduling and Docker to go.
 > See [`docs/`](docs/) for the build log.
 
 ## The problem
@@ -75,7 +76,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="fetch"
 | `run` | working — fetch + screen + digest |
 | `sheet-list` | working — prints the tracker, read-only |
 | `sheet-append --posting-id=N` | working — confirms before writing |
-| `probe` | milestone 7 |
+| `probe --tokens=a,b,c [--add]` | working — tests a token across four platforms |
 
 ### Sample digest
 
@@ -132,11 +133,12 @@ header row is located by content rather than by offset — it was documented as 
 6 and found at row 7 — because the same assumption in the append path would
 eventually write over a real row.
 
-**An empty board is not proof of anything.** SmartRecruiters answers HTTP 200 with
-`totalFound: 0` for a company it has never heard of, so a dead token looks exactly
-like a company with no openings — eight of fourteen seeded tokens are currently in
-that state. The digest names them as things to verify rather than reporting a
-clean negative.
+**An empty board is not proof of anything.** Greenhouse, Ashby and Lever all 404 an
+unknown token, so on those three an empty board is a real board with no openings.
+SmartRecruiters answers HTTP 200 with `totalFound: 0` for any company name at all,
+so there an empty result and a token that never existed are the same response.
+`probe` reports the difference rather than flattening it, and the digest names
+empty boards as things to verify rather than as clean negatives.
 
 **Board size and postings kept are different numbers.** SmartRecruiters postings
 are filtered before their descriptions are fetched, so recording the shortlist as
