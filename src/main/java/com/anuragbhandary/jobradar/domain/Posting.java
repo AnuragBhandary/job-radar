@@ -144,6 +144,23 @@ public class Posting {
             columnDefinition = "boolean not null default false")
     private boolean graduateSignal;
 
+    /**
+     * What the posting says about sponsoring a visa, if anything.
+     *
+     * <p>Nullable on purpose, and nullable in all three senses: not screened yet,
+     * screened and silent, and screened and explicit are different states. Most
+     * postings are silent, so this is reported and never used to reject.
+     *
+     * <p>Deliberately not NOT NULL - SQLite cannot ADD COLUMN NOT NULL without a
+     * default, which is the trap already documented on graduateSignal above.
+     */
+    @Column(name = "sponsorship_signal", length = 128)
+    private String sponsorshipSignal;
+
+    /** The pay figure the posting states, with enough clause to read it by. */
+    @Column(name = "salary_text", length = 256)
+    private String salaryText;
+
     protected Posting() {
         // for JPA
     }
@@ -289,6 +306,22 @@ public class Posting {
 
     public boolean isGraduateSignal() {
         return graduateSignal;
+    }
+
+    public String getSponsorshipSignal() {
+        return sponsorshipSignal;
+    }
+
+    public void setSponsorshipSignal(String sponsorshipSignal) {
+        this.sponsorshipSignal = sponsorshipSignal;
+    }
+
+    public String getSalaryText() {
+        return salaryText;
+    }
+
+    public void setSalaryText(String salaryText) {
+        this.salaryText = salaryText;
     }
 
     public void setGraduateSignal(boolean graduateSignal) {

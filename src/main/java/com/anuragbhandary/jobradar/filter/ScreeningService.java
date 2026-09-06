@@ -36,6 +36,7 @@ public class ScreeningService {
     private final GeoFilter geoFilter;
     private final TitleFilter titleFilter;
     private final YearsExtractor yearsExtractor;
+    private final SignalExtractor signalExtractor;
     private final AppProperties.Screening screening;
 
     public ScreeningService(
@@ -43,11 +44,13 @@ public class ScreeningService {
             GeoFilter geoFilter,
             TitleFilter titleFilter,
             YearsExtractor yearsExtractor,
+            SignalExtractor signalExtractor,
             AppProperties properties) {
         this.postings = postings;
         this.geoFilter = geoFilter;
         this.titleFilter = titleFilter;
         this.yearsExtractor = yearsExtractor;
+        this.signalExtractor = signalExtractor;
         this.screening = properties.screening();
     }
 
@@ -100,6 +103,8 @@ public class ScreeningService {
         posting.setRejectReason(null);
         posting.setMinYears(null);
         posting.setGraduateSignal(false);
+        posting.setSponsorshipSignal(null);
+        posting.setSalaryText(null);
 
         // Board-level exclusion first: if the whole company is unavailable, the
         // geography and title of an individual posting are beside the point.
@@ -127,6 +132,12 @@ public class ScreeningService {
 
         posting.setGraduateSignal(
                 titleFilter.hasGraduateSignal(posting.getTitle(), posting.getDescriptionText()));
+
+        // Reported, never decisive. Recorded here rather than at digest time so
+        // the description is read once per screen instead of once per render.
+        posting.setSponsorshipSignal(
+                signalExtractor.sponsorship(posting.getDescriptionText()));
+        posting.setSalaryText(signalExtractor.salary(posting.getDescriptionText()));
 
         YearsExtraction years = yearsExtractor.extract(posting.getDescriptionText());
         posting.setMinYears(years.minYears());
