@@ -118,6 +118,23 @@ public class Posting {
     @Column(length = 32)
     private Country country;
 
+    /**
+     * The posting says "new grad", "graduated within the last 24 months" or
+     * similar.
+     *
+     * <p>A boost in the digest, never a requirement. Historically these have been
+     * the only reliable source of eligible roles, but requiring the signal would
+     * discard every posting that is open to a new graduate without saying so.
+     */
+    // An explicit default is required, not cosmetic: SQLite cannot ADD COLUMN
+    // NOT NULL without one, so on an existing database the migration would fail
+    // - and ddl-auto swallows DDL errors, so it would fail silently and only
+    // surface later as "no such column". "false" is valid in both SQLite and
+    // PostgreSQL, unlike "0".
+    @Column(name = "graduate_signal", nullable = false,
+            columnDefinition = "boolean not null default false")
+    private boolean graduateSignal;
+
     protected Posting() {
         // for JPA
     }
@@ -251,6 +268,14 @@ public class Posting {
 
     public void setCountry(Country country) {
         this.country = country;
+    }
+
+    public boolean isGraduateSignal() {
+        return graduateSignal;
+    }
+
+    public void setGraduateSignal(boolean graduateSignal) {
+        this.graduateSignal = graduateSignal;
     }
 
     /** Equality is the natural key, not the surrogate id. */

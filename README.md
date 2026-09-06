@@ -7,9 +7,9 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 2 of 8.** Reads the 46 verified Greenhouse boards —
-> 5,893 postings, idempotent on re-run. No filtering or digest yet.
-> See [`docs/`](docs/) for the build log.
+> **Status: Milestone 3 of 8.** Fetches and screens: 5,893 postings from 46
+> Greenhouse boards, down to 56 candidates, every rejection carrying the phrase
+> that disqualified it. No digest yet. See [`docs/`](docs/) for the build log.
 
 ## The problem
 
@@ -69,7 +69,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments="fetch"
 | `fetch` | working — all active boards |
 | `fetch --source=GREENHOUSE` | working — one ATS |
 | `fetch --source=GREENHOUSE --token=stripe` | working — one board |
-| `screen` | milestone 3 |
+| `screen` | working — applies filters, records verdicts |
 | `digest` | milestone 4 |
 | `probe`, `sheet-append` | milestones 6-7 |
 
@@ -127,6 +127,18 @@ read, and breaks silently in CI and in Docker, both of which run UTC. The fix is
 `config/IsoDateJdbcType`; the test reads the raw column with `JdbcTemplate`,
 because a round-trip through Hibernate cannot see the bug.
 
-The pattern across all three: **the dangerous bugs were the ones that produced no
-error.** Every one was found by looking at the actual database rather than at a
-green test suite.
+Milestone 3 added a fourth, and then the fix for the whole class: **Hibernate's
+`ddl-auto` logs DDL failures and continues.** Three separate schema bugs had hidden
+behind that. `hibernate.hbm2ddl.halt_on_error: true` now makes a rejected DDL
+statement a startup failure instead of a log line nobody reads.
+
+The pattern across all of them: **the dangerous bugs were the ones that produced no
+error.** Every one was found by looking at the actual database or the actual
+output, not at a green test suite.
+
+Screening made the same point in a different way. The filters passed 129 tests
+while classifying a Neo4j role in Malmö as remote-hireable — because `distributed`
+was a remote marker and the title said "Distributed Systems" — and while accepting
+31 hardware roles at a defence company on the strength of the word "engineer".
+Neither is visible in a unit test you wrote yourself. Both are obvious in thirty
+seconds of reading real output.

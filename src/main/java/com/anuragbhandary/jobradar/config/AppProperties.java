@@ -68,10 +68,12 @@ public record AppProperties(
     /**
      * Place names that count as each target country.
      *
-     * <p>{@code remoteCountryTrap} is the important one. A posting reading
-     * "Remote (Argentina)" or "Junior Software Engineer (Mexico)" is remote
-     * <em>within that country</em> - the country name is a hiring restriction,
-     * not a perk - and must be rejected however remote-friendly it sounds.
+     * <p>{@code excludedLocations} is the important one, and the reason it is
+     * long. A posting reading "Remote (Argentina)" or "Junior Software Engineer
+     * (Mexico)" is remote <em>within that country</em> - the country name is a
+     * hiring restriction, not a perk - and "Remote, London" is no more reachable
+     * from Mumbai than plain "London" is. A location matching one of these and
+     * none of the target lists is rejected however remote-friendly it reads.
      */
     public record Geo(
             List<String> indiaCities,
@@ -80,7 +82,7 @@ public record AppProperties(
             List<String> irelandCities,
             List<String> netherlandsCities,
             List<String> remoteMarkers,
-            List<String> remoteCountryTrap) {
+            List<String> excludedLocations) {
     }
 
     /**

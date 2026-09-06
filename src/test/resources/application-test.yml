@@ -1,0 +1,27 @@
+# Overrides only. Named application-test.yml rather than application.yml so that
+# the real application.yml still loads underneath it - a test-scoped file with
+# the same name would shadow the main one completely, and the filter tests would
+# then be validating configuration that does not ship.
+#
+# Tests run against a real SQLite file rather than an in-memory H2, because the
+# point of the persistence tests is to prove the SQLite wiring works. An
+# in-memory SQLite URL would give each pooled connection its own database.
+spring:
+  datasource:
+    url: jdbc:sqlite:./target/job-radar-test.db
+  jpa:
+    hibernate:
+      # Deliberately the same as production. An earlier version used create-drop,
+      # which exercises a different Hibernate code path (SchemaCreator rather than
+      # SchemaMigrator) and hid a missing unique constraint in the real database.
+      # @DataJpaTest rolls back data, so schema reuse across runs is harmless.
+      ddl-auto: update
+
+job-radar:
+  output-dir: ./target/test-digests
+  fixtures:
+    # Tests must not write into the developer's fixture directory.
+    enabled: false
+    dir: ./target/test-fixtures
+  http:
+    delay-between-requests-ms: 0
