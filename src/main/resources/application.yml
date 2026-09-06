@@ -1,0 +1,34 @@
+job-radar:
+  google:
+    # Service-account key. Never committed; see .gitignore. The account already
+    # holds Editor on the target spreadsheet.
+    credentials-path: ${JOB_RADAR_GOOGLE_KEY:~/.config/job-radar/google-key.json}
+    # Empty default so the app can boot for fetch/screen/digest without Sheets
+    # configured. The Sheets client validates this lazily and fails loudly there.
+    spreadsheet-id: ${JOB_RADAR_SHEET_ID:}
+    sheet-name: Untitled
+  output-dir: ${JOB_RADAR_OUT:./digests}
+  http:
+    user-agent: "job-radar/1.0 (personal job search tool)"
+    delay-between-requests-ms: 500
+    timeout-seconds: 20
+    max-retries: 3
+
+spring:
+  application:
+    name: job-radar
+  datasource:
+    url: ${JOB_RADAR_DB:jdbc:sqlite:./job-radar.db}
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: com.anuragbhandary.jobradar.config.SqliteDialect
+        format_sql: true
+    open-in-view: false
+
+logging:
+  level:
+    com.anuragbhandary.jobradar: INFO

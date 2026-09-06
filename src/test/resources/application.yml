@@ -1,0 +1,30 @@
+# Tests run against a real SQLite file rather than an in-memory H2, because the
+# point of the Milestone 1 test is to prove the SQLite dialect wiring works.
+# An in-memory SQLite URL would give each pooled connection its own database.
+job-radar:
+  google:
+    credentials-path: /dev/null
+    spreadsheet-id: ""
+    sheet-name: Untitled
+  output-dir: ./target/test-digests
+  http:
+    user-agent: "job-radar/1.0 (test)"
+    delay-between-requests-ms: 0
+    timeout-seconds: 5
+    max-retries: 1
+
+spring:
+  datasource:
+    url: jdbc:sqlite:./target/job-radar-test.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    hibernate:
+      # Deliberately the same as production. An earlier version used create-drop,
+      # which exercises a different Hibernate code path (SchemaCreator rather than
+      # SchemaMigrator) and hid a missing unique constraint in the real database.
+      # @DataJpaTest rolls back data, so schema reuse across runs is harmless.
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: com.anuragbhandary.jobradar.config.SqliteDialect
+    open-in-view: false
