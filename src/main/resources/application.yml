@@ -10,6 +10,14 @@ job-radar:
 
   output-dir: ${JOB_RADAR_OUT:./digests}
 
+  schedule:
+    # Off unless asked for. Only the `serve` command keeps the process alive long
+    # enough for this to matter; every other command exits when it is done.
+    enabled: ${JOB_RADAR_SCHEDULE:false}
+    # 07:00 Asia/Kolkata. Fires only while the process is running - nothing is
+    # caught up after a missed slot.
+    cron: ${JOB_RADAR_CRON:0 0 7 * * *}
+
   http:
     user-agent: "job-radar/1.0 (personal job search tool)"
     delay-between-requests-ms: 500
@@ -106,7 +114,11 @@ job-radar:
        # (Platform Workers)" matched on the include token "platform".
        legal, counsel, attorney, paralegal, compliance officer,
        developer relations, developer advocate, devrel,
-       logistiek, logistics, warehouse]
+       logistiek, logistics, warehouse,
+       # "developer" is an include token, so Catawiki's "Junior Business
+       # Developer" arrived as a software candidate. It is sales.
+       business developer, business development, account executive,
+       sales assist, growth manager]
 
     # Whole boards whose roles are structurally unavailable, kept fetched rather
     # than deactivated: the postings still count towards board health, the

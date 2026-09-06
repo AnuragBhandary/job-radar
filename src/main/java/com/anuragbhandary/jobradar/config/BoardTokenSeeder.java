@@ -159,9 +159,15 @@ public class BoardTokenSeeder {
      * reachable this way - each needs its real ATS identified by hand. Token
      * guessing has already failed twice.
      *
-     * <p>One trap recorded here rather than rediscovered: the Ashby token
-     * {@code navi} belongs to a San Francisco aviation startup, not to Navi the
-     * Indian fintech. Every posting on it is in SF.
+     * <p>Two traps recorded here rather than rediscovered, because a probe finds
+     * a live board without checking whose it is:
+     * <ul>
+     *   <li>The Ashby token {@code navi} belongs to a San Francisco aviation
+     *       startup, not to Navi the Indian fintech. Every posting is in SF.</li>
+     *   <li>The Greenhouse token {@code bird} belongs to Bird the e-scooter
+     *       company in New Jersey, not to Bird (formerly MessageBird), the
+     *       Amsterdam CPaaS on the IND recognised-sponsor register.</li>
+     * </ul>
      */
     public static final Set<String> KNOWN_ABSENT = Set.of(
             "hasura", "zepto", "navi", "juspay", "zerodha", "browserstack", "sprinklr",
