@@ -19,6 +19,7 @@ class ScreeningServiceTest {
             new GeoFilter(properties),
             new TitleFilter(properties),
             new YearsExtractor(),
+            new SignalExtractor(),
             properties);
 
     private Posting posting(String title, String location, String description) {
