@@ -60,13 +60,17 @@ public class ChangeDetector {
         }
 
         String previousHash = existing.getDescriptionHash();
+        // Captured before applyFields overwrites it. A posting that reappears
+        // after being closed is a real change worth reporting whether or not a
+        // word of it moved - a company re-opening a role is the event, not the
+        // wording. The comment here used to claim this happened; only the hash
+        // was ever compared, so an unchanged reopened posting went to SEEN and
+        // never reached the digest at all.
+        boolean reopened = existing.getStatus() == PostingStatus.CLOSED;
+
         mapper.applyFields(existing, raw, now);
-        existing.setStatus(
-                Objects.equals(previousHash, existing.getDescriptionHash())
-                        ? PostingStatus.SEEN
-                        // A posting that reappears after being closed is a real
-                        // change worth reporting, so UPDATED rather than SEEN.
-                        : PostingStatus.UPDATED);
+        boolean rewritten = !Objects.equals(previousHash, existing.getDescriptionHash());
+        existing.setStatus(reopened || rewritten ? PostingStatus.UPDATED : PostingStatus.SEEN);
         return existing;
     }
 

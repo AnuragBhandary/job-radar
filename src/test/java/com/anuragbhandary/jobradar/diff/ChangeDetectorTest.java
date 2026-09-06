@@ -120,4 +120,21 @@ class ChangeDetectorTest {
                 .findBySourceAndBoardTokenAndLastSeenBeforeAndStatusNot(
                         any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("a CLOSED posting that reappears unchanged is UPDATED, not SEEN")
+    void reopenedPostingIsUpdated() {
+        // The company re-opening a role is the event worth reporting, whether or
+        // not a word of the description moved. Comparing only the hash sent these
+        // to SEEN, which the digest never shows.
+        Posting existing =
+                detector().record(null, Source.GREENHOUSE, "stripe", raw("hello"), DAY_ONE);
+        existing.setStatus(PostingStatus.CLOSED);
+
+        Posting result =
+                detector().record(existing, Source.GREENHOUSE, "stripe", raw("hello"), DAY_TWO);
+
+        assertThat(result.getStatus()).isEqualTo(PostingStatus.UPDATED);
+    }
+
 }

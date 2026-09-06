@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GeoFilterTest {
 
@@ -132,4 +133,24 @@ class GeoFilterTest {
     void rejectsMissingLocation() {
         assertThat(filter.classify(null, null).verdict().accepted()).isFalse();
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Dublin, Ohio", "Dublin, OH", "Berlin, Connecticut", "Hamburg, New York",
+    })
+    @DisplayName("American namesakes of target cities are rejected")
+    void rejectsFalseFriends(String location) {
+        // "dublin ohio" sat in excluded-locations and could never fire: the target
+        // list matched "dublin" and returned Ireland one branch earlier.
+        assertThat(classify(location).verdict().accepted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a genuinely Irish posting that also mentions Ohio is still Ireland")
+    void falseFriendsRequireAdjacency() {
+        GeoFilter.GeoResult result = classify("Dublin, Ireland; Columbus, Ohio");
+        assertThat(result.verdict().accepted()).isTrue();
+        assertThat(result.country()).isEqualTo(Country.IRELAND);
+    }
+
 }

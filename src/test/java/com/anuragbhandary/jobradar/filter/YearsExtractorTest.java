@@ -138,4 +138,40 @@ class YearsExtractorTest {
         // the minimum would still be 5 - but on "8-2 years" it would be wrong.
         assertThat(minYears("5-8 years of experience")).isEqualTo(5);
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Experience (non-internship) in professional software development",
+            "Experience in professional, non-internship software development",
+            "Experience in professional, non-internship software development, or"
+                    + " experience (non-internship) in professional software development",
+    })
+    @DisplayName("Amazon's SDE II wording is a requirement even with no number attached")
+    void detectsNonInternshipWithoutANumber(String text) {
+        // These three phrasings put 26 mid-level AWS roles into the candidate
+        // list - 30% of it - because the old pattern needed "N years of" in front.
+        assertThat(extractor.extract(text).hasNonInternshipRequirement()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a lower number in the preferred section does not become the requirement")
+    void preferredSectionDoesNotUndercutTheRequirement() {
+        // Amazon's Network Dev Engineer I in Bengaluru: required 2+, preferred 1+.
+        // Taking the smallest number in the document read the bar as 1 and shipped
+        // a two-year role as an entry-level candidate.
+        String description = "- 2+ years of IT Security experience"
+                + " - 2+ years of major internet routing protocols experience."
+                + " The team runs the corporate network across the region and owns"
+                + " its security posture from end to end, working with partners."
+                + " Preferred: - 1+ years of automation scripting using Python,"
+                + " Bash, Shell and/or Perl experience";
+        assertThat(minYears(description)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("a description opening on 'Preferred' is read whole, not as empty")
+    void aHeadTooShortToBeRealIsNotASplit() {
+        assertThat(minYears("Preferred qualifications: 5+ years of experience")).isEqualTo(5);
+    }
+
 }

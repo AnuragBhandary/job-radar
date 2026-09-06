@@ -146,4 +146,40 @@ class TitleFilterTest {
         assertThat(filter.screen(null).accepted()).isFalse();
         assertThat(filter.screen("  ").accepted()).isFalse();
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Software Engineer (v/m/x)",
+            "Software Engineer (m/v)",
+            "Backend Developer (m/w/d)",
+            "Cloud Security Engineer (m,f,x)",
+            "Platform Engineer (all genders)",
+    })
+    @DisplayName("Dutch and German gender tags are not seniority levels")
+    void genderTagsAreNotSeniorityLevels(String title) {
+        // "(v/m/x)" is vrouw/man/x, not Roman five. Coolblue's Dutch postings were
+        // being rejected as senior roles on the strength of that "v".
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("'2 Year Rotational Programme' is a graduate scheme, not a level")
+    void programmeDurationInATitleIsNotALevel() {
+        // The years extractor protects this phrasing carefully. It never got the
+        // chance, because a bare digit in the title was read as seniority first.
+        assertThat(filter.screen("Software Engineer, 2 Year Rotational Programme")
+                .accepted()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Software Engineer II", "SDE III - Devops", "Software Engineer 2",
+            "Engineer 3 - GTM Tech", "Security Engineer - II (SOC)",
+            "Associate TSE II", "Software Engineer 3, Atlas Growth 2",
+    })
+    @DisplayName("real seniority levels are still rejected")
+    void stillRejectsRealLevels(String title) {
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
 }
