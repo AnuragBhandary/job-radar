@@ -25,11 +25,12 @@ public class JobRadarCli implements ApplicationRunner {
     private final SheetAppendCommand sheetAppend;
     private final SheetListCommand sheetList;
     private final ProbeCommand probe;
+    private final ServeCommand serve;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
-            ProbeCommand probe) {
+            ProbeCommand probe, ServeCommand serve) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -37,6 +38,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.sheetAppend = sheetAppend;
         this.sheetList = sheetList;
         this.probe = probe;
+        this.serve = serve;
     }
 
     @Override
@@ -60,6 +62,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "sheet-append" -> sheetAppend.run(options);
             case "sheet-list" -> sheetList.run(options);
             case "probe" -> probe.run(options);
+            case "serve" -> serve.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -95,6 +98,7 @@ public class JobRadarCli implements ApplicationRunner {
                   digest                                  write today's digest
                   run                                     fetch + screen + digest
                   probe --tokens=a,b,c [--add]            test candidate tokens
+                  serve                                   stay running for the daily schedule
                   sheet-list                              print the tracker (read-only)
                   sheet-append --posting-id=123           append to the tracker
                 """);

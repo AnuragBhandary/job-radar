@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd job for macOS.
+
+  Preferred over the built-in @Scheduled on a laptop, for one reason: launchd
+  reruns a StartCalendarInterval job when the machine wakes up if the scheduled
+  time was missed. A long-running JVM cannot, because it was not running.
+
+  Install:
+    cp deploy/com.anuragbhandary.job-radar.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.anuragbhandary.job-radar.plist
+
+  Check:  launchctl list | grep job-radar
+  Remove: launchctl unload ~/Library/LaunchAgents/com.anuragbhandary.job-radar.plist
+
+  Edit the paths and the spreadsheet id below before loading.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.anuragbhandary.job-radar</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/java</string>
+        <string>-jar</string>
+        <string>/Users/anuragbhandary/Coding/job-radar/target/job-radar-1.0.0.jar</string>
+        <string>run</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/anuragbhandary/Coding/job-radar</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>JOB_RADAR_SHEET_ID</key>
+        <string>PUT_YOUR_SPREADSHEET_ID_HERE</string>
+        <key>JOB_RADAR_GOOGLE_KEY</key>
+        <string>/Users/anuragbhandary/.config/job-radar/google-key.json</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/anuragbhandary/Coding/job-radar/digests/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/anuragbhandary/Coding/job-radar/digests/launchd.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
