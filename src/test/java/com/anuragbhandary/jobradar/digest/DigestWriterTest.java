@@ -54,7 +54,7 @@ class DigestWriterTest {
         BoardToken board = new BoardToken(Source.GREENHOUSE, "stripe", "Stripe");
         board.recordSuccess(615, Instant.now());
         return new Digest(TODAY, newCandidates, review, List.of(), List.of(),
-                rejections, List.of(board), reverify);
+                rejections, List.of(board), reverify, 0);
     }
 
     @Test
@@ -158,7 +158,7 @@ class DigestWriterTest {
         broken.recordFailure("HTTP 404", Instant.now());
 
         String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(broken), false));
+                Map.of(), List.of(broken), false, 0));
 
         // "was 274 postings, now failing" is the useful statement. "0 postings"
         // would read as a company that stopped hiring.
@@ -176,10 +176,20 @@ class DigestWriterTest {
         empty.recordSuccess(0, Instant.now());
 
         String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(empty), false));
+                Map.of(), List.of(empty), false, 0));
 
         assertThat(out).contains("returned nothing").contains("SMARTRECRUITERS/Personio");
         assertThat(out).doesNotContain("boards healthy");
+    }
+
+    @Test
+    @DisplayName("suppressed candidates are counted, not silently dropped")
+    void countsSuppressedCandidates() {
+        // A digest that quietly shrinks is one you stop trusting.
+        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
+                Map.of(), List.of(), false, 4));
+
+        assertThat(out).contains("4 candidate(s) hidden — already applied");
     }
 
     @Test

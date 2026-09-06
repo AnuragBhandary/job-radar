@@ -21,6 +21,10 @@ import java.util.Map;
  * @param updated          previously seen, but the description has since changed
  * @param closed           postings that disappeared from their board
  * @param rejections       counts by reason, for the postings seen this run
+ * @param suppressedAlreadyApplied how many candidates were withheld because the
+ *                         tracker already records an application to that company.
+ *                         Counted rather than silently dropped - a digest that
+ *                         quietly shrinks is one you stop trusting.
  */
 public record Digest(
         LocalDate date,
@@ -30,7 +34,8 @@ public record Digest(
         List<Posting> closed,
         Map<String, Long> rejections,
         List<BoardToken> boards,
-        boolean salaryFloorsNeedReverification) {
+        boolean salaryFloorsNeedReverification,
+        int suppressedAlreadyApplied) {
 
     /** True when there is nothing to report but board health. */
     public boolean isQuiet() {

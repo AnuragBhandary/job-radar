@@ -7,9 +7,9 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 5 of 8.** All five ATS integrations live: 93 boards across
-> Greenhouse, Ashby, Lever, SmartRecruiters and Amazon, screening 8,683 postings
-> down to 94 candidates each morning. Sheets writer and scheduling to go.
+> **Status: Milestone 6 of 8.** Five ATS integrations across 93 boards, screening
+> 8,683 postings into a daily digest, with the Google Sheets tracker read to
+> suppress companies already applied to. Token probing and scheduling to go.
 > See [`docs/`](docs/) for the build log.
 
 ## The problem
@@ -73,7 +73,9 @@ mvn spring-boot:run -Dspring-boot.run.arguments="fetch"
 | `screen` | working — applies filters, records verdicts |
 | `digest` | working — writes `digests/YYYY-MM-DD.md` |
 | `run` | working — fetch + screen + digest |
-| `probe`, `sheet-append` | milestones 6-7 |
+| `sheet-list` | working — prints the tracker, read-only |
+| `sheet-append --posting-id=N` | working — confirms before writing |
+| `probe` | milestone 7 |
 
 ### Sample digest
 
@@ -123,6 +125,12 @@ Several ATSs rewrite public URLs without the posting having changed.
 Celonis bulk-refreshes every posting's `updated_at` daily, which makes that field
 useless as a change signal — and it is useless in a way that looks like it is
 working.
+
+**The tracker is append-only.** It is the only record of where applications have
+gone, and unlike everything else here it cannot be rebuilt by re-fetching. The
+header row is located by content rather than by offset — it was documented as row
+6 and found at row 7 — because the same assumption in the append path would
+eventually write over a real row.
 
 **An empty board is not proof of anything.** SmartRecruiters answers HTTP 200 with
 `totalFound: 0` for a company it has never heard of, so a dead token looks exactly
