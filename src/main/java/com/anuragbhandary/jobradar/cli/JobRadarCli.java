@@ -20,10 +20,15 @@ public class JobRadarCli implements ApplicationRunner {
 
     private final FetchCommand fetch;
     private final ScreenCommand screen;
+    private final DigestCommand digest;
+    private final RunCommand runCommand;
 
-    public JobRadarCli(FetchCommand fetch, ScreenCommand screen) {
+    public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
+            DigestCommand digest, RunCommand runCommand) {
         this.fetch = fetch;
         this.screen = screen;
+        this.digest = digest;
+        this.runCommand = runCommand;
     }
 
     @Override
@@ -42,7 +47,9 @@ public class JobRadarCli implements ApplicationRunner {
         switch (command) {
             case "fetch" -> fetch.run(options);
             case "screen" -> screen.run(options);
-            case "digest", "run", "probe", "sheet-append" ->
+            case "digest" -> digest.run(options);
+            case "run" -> runCommand.run(options);
+            case "probe", "sheet-append" ->
                     System.out.println("'" + command + "' is not implemented yet.");
             default -> {
                 System.out.println("Unknown command: " + command);
@@ -76,7 +83,7 @@ public class JobRadarCli implements ApplicationRunner {
                   fetch --source=GREENHOUSE               fetch one ATS
                   fetch --source=GREENHOUSE --token=stripe   fetch one board
                   screen                                  apply filters, set verdicts
-                  digest                                  write today's digest (milestone 4)
+                  digest                                  write today's digest
                   run                                     fetch + screen + digest
                   probe --tokens=a,b,c                    test candidate tokens (milestone 7)
                   sheet-append --posting-id=123           append to the tracker (milestone 6)

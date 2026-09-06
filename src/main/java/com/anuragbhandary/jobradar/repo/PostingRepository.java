@@ -1,6 +1,7 @@
 package com.anuragbhandary.jobradar.repo;
 
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.domain.Verdict;
 import java.time.Instant;
@@ -20,6 +21,15 @@ public interface PostingRepository extends JpaRepository<Posting, Long> {
 
     /** Postings not observed since the given instant - candidates for CLOSED. */
     List<Posting> findByLastSeenBefore(Instant cutoff);
+
+    /**
+     * Stale postings on one specific board. Scoped to a board on purpose: only
+     * boards that fetched successfully may have their postings closed.
+     */
+    List<Posting> findBySourceAndBoardTokenAndLastSeenBeforeAndStatusNot(
+            Source source, String boardToken, Instant cutoff, PostingStatus status);
+
+    List<Posting> findByStatusIn(List<PostingStatus> statuses);
 
     long countBySourceAndBoardToken(Source source, String boardToken);
 }

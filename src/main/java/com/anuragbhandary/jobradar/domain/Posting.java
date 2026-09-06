@@ -100,6 +100,15 @@ public class Posting {
     private Verdict verdict = Verdict.UNSCREENED;
 
     /**
+     * What the last fetch found. See the note on graduateSignal for why the
+     * default is spelled out in the column definition.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32,
+            columnDefinition = "varchar(32) not null default 'SEEN'")
+    private PostingStatus status = PostingStatus.NEW;
+
+    /**
      * The phrase that disqualified this posting, verbatim where possible.
      * A rejection without a reason is not a useful rejection.
      */
@@ -236,6 +245,14 @@ public class Posting {
 
     public void setLastSeen(Instant lastSeen) {
         this.lastSeen = lastSeen;
+    }
+
+    public PostingStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PostingStatus status) {
+        this.status = status;
     }
 
     public Verdict getVerdict() {

@@ -62,6 +62,7 @@ public record AppProperties(
             List<String> titleInclude,
             List<String> titleExclude,
             List<String> graduateSignals,
+            java.util.Map<String, String> excludedBoards,
             int maxMinYears) {
     }
 

@@ -101,6 +101,17 @@ public class ScreeningService {
         posting.setMinYears(null);
         posting.setGraduateSignal(false);
 
+        // Board-level exclusion first: if the whole company is unavailable, the
+        // geography and title of an individual posting are beside the point.
+        String boardExclusion = screening.excludedBoards() == null
+                ? null : screening.excludedBoards().get(posting.getBoardToken());
+        if (boardExclusion != null) {
+            posting.setCountry(geoFilter.classify(
+                    posting.getLocation(), posting.getTitle()).country());
+            reject(posting, "board excluded: " + boardExclusion);
+            return;
+        }
+
         GeoFilter.GeoResult geo = geoFilter.classify(posting.getLocation(), posting.getTitle());
         posting.setCountry(geo.country());
         if (!geo.verdict().accepted()) {

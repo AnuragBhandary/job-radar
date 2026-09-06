@@ -7,9 +7,10 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 3 of 8.** Fetches and screens: 5,893 postings from 46
-> Greenhouse boards, down to 56 candidates, every rejection carrying the phrase
-> that disqualified it. No digest yet. See [`docs/`](docs/) for the build log.
+> **Status: Milestone 4 of 8.** End to end: fetches 46 Greenhouse boards, screens
+> 5,893 postings down to 28 candidates, and writes a daily digest of what changed.
+> Four more ATS integrations and the Sheets writer to go.
+> See [`docs/`](docs/) for the build log.
 
 ## The problem
 
@@ -70,8 +71,41 @@ mvn spring-boot:run -Dspring-boot.run.arguments="fetch"
 | `fetch --source=GREENHOUSE` | working — one ATS |
 | `fetch --source=GREENHOUSE --token=stripe` | working — one board |
 | `screen` | working — applies filters, records verdicts |
-| `digest` | milestone 4 |
+| `digest` | working — writes `digests/YYYY-MM-DD.md` |
+| `run` | working — fetch + screen + digest |
 | `probe`, `sheet-append` | milestones 6-7 |
+
+### Sample digest
+
+```markdown
+# job-radar — 2026-09-06
+
+## New candidates (3)
+
+- **Celonis** — Associate Software Engineer - Java — Bangalore, India
+  Years: 1 | Graduate signal: no
+  Floor: Rs 14,00,000 (relocation: ~Rs 30k/month rent and food)
+  https://job-boards.greenhouse.io/celonis/jobs/7791267003
+
+- **Grafana Labs** — Backend Engineer - Platform - Stacks | Ireland | Remote
+  Years: 1 | Graduate signal: no
+  Floor: EUR 40.904 (CSEP basic salary; below EUR 48.000 Dublin rent makes it ~Mumbai 10L)
+
+## Needs human review — no years stated (25)
+
+- **Stripe** — Software Engineer, New Grad — Dublin
+  Years: none stated | Graduate signal: yes
+
+## Rejected (5865)
+- 3645 — outside target geographies
+- 585 — country-locked remote
+- 391 — title excluded on 'senior'
+
+## Board health
+All 46 boards healthy — 5893 postings.
+```
+
+Run it twice and the second digest is nearly empty — that is the point.
 
 Screening rules and salary floors live in `application.yml` under
 `job-radar.screening` and `job-radar.salary-floors`, not in Java — the visa
@@ -89,6 +123,10 @@ Several ATSs rewrite public URLs without the posting having changed.
 Celonis bulk-refreshes every posting's `updated_at` daily, which makes that field
 useless as a change signal — and it is useless in a way that looks like it is
 working.
+
+**A board that failed to fetch never closes its postings.** A 404 makes every
+posting on that board look absent, and a naive staleness sweep would report that
+forty companies stopped hiring on the same morning.
 
 **A board that breaks must not look like a board with no results.** `BoardToken`
 records the last fetch's posting count and error separately, and keeps the last
