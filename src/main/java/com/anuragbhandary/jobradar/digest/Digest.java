@@ -25,6 +25,8 @@ import java.util.Map;
  *                         tracker already records an application to that company.
  *                         Counted rather than silently dropped - a digest that
  *                         quietly shrinks is one you stop trusting.
+ * @param duplicatesCollapsed how many repeat listings of a role already shown
+ *                         were folded away. Counted for the same reason.
  */
 public record Digest(
         LocalDate date,
@@ -35,7 +37,8 @@ public record Digest(
         Map<String, Long> rejections,
         List<BoardToken> boards,
         boolean salaryFloorsNeedReverification,
-        int suppressedAlreadyApplied) {
+        int suppressedAlreadyApplied,
+        int duplicatesCollapsed) {
 
     /** True when there is nothing to report but board health. */
     public boolean isQuiet() {
