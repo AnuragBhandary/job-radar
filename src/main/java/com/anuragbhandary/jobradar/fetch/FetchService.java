@@ -2,6 +2,7 @@ package com.anuragbhandary.jobradar.fetch;
 
 import com.anuragbhandary.jobradar.domain.BoardToken;
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.diff.ChangeDetector;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
@@ -10,7 +11,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,19 +38,19 @@ public class FetchService {
     private final Map<Source, AtsFetcher> fetchers = new EnumMap<>(Source.class);
     private final PostingRepository postings;
     private final BoardTokenRepository boards;
-    private final PostingMapper mapper;
+    private final ChangeDetector changes;
     private final TransactionTemplate transaction;
 
     public FetchService(
             List<AtsFetcher> fetchers,
             PostingRepository postings,
             BoardTokenRepository boards,
-            PostingMapper mapper,
+            ChangeDetector changes,
             PlatformTransactionManager transactionManager) {
         fetchers.forEach(f -> this.fetchers.put(f.source(), f));
         this.postings = postings;
         this.boards = boards;
-        this.mapper = mapper;
+        this.changes = changes;
         // An explicit template rather than @Transactional on fetchBoard: that
         // method is called from another method of this same bean, so the
         // proxy would never see the call and the annotation would silently do
@@ -85,6 +85,18 @@ public class FetchService {
             results.add(transaction.execute(status -> fetchBoard(board)));
             log.info("{}", results.getLast());
         }
+
+        // Only boards that actually answered may have their postings closed. A
+        // board that failed makes all of its postings look absent, and closing
+        // them would turn a broken token into "this company stopped hiring".
+        List<BoardToken> healthy = targets.stream()
+                .filter(b -> results.stream().anyMatch(r ->
+                        !r.failed() && r.source() == b.getSource()
+                                && r.boardToken().equals(b.getToken())))
+                .toList();
+        transaction.executeWithoutResult(status ->
+                changes.closeStale(healthy, Instant.now()));
+
         return results;
     }
 
@@ -111,26 +123,16 @@ public class FetchService {
         int unchanged = 0;
 
         for (RawPosting posting : raw) {
-            Optional<Posting> existing = postings.findBySourceAndBoardTokenAndExternalId(
-                    board.getSource(), board.getToken(), posting.externalId());
+            Posting existing = postings.findBySourceAndBoardTokenAndExternalId(
+                    board.getSource(), board.getToken(), posting.externalId()).orElse(null);
 
-            if (existing.isEmpty()) {
-                postings.save(mapper.toNewPosting(
-                        board.getSource(), board.getToken(), posting, now));
-                created++;
-            } else {
-                Posting stored = existing.get();
-                // Captured before applyFields overwrites it. Milestone 4 turns
-                // this comparison into the NEW / UPDATED / SEEN classification;
-                // here it only feeds the counts.
-                String previousHash = stored.getDescriptionHash();
-                mapper.applyFields(stored, posting, now);
-                if (Objects.equals(previousHash, stored.getDescriptionHash())) {
-                    unchanged++;
-                } else {
-                    updated++;
-                }
-                postings.save(stored);
+            Posting saved = postings.save(changes.record(
+                    existing, board.getSource(), board.getToken(), posting, now));
+
+            switch (saved.getStatus()) {
+                case NEW -> created++;
+                case UPDATED -> updated++;
+                default -> unchanged++;
             }
         }
 

@@ -100,7 +100,15 @@ job-radar:
        recipe,
        hardware, firmware, embedded, avionics, electronics, electrical,
        mechanical, radio, wireless, optical, thermal, hydraulic, structural,
-       stress, camera, emc, emi, electromagnetic, rf]
+       stress, camera, emc, emi, electromagnetic, rf,
+       forward deployed]
+
+    # Whole boards whose roles are structurally unavailable, kept fetched rather
+    # than deactivated: the postings still count towards board health, the
+    # rejection is visible in the digest, and re-including a company is a config
+    # edit rather than a re-seed.
+    excluded-boards:
+      helsing: "defence sector - roles require EU citizenship or security clearance"
 
     # Boost, never a requirement. Historically the only reliable source of
     # eligible roles, but requiring them would discard everything else.
