@@ -5,6 +5,7 @@ import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,20 @@ public class BoardTokenSeeder {
 
     /** Greenhouse token to company label. Ordered so the seeded table reads sensibly. */
     private static final Map<String, String> GREENHOUSE = new LinkedHashMap<>();
+
+    private static final Map<String, String> ASHBY = new LinkedHashMap<>();
+
+    private static final Map<String, String> LEVER = new LinkedHashMap<>();
+
+    private static final Map<String, String> SMARTRECRUITERS = new LinkedHashMap<>();
+
+    /**
+     * Amazon has one job site, not one board per company, so the "token" is a
+     * country code. All four are swept separately because Dublin runs a graduate
+     * requisition line entirely independent of Berlin's - a distinction that
+     * cost four days of searching to notice.
+     */
+    private static final Map<String, String> AMAZON = new LinkedHashMap<>();
 
     static {
         GREENHOUSE.put("stripe", "Stripe");
@@ -76,6 +91,58 @@ public class BoardTokenSeeder {
         GREENHOUSE.put("udemy", "Udemy");
         GREENHOUSE.put("flipdish", "Flipdish");
         GREENHOUSE.put("inmobi", "InMobi");
+
+
+        ASHBY.put("confluent", "Confluent");
+        ASHBY.put("notion", "Notion");
+        ASHBY.put("openai", "OpenAI");
+        ASHBY.put("sarvam", "Sarvam AI");
+        ASHBY.put("tekion", "Tekion");
+        ASHBY.put("ramp", "Ramp");
+        ASHBY.put("plaid", "Plaid");
+        ASHBY.put("supabase", "Supabase");
+        ASHBY.put("linear", "Linear");
+        ASHBY.put("deepl", "DeepL");
+        ASHBY.put("camunda", "Camunda");
+        ASHBY.put("forto", "Forto");
+        ASHBY.put("choco", "Choco");
+        ASHBY.put("langfuse", "Langfuse");
+        ASHBY.put("enpal", "Enpal");
+        ASHBY.put("qonto", "Qonto");
+        ASHBY.put("atlan", "Atlan");
+        ASHBY.put("mollie", "Mollie");
+        ASHBY.put("wayflyer", "Wayflyer");
+        ASHBY.put("miro", "Miro");
+
+        LEVER.put("zeta", "Zeta");
+        LEVER.put("meesho", "Meesho");
+        LEVER.put("cred", "CRED");
+        LEVER.put("mindtickle", "Mindtickle");
+        LEVER.put("sonarsource", "SonarSource");
+        LEVER.put("contentsquare", "Contentsquare");
+        LEVER.put("aircall", "Aircall");
+        LEVER.put("qonto", "Qonto");
+        LEVER.put("porter", "Porter");
+
+        SMARTRECRUITERS.put("PHONEPELIMITED", "PhonePe");
+        SMARTRECRUITERS.put("DeliveryHero", "Delivery Hero");
+        SMARTRECRUITERS.put("Personio", "Personio");
+        SMARTRECRUITERS.put("Siemens", "Siemens");
+        SMARTRECRUITERS.put("Bosch", "Bosch");
+        SMARTRECRUITERS.put("Contentful", "Contentful");
+        SMARTRECRUITERS.put("N26", "N26");
+        SMARTRECRUITERS.put("TradeRepublic", "Trade Republic");
+        SMARTRECRUITERS.put("GetYourGuide", "GetYourGuide");
+        SMARTRECRUITERS.put("Zalando", "Zalando");
+        SMARTRECRUITERS.put("Coolblue", "Coolblue");
+        SMARTRECRUITERS.put("Freshworks", "Freshworks");
+        SMARTRECRUITERS.put("Swiggy", "Swiggy");
+        SMARTRECRUITERS.put("Picnic", "Picnic");
+
+        AMAZON.put("IND", "Amazon India");
+        AMAZON.put("DEU", "Amazon Germany");
+        AMAZON.put("IRL", "Amazon Ireland");
+        AMAZON.put("NLD", "Amazon Netherlands");
     }
 
     private final BoardTokenRepository boards;
@@ -84,18 +151,49 @@ public class BoardTokenSeeder {
         this.boards = boards;
     }
 
+    /**
+     * Companies confirmed absent from all four applicant tracking systems.
+     *
+     * <p>Kept so that {@code probe} never re-tests them. This is the tier most
+     * likely to hire at entry level in India, and its boards are simply not
+     * reachable this way - each needs its real ATS identified by hand. Token
+     * guessing has already failed twice.
+     *
+     * <p>One trap recorded here rather than rediscovered: the Ashby token
+     * {@code navi} belongs to a San Francisco aviation startup, not to Navi the
+     * Indian fintech. Every posting on it is in SF.
+     */
+    public static final Set<String> KNOWN_ABSENT = Set.of(
+            "hasura", "zepto", "navi", "juspay", "zerodha", "browserstack", "sprinklr",
+            "rippling", "nutanix", "atlassian", "whatfix", "darwinbox", "chargebee",
+            "clevertap", "harness", "leadsquared", "locus", "innovaccer", "uniphore",
+            "icertis", "gupshup", "yellowai", "jupiter", "setu", "m2p", "perfios",
+            "signzy", "yubi", "acko", "zetwerk", "delhivery", "medianet", "dream11",
+            "games24x7", "ather", "physicswallah", "cars24", "lenskart", "urbancompany",
+            "bizongo", "moglix", "glean", "booking", "hubspot", "optiver", "backbase",
+            "bunq", "justeattakeaway", "imc");
+
     /** Adds any missing seed tokens. Safe to call on every startup. */
     @Transactional
     public void seed() {
-        int added = 0;
-        for (Map.Entry<String, String> entry : GREENHOUSE.entrySet()) {
-            if (boards.findBySourceAndToken(Source.GREENHOUSE, entry.getKey()).isEmpty()) {
-                boards.save(new BoardToken(Source.GREENHOUSE, entry.getKey(), entry.getValue()));
-                added++;
-            }
-        }
+        int added = seedSource(Source.GREENHOUSE, GREENHOUSE)
+                + seedSource(Source.ASHBY, ASHBY)
+                + seedSource(Source.LEVER, LEVER)
+                + seedSource(Source.SMARTRECRUITERS, SMARTRECRUITERS)
+                + seedSource(Source.AMAZON, AMAZON);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }
+    }
+
+    private int seedSource(Source source, Map<String, String> tokens) {
+        int added = 0;
+        for (Map.Entry<String, String> entry : tokens.entrySet()) {
+            if (boards.findBySourceAndToken(source, entry.getKey()).isEmpty()) {
+                boards.save(new BoardToken(source, entry.getKey(), entry.getValue()));
+                added++;
+            }
+        }
+        return added;
     }
 }

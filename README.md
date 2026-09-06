@@ -7,9 +7,9 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 4 of 8.** End to end: fetches 46 Greenhouse boards, screens
-> 5,893 postings down to 28 candidates, and writes a daily digest of what changed.
-> Four more ATS integrations and the Sheets writer to go.
+> **Status: Milestone 5 of 8.** All five ATS integrations live: 93 boards across
+> Greenhouse, Ashby, Lever, SmartRecruiters and Amazon, screening 8,683 postings
+> down to 94 candidates each morning. Sheets writer and scheduling to go.
 > See [`docs/`](docs/) for the build log.
 
 ## The problem
@@ -123,6 +123,16 @@ Several ATSs rewrite public URLs without the posting having changed.
 Celonis bulk-refreshes every posting's `updated_at` daily, which makes that field
 useless as a change signal — and it is useless in a way that looks like it is
 working.
+
+**An empty board is not proof of anything.** SmartRecruiters answers HTTP 200 with
+`totalFound: 0` for a company it has never heard of, so a dead token looks exactly
+like a company with no openings — eight of fourteen seeded tokens are currently in
+that state. The digest names them as things to verify rather than reporting a
+clean negative.
+
+**Board size and postings kept are different numbers.** SmartRecruiters postings
+are filtered before their descriptions are fetched, so recording the shortlist as
+board health would make a busy board with no matches look dead.
 
 **A board that failed to fetch never closes its postings.** A 404 makes every
 posting on that board look absent, and a naive staleness sweep would report that

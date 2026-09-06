@@ -111,9 +111,9 @@ public class FetchService {
             return recordFailure(board, "no fetcher implemented for " + board.getSource(), now);
         }
 
-        List<RawPosting> raw;
+        FetchBatch batch;
         try {
-            raw = fetcher.fetch(board.getToken());
+            batch = fetcher.fetch(board.getToken());
         } catch (FetchException e) {
             return recordFailure(board, e.getMessage(), now);
         }
@@ -122,7 +122,7 @@ public class FetchService {
         int updated = 0;
         int unchanged = 0;
 
-        for (RawPosting posting : raw) {
+        for (RawPosting posting : batch.postings()) {
             Posting existing = postings.findBySourceAndBoardTokenAndExternalId(
                     board.getSource(), board.getToken(), posting.externalId()).orElse(null);
 
@@ -136,10 +136,12 @@ public class FetchService {
             }
         }
 
-        board.recordSuccess(raw.size(), now);
+        // Board health records what the board advertises; the digest counts
+        // what we kept. Conflating them would make a filtered board look dead.
+        board.recordSuccess(batch.boardTotal(), now);
         boards.save(board);
-        return new FetchResult(
-                board.getSource(), board.getToken(), raw.size(), created, updated, unchanged, null);
+        return new FetchResult(board.getSource(), board.getToken(),
+                batch.boardTotal(), created, updated, unchanged, null);
     }
 
     private FetchResult recordFailure(BoardToken board, String error, Instant now) {
