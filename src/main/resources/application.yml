@@ -7,16 +7,98 @@ job-radar:
     # configured. The Sheets client validates this lazily and fails loudly there.
     spreadsheet-id: ${JOB_RADAR_SHEET_ID:}
     sheet-name: Untitled
+
   output-dir: ${JOB_RADAR_OUT:./digests}
+
   http:
     user-agent: "job-radar/1.0 (personal job search tool)"
     delay-between-requests-ms: 500
     timeout-seconds: 20
     max-retries: 3
 
+  # Every raw API response is written to disk exactly as received. Gives test
+  # fixtures for free, and makes "why was this rejected?" answerable afterwards
+  # from the bytes the decision was made on.
+  fixtures:
+    enabled: ${JOB_RADAR_FIXTURES:true}
+    dir: ${JOB_RADAR_FIXTURE_DIR:./fixtures}
+
+  # ---------------------------------------------------------------------------
+  # Screening rules. In YAML rather than Java because they change often: the
+  # exclusion list grows every time a board invents a new senior-sounding title.
+  # Matching is case-insensitive substring matching on the lowercased field.
+  # ---------------------------------------------------------------------------
+  screening:
+    geo:
+      mumbai-cities: [mumbai, navi mumbai, thane]
+      india-cities:
+        [mumbai, navi mumbai, thane, bangalore, bengaluru, hyderabad, pune,
+         gurgaon, gurugram, noida, chennai, delhi, india]
+      germany-cities:
+        [berlin, munich, münchen, muenchen, dresden, hamburg, frankfurt,
+         cologne, köln, koeln, germany, deutschland]
+      ireland-cities: [dublin, cork, galway, ireland]
+      netherlands-cities:
+        [amsterdam, utrecht, rotterdam, eindhoven, the hague, den haag,
+         netherlands, nederland, holland]
+      remote-markers: [remote, anywhere, distributed, work from home]
+
+      # The expensive trap. A posting reading "Remote (Argentina)" is remote
+      # WITHIN Argentina - the country is a hiring restriction, not a perk.
+      # Any of these appearing alongside "remote" disqualifies the posting.
+      # Several applications were made to such roles by mistake before this
+      # tool existed.
+      remote-country-trap:
+        [argentina, mexico, brazil, brasil, colombia, chile, peru, uruguay,
+         canada, united states, usa, u.s., philippines, indonesia, vietnam,
+         nigeria, kenya, egypt, south africa, poland, portugal, spain, romania,
+         ukraine, serbia, turkey, japan, korea, singapore, australia,
+         new zealand, united kingdom, uk only, emea only, latam, apac, us only]
+
+    title-include:
+      [software, backend, back-end, back end, full-stack, fullstack, full stack,
+       developer, engineer, data scientist, machine learning, platform, sde,
+       python, java, distributed systems, ai engineer, genai, data engineer]
+
+    # "ii" and "iii" are matched as whole words elsewhere; listing them here
+    # would also reject "Engineer II" spelled inside another word.
+    title-exclude:
+      [senior, staff, principal, lead, manager, director, sales, account,
+       marketing, recruiter, vp, head of, solution consultant, support, field,
+       customer success, intern, working student, werkstudent, praktikum,
+       mid-level, midlevel, intermediate, architect, sr., sr ]
+
+    # Boost, never a requirement. Historically the only reliable source of
+    # eligible roles, but requiring them would discard everything else.
+    graduate-signals:
+      ["graduated within the last 24 months", "new grad", "new graduate",
+       "graduate programme", "graduate program", "early career", "campus",
+       "entry level", "entry-level", "recent graduate", "university graduate"]
+
+    # Reject at 2+. One year of internship reads onto "1-3 years" but not onto
+    # "2+ years of professional experience".
+    max-min-years: 1
+
+  # ---------------------------------------------------------------------------
+  # Salary floors. See AppProperties.SalaryFloors for why these numbers are
+  # shaped the way they are - they look wrong without the reasoning.
+  # The three European figures are legal visa thresholds and are re-indexed
+  # annually. Re-verify at source on or after verify-by.
+  # ---------------------------------------------------------------------------
+  salary-floors:
+    mumbai-inr: 700000
+    india-other-inr: 1400000
+    germany-eur: 45934.20
+    ireland-eur: 40904
+    netherlands-eur: 52284
+    dublin-comfort-eur: 48000
+    verify-by: 2027-03-01
+
 spring:
   application:
     name: job-radar
+  main:
+    banner-mode: off
   datasource:
     url: ${JOB_RADAR_DB:jdbc:sqlite:./job-radar.db}
     driver-class-name: org.sqlite.JDBC
@@ -26,9 +108,10 @@ spring:
     properties:
       hibernate:
         dialect: com.anuragbhandary.jobradar.config.SqliteDialect
-        format_sql: true
     open-in-view: false
 
 logging:
   level:
     com.anuragbhandary.jobradar: INFO
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %msg%n"

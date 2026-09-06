@@ -7,8 +7,9 @@ since yesterday, and writes a short daily digest.
 There is no web UI and no REST API. It is a batch job that produces a markdown
 file and updates a spreadsheet.
 
-> **Status: Milestone 1 of 8.** Project skeleton, entities and persistence only.
-> No fetching yet. See [`docs/`](docs/) for the build log.
+> **Status: Milestone 2 of 8.** Reads the 46 verified Greenhouse boards —
+> 5,893 postings, idempotent on re-run. No filtering or digest yet.
+> See [`docs/`](docs/) for the build log.
 
 ## The problem
 
@@ -60,10 +61,24 @@ covers `config/*.json`, `.env`, `*.db` and `/digests/`.
 ## Running
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.arguments="fetch"
 ```
 
-Currently this creates the schema and exits — there are no commands yet.
+| Command | Status |
+|---|---|
+| `fetch` | working — all active boards |
+| `fetch --source=GREENHOUSE` | working — one ATS |
+| `fetch --source=GREENHOUSE --token=stripe` | working — one board |
+| `screen` | milestone 3 |
+| `digest` | milestone 4 |
+| `probe`, `sheet-append` | milestones 6-7 |
+
+Screening rules and salary floors live in `application.yml` under
+`job-radar.screening` and `job-radar.salary-floors`, not in Java — the visa
+thresholds are re-indexed annually and the title exclusion list grows steadily.
+
+Every raw API response is saved to `fixtures/<date>/` for replay and
+after-the-fact debugging.
 
 ## Design notes
 
@@ -103,3 +118,15 @@ broken**, because the tests ran `ddl-auto: create-drop` and production ran
 `update`. Those are two different Hibernate components emitting different DDL.
 Any difference between test config and production config is, by definition, the
 part you are not testing.
+
+Milestone 2 produced a third of the same family. SQLite has no date type, so
+sqlite-jdbc stored `LocalDate` as the epoch milliseconds of **local midnight** —
+a value that reads back as the previous day in any other timezone. It passes every
+test on a developer machine, because the same wrong zone is used to write and to
+read, and breaks silently in CI and in Docker, both of which run UTC. The fix is
+`config/IsoDateJdbcType`; the test reads the raw column with `JdbcTemplate`,
+because a round-trip through Hibernate cannot see the bug.
+
+The pattern across all three: **the dangerous bugs were the ones that produced no
+error.** Every one was found by looking at the actual database rather than at a
+green test suite.
