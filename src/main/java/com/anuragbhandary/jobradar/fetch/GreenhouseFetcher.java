@@ -45,10 +45,10 @@ public class GreenhouseFetcher implements AtsFetcher {
     }
 
     @Override
-    public List<RawPosting> fetch(String boardToken) throws FetchException {
+    public FetchBatch fetch(String boardToken) throws FetchException {
         String body = http.get(
                 BOARD_URL.formatted(boardToken), "greenhouse-" + boardToken);
-        return parse(body, boardToken);
+        return FetchBatch.of(parse(body, boardToken));
     }
 
     /** Split out from {@link #fetch} so tests can drive it from a saved fixture. */

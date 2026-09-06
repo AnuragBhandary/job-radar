@@ -1,0 +1,332 @@
+{
+ "offset": 0,
+ "limit": 100,
+ "totalFound": 66,
+ "content": [
+  {
+   "id": "6000000001378288",
+   "name": "Sales Manager I",
+   "uuid": "b1a8be64-10b4-4892-b631-2f8fca8af75e",
+   "jobAdId": "8b90d62a-08bf-42ac-8215-4beff63e9043",
+   "defaultJobAd": true,
+   "refNumber": "REF64Q",
+   "company": {
+    "identifier": "SWIGGY",
+    "name": "SWIGGY"
+   },
+   "releasedDate": "2026-09-05T07:40:44.558Z",
+   "location": {
+    "city": "Hyderabad",
+    "region": "TS",
+    "country": "in",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "17.406498",
+    "longitude": "78.47724389999999",
+    "fullLocation": "Hyderabad, TS, India"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "sales",
+    "label": "Sales"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "6a38e3343a9cfc83b40cca20",
+     "fieldLabel": "Job Family",
+     "valueId": "8849399",
+     "valueLabel": "Sales (FMP)"
+    },
+    {
+     "fieldId": "6a38e33b7b24703227946ab9",
+     "fieldLabel": "Employment Type",
+     "valueId": "6092",
+     "valueLabel": "Permanent"
+    },
+    {
+     "fieldId": "6a38e34e3a9cfc83b40cca24",
+     "fieldLabel": "Team",
+     "valueId": "1649658",
+     "valueLabel": "Sales"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "in",
+     "valueLabel": "India"
+    },
+    {
+     "fieldId": "6a38e3473a9cfc83b40cca22",
+     "fieldLabel": "BusinessUnit",
+     "valueId": "1536086",
+     "valueLabel": "Food Marketplace"
+    },
+    {
+     "fieldId": "6a33c419e54dfa765b16df1f",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "SWIGGY"
+    },
+    {
+     "fieldId": "6a38e3447b24703227946abb",
+     "fieldLabel": "LegalEntity",
+     "valueId": "1465198",
+     "valueLabel": "Swiggy Limited"
+    },
+    {
+     "fieldId": "6a38e3527b24703227946abc",
+     "fieldLabel": "Location",
+     "valueId": "628",
+     "valueLabel": "HITEC City"
+    },
+    {
+     "fieldId": "6a38e3417b24703227946aba",
+     "fieldLabel": "Grade",
+     "valueId": "583",
+     "valueLabel": "4"
+    },
+    {
+     "fieldId": "6a38e34a3a9cfc83b40cca23",
+     "fieldLabel": "Department.",
+     "valueId": "1643487",
+     "valueLabel": "India 1"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/Swiggy/postings/6000000001378288",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "6000000001375117",
+   "name": "Sales Manager I",
+   "uuid": "e07d78a0-5efa-4423-8e5c-0d9206e74285",
+   "jobAdId": "f94832da-f9ed-44c0-af30-1a27ebd494a3",
+   "defaultJobAd": true,
+   "refNumber": "REF204O",
+   "company": {
+    "identifier": "SWIGGY",
+    "name": "SWIGGY"
+   },
+   "releasedDate": "2026-09-03T14:14:43.442Z",
+   "location": {
+    "city": "Goa",
+    "country": "in",
+    "postalCode": "791118",
+    "remote": false,
+    "hybrid": false,
+    "fullLocation": "Goa, , India"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "sales",
+    "label": "Sales"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "6a38e3343a9cfc83b40cca20",
+     "fieldLabel": "Job Family",
+     "valueId": "8849399",
+     "valueLabel": "Sales (FMP)"
+    },
+    {
+     "fieldId": "6a38e33b7b24703227946ab9",
+     "fieldLabel": "Employment Type",
+     "valueId": "6092",
+     "valueLabel": "Permanent"
+    },
+    {
+     "fieldId": "6a38e34e3a9cfc83b40cca24",
+     "fieldLabel": "Team",
+     "valueId": "1649658",
+     "valueLabel": "Sales"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "in",
+     "valueLabel": "India"
+    },
+    {
+     "fieldId": "6a38e3473a9cfc83b40cca22",
+     "fieldLabel": "BusinessUnit",
+     "valueId": "1536086",
+     "valueLabel": "Food Marketplace"
+    },
+    {
+     "fieldId": "6a33c419e54dfa765b16df1f",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "SWIGGY"
+    },
+    {
+     "fieldId": "6a38e3447b24703227946abb",
+     "fieldLabel": "LegalEntity",
+     "valueId": "1465198",
+     "valueLabel": "Swiggy Limited"
+    },
+    {
+     "fieldId": "6a38e3527b24703227946abc",
+     "fieldLabel": "Location",
+     "valueId": "1052",
+     "valueLabel": "Office - Goa"
+    },
+    {
+     "fieldId": "6a38e3417b24703227946aba",
+     "fieldLabel": "Grade",
+     "valueId": "583",
+     "valueLabel": "4"
+    },
+    {
+     "fieldId": "6a38e34a3a9cfc83b40cca23",
+     "fieldLabel": "Department.",
+     "valueId": "1643487",
+     "valueLabel": "India 1"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/Swiggy/postings/6000000001375117",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "6000000001374963",
+   "name": "Senior Account Manager",
+   "uuid": "71eb622c-c5d8-4a93-97a6-fff6492825d3",
+   "jobAdId": "df24a13d-97f6-42a0-a8aa-4d3b670a7d94",
+   "defaultJobAd": true,
+   "refNumber": "REF161W",
+   "company": {
+    "identifier": "SWIGGY",
+    "name": "SWIGGY"
+   },
+   "releasedDate": "2026-09-03T09:07:29.074Z",
+   "location": {
+    "city": "Coimbatore",
+    "region": "TN",
+    "country": "in",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "10.9973691",
+    "longitude": "76.9588876",
+    "fullLocation": "Coimbatore, TN, India"
+   },
+   "industry": {
+    "id": "internet",
+    "label": "Internet"
+   },
+   "department": {},
+   "function": {
+    "id": "sales",
+    "label": "Sales"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "not_applicable",
+    "label": "Not Applicable"
+   },
+   "customField": [
+    {
+     "fieldId": "6a38e3343a9cfc83b40cca20",
+     "fieldLabel": "Job Family",
+     "valueId": "8849391",
+     "valueLabel": "Sales (Dine Out)"
+    },
+    {
+     "fieldId": "6a38e33b7b24703227946ab9",
+     "fieldLabel": "Employment Type",
+     "valueId": "6092",
+     "valueLabel": "Permanent"
+    },
+    {
+     "fieldId": "6a38e34e3a9cfc83b40cca24",
+     "fieldLabel": "Team",
+     "valueId": "1649644",
+     "valueLabel": "Supply"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "in",
+     "valueLabel": "India"
+    },
+    {
+     "fieldId": "6a38e3473a9cfc83b40cca22",
+     "fieldLabel": "BusinessUnit",
+     "valueId": "1536091",
+     "valueLabel": "Dine Out"
+    },
+    {
+     "fieldId": "6a33c419e54dfa765b16df1f",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "SWIGGY"
+    },
+    {
+     "fieldId": "6a38e3447b24703227946abb",
+     "fieldLabel": "LegalEntity",
+     "valueId": "1465198",
+     "valueLabel": "Swiggy Limited"
+    },
+    {
+     "fieldId": "6a38e3527b24703227946abc",
+     "fieldLabel": "Location",
+     "valueId": "1231",
+     "valueLabel": "Udamapalayam SNO"
+    },
+    {
+     "fieldId": "6a38e3417b24703227946aba",
+     "fieldLabel": "Grade",
+     "valueId": "584",
+     "valueLabel": "5"
+    },
+    {
+     "fieldId": "6a38e34a3a9cfc83b40cca23",
+     "fieldLabel": "Department.",
+     "valueId": "1645023",
+     "valueLabel": "Supply"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/Swiggy/postings/6000000001374963",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ ]
+}

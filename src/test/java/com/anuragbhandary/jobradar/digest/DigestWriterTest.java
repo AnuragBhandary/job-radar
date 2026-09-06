@@ -167,6 +167,22 @@ class DigestWriterTest {
     }
 
     @Test
+    @DisplayName("a board returning nothing is named, because it may simply be dead")
+    void namesEmptyBoards() {
+        // SmartRecruiters answers HTTP 200 with totalFound 0 for a company it has
+        // never heard of, so a dead token looks exactly like a company with no
+        // openings. Eight of the fourteen seeded tokens are in this state.
+        BoardToken empty = new BoardToken(Source.SMARTRECRUITERS, "Personio", "Personio");
+        empty.recordSuccess(0, Instant.now());
+
+        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
+                Map.of(), List.of(empty), false));
+
+        assertThat(out).contains("returned nothing").contains("SMARTRECRUITERS/Personio");
+        assertThat(out).doesNotContain("boards healthy");
+    }
+
+    @Test
     @DisplayName("stale salary floors raise a warning in the digest")
     void warnsWhenFloorsNeedReverification() {
         String out = writer.render(digest(List.of(), List.of(), Map.of(), true));

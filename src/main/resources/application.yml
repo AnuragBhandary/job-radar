@@ -101,7 +101,12 @@ job-radar:
        hardware, firmware, embedded, avionics, electronics, electrical,
        mechanical, radio, wireless, optical, thermal, hydraulic, structural,
        stress, camera, emc, emi, electromagnetic, rf,
-       forward deployed]
+       forward deployed,
+       # Found by the first multi-ATS run: "Legal Counsel, EU Employment Law
+       # (Platform Workers)" matched on the include token "platform".
+       legal, counsel, attorney, paralegal, compliance officer,
+       developer relations, developer advocate, devrel,
+       logistiek, logistics, warehouse]
 
     # Whole boards whose roles are structurally unavailable, kept fetched rather
     # than deactivated: the postings still count towards board health, the

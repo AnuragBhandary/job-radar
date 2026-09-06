@@ -97,6 +97,21 @@ public class DigestWriter {
                         .append(", now failing: ").append(board.getLastError()).append('\n');
             }
         }
+        // An empty board is not an error, and that is the problem. SmartRecruiters
+        // answers HTTP 200 with totalFound 0 for a company it has never heard of,
+        // so a dead token and a company with no openings look identical to the
+        // fetcher. Naming them is the only way the difference reaches a human.
+        List<BoardToken> empty = digest.boards().stream()
+                .filter(b -> b.getLastError() == null)
+                .filter(b -> b.getLastPostingCount() != null && b.getLastPostingCount() == 0)
+                .toList();
+        if (!empty.isEmpty()) {
+            anyProblem = true;
+            out.append("- ").append(empty.size())
+                    .append(" boards returned nothing (token may be dead — verify by hand): ");
+            out.append(empty.stream().map(b -> b.getSource() + "/" + b.getToken())
+                    .collect(Collectors.joining(", "))).append('\n');
+        }
         if (!anyProblem) {
             int total = digest.boards().stream()
                     .mapToInt(b -> b.getLastPostingCount() == null ? 0 : b.getLastPostingCount())
