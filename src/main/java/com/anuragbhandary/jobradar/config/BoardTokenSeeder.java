@@ -44,7 +44,21 @@ public class BoardTokenSeeder {
      */
     private static final Map<String, String> AMAZON = new LinkedHashMap<>();
 
+    /**
+     * Workday boards, keyed {@code tenant/wdN/site}.
+     *
+     * <p>Three parts because a Workday board is a tenant, the datacentre it lives
+     * in and a site, and none of the three is derivable from the company name.
+     * Both of these were confirmed against the live API by hand; guessing the
+     * triple has a very low hit rate, which is why so few are seeded and why the
+     * list is worth growing deliberately rather than by script.
+     */
+    private static final Map<String, String> WORKDAY = new LinkedHashMap<>();
+
     static {
+        WORKDAY.put("philips/wd3/jobs-and-careers", "Philips");
+        WORKDAY.put("nxp/wd3/careers", "NXP Semiconductors");
+
         GREENHOUSE.put("stripe", "Stripe");
         GREENHOUSE.put("intercom", "Intercom");
         GREENHOUSE.put("celonis", "Celonis");
@@ -54,6 +68,7 @@ public class BoardTokenSeeder {
         GREENHOUSE.put("postman", "Postman");
         GREENHOUSE.put("traderepublic", "Trade Republic");
         GREENHOUSE.put("getyourguide", "GetYourGuide");
+        GREENHOUSE.put("contentful", "Contentful");
         GREENHOUSE.put("hellofresh", "HelloFresh");
         GREENHOUSE.put("databricks", "Databricks");
         GREENHOUSE.put("mongodb", "MongoDB");
@@ -130,6 +145,11 @@ public class BoardTokenSeeder {
         SMARTRECRUITERS.put("Siemens", "Siemens");
         SMARTRECRUITERS.put("Bosch", "Bosch");
         SMARTRECRUITERS.put("Contentful", "Contentful");
+        // Bosch's real SmartRecruiters identifier. The seeded "Bosch" returns
+        // totalFound: 0, which on this platform is indistinguishable from a
+        // company that exists and is not hiring - so it read as a healthy, quiet
+        // board for as long as it was wrong. "BoschGroup" returns 4,812.
+        SMARTRECRUITERS.put("BoschGroup", "Bosch");
         SMARTRECRUITERS.put("N26", "N26");
         SMARTRECRUITERS.put("TradeRepublic", "Trade Republic");
         SMARTRECRUITERS.put("GetYourGuide", "GetYourGuide");
@@ -179,6 +199,36 @@ public class BoardTokenSeeder {
             "bizongo", "moglix", "glean", "booking", "hubspot", "optiver", "backbase",
             "bunq", "justeattakeaway", "imc");
 
+
+    /**
+     * Seeded tokens since confirmed dead, and why.
+     *
+     * <p>Deactivated rather than deleted: the reason is worth keeping next to the
+     * board, and a token that quietly vanished from the seed list would be
+     * re-added by the next person who thought the company was missing.
+     *
+     * <p>All eight were SmartRecruiters boards reporting zero postings, and all
+     * eight were German or Dutch employers - the tier this search most depends on.
+     * The platform answers HTTP 200 with {@code totalFound: 0} for any string at
+     * all, so none of them ever looked broken. They looked quiet.
+     */
+    private static final Map<String, String> RETIRED = new LinkedHashMap<>();
+
+    static {
+        RETIRED.put("Bosch",
+                "wrong identifier - the live board is BoschGroup, seeded separately");
+        RETIRED.put("Contentful", "moved to Greenhouse; seeded there as 'contentful'");
+        RETIRED.put("GetYourGuide", "already covered on Greenhouse as 'getyourguide'");
+        RETIRED.put("N26", "already covered on Greenhouse as 'n26'");
+        RETIRED.put("TradeRepublic", "already covered on Greenhouse as 'traderepublic'");
+        RETIRED.put("Zalando",
+                "not on Greenhouse, Ashby, Lever or SmartRecruiters - board unidentified");
+        RETIRED.put("Siemens",
+                "not on Greenhouse, Ashby, Lever or SmartRecruiters - board unidentified");
+        RETIRED.put("Personio",
+                "not on Greenhouse, Ashby, Lever or SmartRecruiters - runs its own product");
+    }
+
     /** Adds any missing seed tokens. Safe to call on every startup. */
     @Transactional
     public void seed() {
@@ -186,9 +236,34 @@ public class BoardTokenSeeder {
                 + seedSource(Source.ASHBY, ASHBY)
                 + seedSource(Source.LEVER, LEVER)
                 + seedSource(Source.SMARTRECRUITERS, SMARTRECRUITERS)
-                + seedSource(Source.AMAZON, AMAZON);
+                + seedSource(Source.AMAZON, AMAZON)
+                + seedSource(Source.WORKDAY, WORKDAY);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
+        }
+        retire();
+    }
+
+    /**
+     * Switches off the boards known to be dead, recording why on the row.
+     *
+     * <p>Idempotent, and it deliberately does not undo a manual reactivation of
+     * anything outside {@link #RETIRED} - only these eight are touched, and only
+     * while they are still active.
+     */
+    private void retire() {
+        int retired = 0;
+        for (Map.Entry<String, String> entry : RETIRED.entrySet()) {
+            var board = boards.findBySourceAndToken(Source.SMARTRECRUITERS, entry.getKey());
+            if (board.isPresent() && board.get().isActive()) {
+                board.get().setActive(false);
+                board.get().setLastError("retired: " + entry.getValue());
+                boards.save(board.get());
+                retired++;
+            }
+        }
+        if (retired > 0) {
+            log.info("Retired {} board token(s) confirmed dead", retired);
         }
     }
 

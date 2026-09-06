@@ -90,7 +90,9 @@ public class TokenProber {
                 case GREENHOUSE, ASHBY -> root.path("jobs").size();
                 case LEVER -> root.isArray() ? root.size() : 0;
                 case SMARTRECRUITERS -> root.path("totalFound").asInt(0);
-                case AMAZON -> 0;
+                // Neither is probed this way: Amazon has no per-company board, and
+                // Workday's search is a POST against a two-part tenant/site token.
+                case AMAZON, WORKDAY -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -120,6 +122,12 @@ public class TokenProber {
                     "https://api.smartrecruiters.com/v1/companies/%s/postings?limit=1"
                             .formatted(token);
             case AMAZON -> throw new IllegalArgumentException("Amazon is not probed by token");
+            // A Workday board is a tenant, a datacentre and a site, and its search
+            // is a POST. Verify one by adding it and reading board health rather
+            // than through probe: a wrong pair answers 404 or 422 immediately, so
+            // unlike SmartRecruiters it cannot masquerade as an empty board.
+            case WORKDAY -> throw new IllegalArgumentException(
+                    "Workday is not probed by token; add tenant/wdN/site and fetch it");
         };
     }
 }
