@@ -1,0 +1,24 @@
+# Build
+target/
+*.class
+
+# Local database - regenerated on every run, never shared
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Generated digests are local output, not source
+/digests/
+
+# Secrets. The Google service-account key must never enter this repo.
+config/*.json
+**/config/*.json
+.env
+*.pem
+
+# Editors / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
