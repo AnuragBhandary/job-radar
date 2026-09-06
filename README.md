@@ -77,11 +77,13 @@ URL and a dialect in `application.yml`.
 ## Stack
 
 Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite ·
-Maven · JUnit 5 + Mockito (**237 tests**) · `java.net.http.HttpClient` · Jackson ·
-Google Sheets API · Docker
+Maven · JUnit 5 + Mockito (**311 tests**) · `java.net.http.HttpClient` · Jackson ·
+Google Sheets API · Playwright · Docker
 
-No test contacts a live endpoint. Every fixture is a trimmed copy of a real
-response captured during a live run.
+No test contacts a live endpoint and none opens a browser. Every fixture is a
+trimmed copy of a real response captured during a live run, and the form logic —
+which label means what, which answer follows from the posting's country, which
+dropdown option matches — is pure functions tested on the wording real boards use.
 
 ---
 
@@ -134,6 +136,76 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `serve` | Stay running for the daily schedule |
 | `sheet-list` | Print the application tracker (read-only) |
 | `sheet-append --posting-id=N` | Record an application, after confirming |
+| `apply --posting-id=N` | Tailor the resume, fill the form, **stop before submit** |
+| `apply --posting-id=N --submit` | The same, then ask at the terminal before sending |
+| `apply --posting-id=N --resume-only` | Render the tailored resume only. No browser, no board |
+| `apply --all [--limit=5]` | Prepare the candidate list. Refuses `--submit` |
+| `applications [--status=NEEDS_HUMAN]` | What has been prepared, sent or blocked |
+
+---
+
+## Applying
+
+`apply` does everything up to the submit button and then stops.
+
+```
+posting ──▶ resume/ResumeTailor ──▶ ResumeRenderer ──▶ PdfWriter ──▶ tailored.pdf
+                 (selects and orders; cannot write a sentence)
+
+        ──▶ form/FormReader ──▶ FieldClassifier ──▶ FieldMapper ──▶ FormFiller
+                 (one injected     (label → kind)    (kind + posting    (types it in;
+                  script reads                        → answer)          has no submit
+                  the live page)                                         button)
+
+        ──▶ letter/CoverLetterWriter    only if the form has a text box
+        ──▶ screenshot + review.md ──▶ STOP
+                                        └─ Submitter, only on a typed 'yes'
+```
+
+Everything before the last line is mechanical and costs twenty minutes a posting
+by hand. The last line is not, so it is not automated.
+
+**Why it stops.** Most boards accept one application per posting, forever. A form
+filled from a misread label does not cost a rejection — it costs the good
+application that could have been made instead. `--all` therefore refuses
+`--submit`: batch mode prepares, a human sends.
+
+**Tailoring is selection, never generation.** Every sentence on the resume was
+written by the applicant and lives in `applicant.yml`. The tailor chooses which
+summary opens, which projects lead and which bullets survive; it has no way to
+write a sentence. Handing the posting and the resume to a model produces better
+prose and quietly promotes "integrated ElevenLabs TTS" into "led speech
+infrastructure" — a sentence that then has to be defended in an interview.
+
+**A cover letter goes in a text box and nowhere else.** An optional attachment slot
+on an ATS is read by nobody. The letter is checked before it is used: a draft
+containing a years-of-experience claim, an unfilled `[Company]`, or a sign-off is
+discarded in favour of the template rather than repaired.
+
+**An unrecognised question stops the application.** It is never guessed at, never
+filled with something plausible and never left blank in the hope that it was
+optional. `applications --status=NEEDS_HUMAN` prints every question that stopped a
+run, which is the list of edits that make the next one go further.
+
+### Setup
+
+```bash
+cp applicant.example.yml ~/.config/job-radar/applicant.yml   # then fill it in
+```
+
+That file holds a home address, EEO self-identification and salary bands, so it
+lives outside this repository and `application.yml` imports it as `optional:`.
+Everything except `apply` works without it.
+
+The cover-letter model is optional and off by default. Any OpenAI-compatible
+endpoint works:
+
+```bash
+export JOB_RADAR_LLM=true
+export JOB_RADAR_LLM_KEY=...        # Groq's free tier, or Gemini's OpenAI-compatible endpoint
+```
+
+Chromium downloads itself on first use, into `~/Library/Caches/ms-playwright`.
 
 ---
 
@@ -230,7 +302,19 @@ rules exist to prevent — which is why those postings get their own digest sect
 instead of joining the candidates.
 
 **The tracker is append-only.** It is the only record of where applications have
-gone and, unlike everything else here, cannot be rebuilt by re-fetching.
+gone and, unlike everything else here, cannot be rebuilt by re-fetching. Only a
+`SUBMITTED` attempt reaches it; twelve rows saying `PREPARED` would destroy the
+one question the sheet answers.
+
+**"Authorised to work here?" and "need sponsorship?" are the same fact asked in
+opposite polarity, and both depend on the posting's country.** India and
+global-remote: yes and no. Everywhere else: no and yes. Neither is stored as a
+value — a constant answer is wrong for one of those two cases every time, and both
+questions are auto-reject triggers. `REMOTE` follows India because a global-remote
+role is worked from home on an Indian contract.
+
+**An answer that matches no dropdown option is refused, not approximated.** On a
+two-option yes/no field the closest wrong option is the opposite answer.
 
 ---
 
@@ -304,6 +388,24 @@ engineer who drives to hospitals — as globally remote, because "remote" was th
 first word of the job title rather than a working arrangement. Exactly the shape
 of the "distributed" bug, found the same way: by reading the output.
 
+
+**"Race / Ethnicity" classified as a city field.** "ethnicity" contains "city".
+This is the "distributed" bug again, one milestone later and in a new file, and it
+would have put the applicant's home city in a US EEO dropdown. The rule that finally came out of it:
+a matcher token that is also a fragment of common English needs a word boundary,
+and the short ones always are. Every short token in the field classifier now
+matches on boundaries.
+
+**A default that competes is not a default.** The general-purpose resume summary
+was tagged `backend`, which appears in almost every title this tool surfaces — so
+it scored on the title every time and the four specialist summaries could never
+win. The fallback now carries no tags at all and wins only at zero.
+
+**Padding that loses a cascade looks exactly like padding that is absorbed.** The
+skills column had no gap. `box-sizing: border-box` on a shrink-to-fit cell was a
+plausible cause and was the wrong one: `table.skills td` beats a bare `.sk-items`
+on specificity, so the rule never applied. The visible symptom of a specificity
+loss and of a box-model quirk are identical.
 
 **The dangerous bugs were the ones that produced no error.** Every serious defect
 in this project was silent, and every one was found by looking at the actual

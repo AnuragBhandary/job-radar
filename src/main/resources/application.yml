@@ -32,6 +32,42 @@ job-radar:
     dir: ${JOB_RADAR_FIXTURE_DIR:./fixtures}
 
   # ---------------------------------------------------------------------------
+  # Applying. See ApplyService for why nothing here submits on its own.
+  # ---------------------------------------------------------------------------
+  apply:
+    # One directory per attempt: tailored resume, cover letter, screenshot, review.
+    output-dir: ${JOB_RADAR_APPLICATIONS:./applications}
+    # Chromium's user-data directory. Holds live session cookies for every board
+    # signed into - Workday makes an account per employer - so it is credentials
+    # and lives outside the repository.
+    browser-profile: ${JOB_RADAR_BROWSER_PROFILE:~/.config/job-radar/browser}
+    # Headed by default. A human is expected at the submit step, and a form the
+    # tool correctly refused to finish has to be finishable by hand.
+    headless: ${JOB_RADAR_HEADLESS:false}
+    slow-mo-ms: 120
+    page-timeout-seconds: 45
+
+  # ---------------------------------------------------------------------------
+  # Optional. Used for one thing: drafting a cover letter when the form has a box
+  # for one. Nothing else in the tool calls a model, and with this off the letter
+  # falls back to a template assembled from the resume.
+  #
+  # Any OpenAI-compatible endpoint works. Groq's free tier is the cheapest useful
+  # option; Gemini exposes a compatible endpoint at
+  # https://generativelanguage.googleapis.com/v1beta/openai
+  # ---------------------------------------------------------------------------
+  llm:
+    enabled: ${JOB_RADAR_LLM:false}
+    base-url: ${JOB_RADAR_LLM_URL:https://api.groq.com/openai/v1}
+    model: ${JOB_RADAR_LLM_MODEL:llama-3.3-70b-versatile}
+    api-key: ${JOB_RADAR_LLM_KEY:}
+    # Low, not zero. Zero produces the same three sentences for every posting,
+    # which is worse than a template because it looks like it tried.
+    temperature: 0.4
+    max-output-tokens: 600
+    timeout-seconds: 30
+
+  # ---------------------------------------------------------------------------
   # Screening rules. In YAML rather than Java because they change often: the
   # exclusion list grows every time a board invents a new senior-sounding title.
   # Matching is case-insensitive substring matching on the lowercased field.
@@ -185,6 +221,13 @@ job-radar:
 spring:
   application:
     name: job-radar
+  config:
+    # Personal data - name, address, EEO answers, salary bands, resume bullets -
+    # is imported from outside the repository, because this repository is public
+    # and that file is not the kind of thing to put in it. `optional:` so every
+    # command that does not apply for a job still boots without it.
+    import:
+      - optional:file:${JOB_RADAR_PROFILE:${user.home}/.config/job-radar/applicant.yml}
   main:
     banner-mode: off
   datasource:
