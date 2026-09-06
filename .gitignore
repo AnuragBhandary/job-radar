@@ -22,3 +22,7 @@ config/*.json
 *.iml
 .vscode/
 .DS_Store
+
+# Captured raw API responses. Useful locally for replay and debugging; copy one
+# into src/test/resources/fixtures/ when you need it as a test fixture.
+/fixtures/

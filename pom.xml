@@ -41,6 +41,16 @@
     </dependency>
 
     <!--
+      Jackson, and an auto-configured ObjectMapper bean. Not pulled in by
+      spring-boot-starter on its own - it normally arrives with starter-web,
+      which this project deliberately does not have.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
+    </dependency>
+
+    <!--
       SQLite is not a dialect Hibernate ships in core; it lives in the community
       module. Both this and sqlite-jdbc have their versions managed by the Spring
       Boot BOM (Hibernate 6.6.53.Final / sqlite-jdbc 3.49.1.0), so no explicit

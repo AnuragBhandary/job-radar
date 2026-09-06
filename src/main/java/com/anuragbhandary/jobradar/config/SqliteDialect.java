@@ -11,7 +11,10 @@ import org.hibernate.dialect.unique.UniqueDelegate;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.mapping.Column;
+import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.mapping.UniqueKey;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.type.SqlTypes;
 
 /**
  * SQLite dialect that actually creates composite unique constraints, and that
@@ -46,6 +49,12 @@ import org.hibernate.mapping.UniqueKey;
  * <p>The stock dialect does not translate SQLite's constraint error codes, so a
  * unique violation reaches callers as an opaque {@code JpaSystemException} rather
  * than Spring's {@code DataIntegrityViolationException}.
+ *
+ * <h2>3. Dates were stored in the JVM's local timezone</h2>
+ *
+ * <p>See {@link IsoDateJdbcType}. Dates were written as epoch millis at local
+ * midnight, so the same row read in a different timezone yielded the previous
+ * day.
  */
 public class SqliteDialect extends org.hibernate.community.dialect.SQLiteDialect {
 
@@ -71,6 +80,14 @@ public class SqliteDialect extends org.hibernate.community.dialect.SQLiteDialect
     @Override
     public UniqueDelegate getUniqueDelegate() {
         return uniqueDelegate;
+    }
+
+    @Override
+    public void contributeTypes(TypeContributions contributions, ServiceRegistry registry) {
+        super.contributeTypes(contributions, registry);
+        contributions.getTypeConfiguration()
+                .getJdbcTypeRegistry()
+                .addDescriptor(SqlTypes.DATE, IsoDateJdbcType.INSTANCE);
     }
 
     @Override

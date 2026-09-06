@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Milestone 1 proof: the SQLite dialect, the entity mappings and the natural-key
@@ -30,6 +31,9 @@ class PostingRepositoryTest {
 
     @Autowired
     private BoardTokenRepository boards;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     @DisplayName("a posting round-trips through SQLite with every column intact")
@@ -95,6 +99,30 @@ class PostingRepositoryTest {
 
         assertThat(postings.countBySourceAndBoardToken(Source.GREENHOUSE, "wise")).isEqualTo(1);
         assertThat(postings.countBySourceAndBoardToken(Source.LEVER, "wise")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("dates are stored as ISO text, not as timezone-dependent millis")
+    void storesDatesAsIsoText() {
+        Posting p = new Posting(Source.GREENHOUSE, "adyen", "date-check", "Engineer");
+        p.setFirstSeen(Instant.now());
+        p.setLastSeen(Instant.now());
+        p.setPostedDate(LocalDate.of(2026, 8, 31));
+        postings.saveAndFlush(p);
+
+        // Read the raw column, bypassing Hibernate. sqlite-jdbc's default binding
+        // would put local midnight here as epoch millis, which a JVM in another
+        // timezone reads back as the previous day - so asserting the round-trip
+        // through Hibernate alone would not catch the bug on this machine.
+        String stored = jdbc.queryForObject(
+                "select posted_date from posting where external_id = 'date-check'", String.class);
+        assertThat(stored).isEqualTo("2026-08-31");
+
+        assertThat(postings.findBySourceAndBoardTokenAndExternalId(
+                        Source.GREENHOUSE, "adyen", "date-check")
+                .orElseThrow()
+                .getPostedDate())
+                .isEqualTo(LocalDate.of(2026, 8, 31));
     }
 
     @Test
