@@ -65,19 +65,44 @@ public class HttpFetchClient {
      * problems - 429 and 5xx - are still retried before being reported.
      */
     public HttpResult getRaw(String url, String fixtureName) throws FetchException {
+        return execute(url, null, fixtureName);
+    }
+
+    /**
+     * POSTs a JSON body and returns the response body.
+     *
+     * <p>Only Workday needs this. Its job search is a POST with a paging body
+     * rather than a query string, so a GET-only client cannot read it at all.
+     * The manners are identical - same throttle, same retries, same User-Agent.
+     */
+    public String post(String url, String jsonBody, String fixtureName) throws FetchException {
+        HttpResult result = execute(url, jsonBody, fixtureName);
+        if (result.isSuccess()) {
+            return result.body();
+        }
+        throw new FetchException("HTTP " + result.status() + " from " + url);
+    }
+
+    private HttpResult execute(String url, String jsonBody, String fixtureName)
+            throws FetchException {
         IOException lastIoFailure = null;
 
         for (int attempt = 1; attempt <= config.maxRetries(); attempt++) {
             throttle();
             try {
-                HttpResponse<String> response = http.send(
-                        HttpRequest.newBuilder(URI.create(url))
-                                .header("User-Agent", config.userAgent())
-                                .header("Accept", "application/json")
-                                .timeout(Duration.ofSeconds(config.timeoutSeconds()))
-                                .GET()
-                                .build(),
-                        HttpResponse.BodyHandlers.ofString());
+                HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(url))
+                        .header("User-Agent", config.userAgent())
+                        .header("Accept", "application/json")
+                        .timeout(Duration.ofSeconds(config.timeoutSeconds()));
+                if (jsonBody == null) {
+                    request.GET();
+                } else {
+                    request.header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
+                }
+
+                HttpResponse<String> response =
+                        http.send(request.build(), HttpResponse.BodyHandlers.ofString());
 
                 int status = response.statusCode();
                 if (status >= 200 && status < 300) {

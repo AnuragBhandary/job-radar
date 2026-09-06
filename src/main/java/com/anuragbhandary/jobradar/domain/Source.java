@@ -6,5 +6,6 @@ public enum Source {
     ASHBY,
     LEVER,
     SMARTRECRUITERS,
-    AMAZON
+    AMAZON,
+    WORKDAY
 }

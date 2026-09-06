@@ -1,0 +1,41 @@
+{
+  "total": 760,
+  "jobPostings": [
+    {
+      "title": "Junior System Engineer for Automotive Innovations",
+      "externalPath": "/job/Eindhoven/Junior-System-Engineer-for-Automotive-Innovations_R-10064331",
+      "locationsText": "Eindhoven",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": [
+        "R-10064331"
+      ]
+    },
+    {
+      "title": "Senior Restricted Secure / High Secure Exposure Management Lead",
+      "externalPath": "/job/Bucharest/Senior-Restricted-Secure---High-Secure-Exposure-Management-Lead_R-10066611",
+      "locationsText": "Bucharest",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": [
+        "R-10066611"
+      ]
+    },
+    {
+      "title": "Internship - Understanding the reliability of advanced laminate-based electronic packages at NXP",
+      "externalPath": "/job/Nijmegen/Internship---Understanding-the-reliability-of-advanced-laminate-based-electronic-packages-at-NXP_R-10065970",
+      "locationsText": "Nijmegen",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": [
+        "R-10065970"
+      ]
+    },
+    {
+      "title": "Sr Principal Analog Design Engineer - DC DC Architect",
+      "externalPath": "/job/Chandler-Office/Principal-Analog-Design-Engineer---DC-DC-Architect_R-10065975",
+      "locationsText": "Chandler (Office)",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": [
+        "R-10065975"
+      ]
+    }
+  ]
+}
