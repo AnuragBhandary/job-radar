@@ -8,7 +8,7 @@ No web UI, no REST API. It is a batch job that produces a markdown file and
 updates a spreadsheet.
 
 ```
-98 boards · 8,954 postings · 87 candidates · 87 rejection reasons you can argue with
+106 boards · 9,000 postings · 64 candidates · 8,936 rejection reasons you can argue with
 ```
 
 ---
@@ -39,7 +39,9 @@ decision — with the exact phrase that disqualified everything else.
   Ashby       ──┤   │    AtsFetcher ── HttpFetchClient         │
   Lever       ──┼──▶│      (throttled, retrying, one UA)       │
   SmartRecr.  ──┤   │    PostingMapper ── one RawPosting→Posting│
-  amazon.jobs ──┘   └────────────────┬─────────────────────────┘
+  Workday     ──┤   │    SmartRecruiters and Workday filter    │
+  amazon.jobs ──┘   │      before fetching descriptions        │
+                    └────────────────┬─────────────────────────┘
                                      │
                                      ▼
                     ┌──────────────────────────────────────────┐
@@ -53,6 +55,8 @@ decision — with the exact phrase that disqualified everything else.
                     │  filter/ScreeningService                 │
                     │    GeoFilter → TitleFilter → YearsExtractor
                     │    first rejection wins, reason recorded │
+                    │    SignalExtractor adds visa and pay,    │
+                    │      reported but never decisive         │
                     └────────────────┬─────────────────────────┘
                                      ▼
       ┌──────────────┐  SQLite  ┌────┴──────────┐   Google Sheets
@@ -64,7 +68,7 @@ decision — with the exact phrase that disqualified everything else.
                           digests/YYYY-MM-DD.md
 ```
 
-Five fetchers behind one interface; mapping to the domain happens in exactly one
+Six fetchers behind one interface; mapping to the domain happens in exactly one
 place. The JPA layer is database-agnostic — moving to PostgreSQL is a datasource
 URL and a dialect in `application.yml`.
 
@@ -73,7 +77,7 @@ URL and a dialect in `application.yml`.
 ## Stack
 
 Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite ·
-Maven · JUnit 5 + Mockito (**189 tests**) · `java.net.http.HttpClient` · Jackson ·
+Maven · JUnit 5 + Mockito (**237 tests**) · `java.net.http.HttpClient` · Jackson ·
 Google Sheets API · Docker
 
 No test contacts a live endpoint. Every fixture is a trimmed copy of a real
@@ -138,36 +142,35 @@ The service-account key must never enter the repository; `.gitignore` covers
 ```markdown
 # job-radar — 2026-09-06
 
-## New candidates (3)
+## New candidates (8)
 
-- **Celonis** — Associate Software Engineer - Java — Bangalore, India
-  Years: 1 | Graduate signal: no
+- **Netradyne** — Associate Database Engineer — Bengaluru, Karnataka, India
+  Years: 1 | Graduate signal: no | posted: 4d ago
   Floor: Rs 14,00,000 (relocation: ~Rs 30k/month rent and food)
-  https://job-boards.greenhouse.io/celonis/jobs/7791267003
 
 - **Grafana Labs** — Backend Engineer - Platform - Stacks | Ireland | Remote
-  Years: 1 | Graduate signal: no
+  Years: 1 | Graduate signal: no | posted: 110d ago — stale
   Floor: EUR 40.904 (CSEP basic salary; below EUR 48.000 Dublin rent makes it ~Mumbai 10L)
+  Stated: the Base compensation range for this role is EUR 81,000 - EUR 102,000.
 
-## Needs human review — no years stated (78)
+## Needs human review — no years stated (56)
 
-- **Stripe** — Software Engineer, New Grad — Dublin
-  Years: none stated | Graduate signal: yes
+- **N26** — Junior iOS Engineer - Payments — Berlin
+  Years: none stated | Graduate signal: no | posted: 5d ago
+  Floor: EUR 45.934,2 (Blue Card shortage-occupation threshold)
+  Visa: supportive: A relocation package with visa support for those who need it
 
-- **Amazon Ireland** — Software Development Engineer – 2026 — Dublin, IRL
-  Years: none stated | Graduate signal: yes
-
-## Rejected (8867)
-- 3645 — outside target geographies
-- 585 — country-locked remote
-- 409 — title excluded on 'senior'
-- 101 — non-internship experience required
+## Rejected (8936)
+- 5333 — outside target geographies
+- 760 — country-locked remote
+- 544 — title excluded on 'senior'
+- 216 — title excluded on seniority level
+- 127 — non-internship experience required
 
 _9 candidate(s) hidden — already applied to that company._
 
 ## Board health
-- 8 boards returned nothing (token may be dead — verify by hand):
-  SMARTRECRUITERS/Personio, SMARTRECRUITERS/Siemens, …
+All 106 boards healthy — 12228 postings.
 ```
 
 Run it twice and the second digest is nearly empty. That is the point.
@@ -231,7 +234,76 @@ gone and, unlike everything else here, cannot be rebuilt by re-fetching.
 
 ---
 
+**A number in the "Preferred" section is not the bar.** Amazon's Network Dev
+Engineer I required "2+ years of IT Security experience" and preferred "1+ years
+of automation scripting". Taking the smallest number in the document read the
+requirement as 1 and shipped a two-year role as entry level. The years extractor
+now anchors on the requirements heading — the *last* one, because Stripe invites
+you to apply "even if you don't meet all the preferred qualifications" 57
+characters before its real "Minimum requirements" heading, and cutting at the
+first mention threw the requirements away entirely.
+
+**"Experience (non-internship) in professional software development" states no
+number, and is still a rejection.** It is Amazon's SDE II wording. The
+disqualifier used to require `N years of` in front of it, so 26 mid-level AWS
+roles — Firecracker, Shield, RDS Platform — sat in the candidate list, 30% of
+everything in it. Matching the bare token everywhere would be simpler and wrong:
+"internship and non-internship candidates welcome" is an invitation.
+
+**Workday reports its own size inconsistently.** Philips answers `total: 809` at
+offset 0, `total: 0` at offsets 780 and 800, and `total: 809` again at 820 —
+which is past its own end and still returns a full page. Believing the latest
+figure set the total to zero mid-crawl and ended the fetch on page one, so 809
+postings were read as 20. Only the largest figure a board ever reports can be
+trusted, and the crawl needs both a short-page and a total-based stop.
+
+**A city name is not a place.** `dublin ohio` sat in the exclusion list and could
+never fire: the target list matched "dublin", returned Ireland and never reached
+the exclusions. False friends are now checked first, and on adjacency after
+punctuation is flattened — so "Dublin, Ohio" is caught while "Dublin, Ireland;
+Columbus, Ohio" is not.
+
+**"(v/m/x)" is Dutch for "f/m/x", not Roman numeral five.** The seniority pattern
+read that "v" as a level and rejected Coolblue's Dutch postings as senior roles.
+Gender tags are stripped before any pattern sees the title. Bare digits had the
+same shape: "6 month contract" was a seniority rejection, and "Software Engineer,
+2 Year Rotational Programme" — the exact graduate fast-track the years extractor
+protects — would have been discarded by the title filter before the years logic
+ever ran.
+
+**Visa and salary are reported, never decisive.** Of 1,428 postings in the target
+geographies, 55 mention sponsorship, 218 mention relocation and 306 state a
+figure. That is a fifth of the list carrying the two facts that decide most, so
+they are extracted — but absence means nothing, and a filter built on them would
+throw away the other four fifths. No salary is parsed into a number and no
+comparison against the floors is made: the floor is printed beside the stated
+figure and a human does the subtraction.
+
+**Adding a value to an enum is a schema migration.** `Source.WORKDAY` failed on
+insert against `check (source in (...))`, which SQLite cannot `ALTER`. It failed
+loudly rather than silently, which is `hbm2ddl.halt_on_error` earning its keep —
+but the fix is to rebuild the table. Let Hibernate create a fresh database, copy
+the rows across with explicit column lists (the column *order* differs), and swap
+the files. `Country` has the same constraint and will need the same treatment.
+
+
 ## What I learned
+**A guard that only fires when the data is shaped as expected is not a guard.**
+Splitting descriptions at "Preferred" fixed the case it was written for and broke
+three postings it was not: 6-, 8- and 10-year Stripe roles became candidates,
+because the split had thrown away the section stating those numbers. The tests
+still passed. The regression was visible only in a before-and-after diff of the
+real corpus — which is now the last step of every filter change, ahead of the
+test suite.
+
+**Every new board teaches the filters something.** Adding Workday brought in NXP
+and Philips, and with them 1,569 postings of chip design and medical devices. The
+first run offered "Digital Physical Design Engineer" and "X-Segment Physics
+Engineer" as candidates, and classified "Remote Service Engineer - CT" — a field
+engineer who drives to hospitals — as globally remote, because "remote" was the
+first word of the job title rather than a working arrangement. Exactly the shape
+of the "distributed" bug, found the same way: by reading the output.
+
 
 **The dangerous bugs were the ones that produced no error.** Every serious defect
 in this project was silent, and every one was found by looking at the actual

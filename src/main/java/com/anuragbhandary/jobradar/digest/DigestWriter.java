@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,6 +25,14 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DigestWriter {
+
+    /**
+     * Past this, a posting is old enough to say so. Not a filter: an old
+     * requisition at a company worth applying to is still worth applying to, and
+     * this is the one field that says which of two identical-looking postings has
+     * been sitting there since spring.
+     */
+    private static final int STALE_AFTER_DAYS = 60;
 
     private final AppProperties properties;
     private final SalaryFloorAdvisor salaries;
@@ -68,9 +78,9 @@ public class DigestWriter {
                     .append("> review date has passed. Check them at source before relying on them.\n");
         }
 
-        section(out, "New candidates", digest.newCandidates(), labels);
-        section(out, "Updated postings", digest.updated(), labels);
-        section(out, "Needs human review — no years stated", digest.needsHumanReview(), labels);
+        section(out, "New candidates", digest.newCandidates(), labels, digest.date());
+        section(out, "Updated postings", digest.updated(), labels, digest.date());
+        section(out, "Needs human review — no years stated", digest.needsHumanReview(), labels, digest.date());
 
         if (!digest.closed().isEmpty()) {
             out.append("\n## Closed (").append(digest.closed().size()).append(")\n");
@@ -89,6 +99,12 @@ public class DigestWriter {
             out.append("\n_")
                     .append(digest.suppressedAlreadyApplied())
                     .append(" candidate(s) hidden — already applied to that company._\n");
+        }
+
+        if (digest.duplicatesCollapsed() > 0) {
+            out.append("\n_")
+                    .append(digest.duplicatesCollapsed())
+                    .append(" repeat listing(s) folded into a role already shown above._\n");
         }
 
         out.append("\n## Board health\n");
@@ -129,7 +145,7 @@ public class DigestWriter {
     }
 
     private void section(StringBuilder out, String heading, List<Posting> postings,
-            Map<String, String> labels) {
+            Map<String, String> labels, LocalDate today) {
         if (postings.isEmpty()) {
             return;
         }
@@ -140,13 +156,41 @@ public class DigestWriter {
                     .append('\n');
             out.append("  Years: ").append(years(p))
                     .append(" | Graduate signal: ").append(p.isGraduateSignal() ? "yes" : "no")
+                    .append(" | ").append(age(p, today))
                     .append('\n');
             out.append("  Floor: ").append(salaries.floorFor(p)).append('\n');
+            if (p.getSalaryText() != null) {
+                out.append("  Stated: ").append(p.getSalaryText()).append('\n');
+            }
+            if (p.getSponsorshipSignal() != null) {
+                out.append("  Visa: ").append(p.getSponsorshipSignal()).append('\n');
+            }
             if (p.getUrl() != null) {
                 out.append("  ").append(p.getUrl()).append('\n');
             }
             out.append('\n');
         }
+    }
+
+    /**
+     * How old the posting is, and whether that is old enough to matter.
+     *
+     * <p>{@code posted_date} was captured from the first milestone and never
+     * read. A requisition open since May is usually filled, on hold, or a
+     * permanent advertisement for a pipeline - and it looks identical to
+     * yesterday's in every other field.
+     */
+    private static String age(Posting p, LocalDate today) {
+        LocalDate posted = p.getPostedDate();
+        if (posted == null || today == null) {
+            return "posted: unknown";
+        }
+        long days = ChronoUnit.DAYS.between(posted, today);
+        if (days < 0) {
+            return "posted: " + posted;
+        }
+        String age = days == 0 ? "today" : days + "d ago";
+        return days >= STALE_AFTER_DAYS ? "posted: " + age + " — stale" : "posted: " + age;
     }
 
     private static String years(Posting p) {
