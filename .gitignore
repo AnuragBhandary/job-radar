@@ -26,3 +26,19 @@ config/*.json
 # Captured raw API responses. Useful locally for replay and debugging; copy one
 # into src/test/resources/fixtures/ when you need it as a test fixture.
 /fixtures/
+
+# Personal data. The real profile lives in ~/.config/job-radar/applicant.yml and
+# is imported from there; applicant.example.yml is the committed skeleton. A copy
+# left in the working tree by accident must not be committed - this repository is
+# public and that file holds a home address and EEO answers.
+applicant.yml
+**/applicant.yml
+!applicant.example.yml
+
+# Prepared applications: tailored resumes, cover letters, screenshots of filled
+# forms. Every one contains personal data and the contents of a real application.
+/applications/
+
+# Chromium's user-data directory, if it is ever pointed inside the repo. It holds
+# live session cookies for every job board signed into.
+/browser/

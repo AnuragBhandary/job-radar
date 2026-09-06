@@ -1,0 +1,111 @@
+# ---------------------------------------------------------------------------
+# Template for ~/.config/job-radar/applicant.yml
+#
+# Copy this, fill it in, and keep the copy OUT of the repository - the real file
+# holds a home address, EEO self-identification and salary expectations, and this
+# repository is public. application.yml imports it as `optional:`, so every
+# command except `apply` works without it.
+#
+#   cp applicant.example.yml ~/.config/job-radar/applicant.yml
+#
+# The full structure, with commentary on the fields that are easy to get wrong,
+# is in the real file. This is the skeleton.
+# ---------------------------------------------------------------------------
+job-radar:
+  applicant:
+    name: { first: Ada, middle: "", last: Lovelace, preferred: Ada }
+    contact:
+      email: ada@example.com
+      phone-country-code: "+44"       # kept separate: many forms have their own selector
+      phone-number: "7700900000"
+      linkedin: https://linkedin.com/in/example
+      github: https://github.com/example
+      portfolio: https://example.github.io
+      leetcode: ""
+    address:
+      line1: "1 Example Street"
+      line2: ""
+      city: London
+      state: ""
+      postal-code: "SW1A 1AA"
+      country: United Kingdom
+      nationality: British
+
+    work-authorisation:
+      # Countries needing no permit. Everything else derives from this:
+      # "authorised to work here?" = no, "need sponsorship?" = yes.
+      # Answering either as a fixed value gets one of them wrong every time.
+      authorised-in: [INDIA]
+      will-relocate: true
+      needs-sponsorship-note: "One or two sentences, for the forms with a text box."
+
+    demographics:
+      # All voluntary. Leave any of them blank and the tool selects the form's own
+      # "decline to answer" option rather than guessing or skipping the question.
+      gender: ""
+      race: ""
+      hispanic-or-latino: ""
+      veteran-status: ""
+      disability-status: ""
+      pronouns: ""
+
+    compensation:
+      # Asks, not the screening floors in application.yml. Keyed by Country:
+      # INDIA, REMOTE, GERMANY, IRELAND, NETHERLANDS. Missing keys fall back to
+      # INDIA. Keep every minimum above that country's visa salary threshold.
+      bands:
+        INDIA: { currency: INR, minimum: 1200000, target: 1800000, period: per year }
+      prefer-not-to-say: "Open on compensation, happy to discuss."
+      always-state-number: false
+
+    availability:
+      notice-period: "None - available immediately"
+      earliest-start: "Immediately"
+      open-to-remote: true
+
+    # Answers keyed by a lowercased substring of the question, first match wins.
+    # Grown from `applications --status=NEEDS_HUMAN`, which prints every question
+    # that stopped an application.
+    extra-answers:
+      "how did you hear": "Company careers page"
+      "are you at least 18": "Yes"
+
+  resume:
+    headline: "Backend Software Engineer"
+    max-projects: 2
+    max-bullets-per-job: 4
+    max-bullets-per-project: 3
+    # Tags are matched as whole words against the posting title (weight 3) and
+    # description (weight 1). They pick which summary opens the resume and which
+    # projects lead. Nothing here is generated - the tailor only reorders.
+    summaries:
+      - id: default                    # first entry wins ties; make it the safe one
+        tags: [backend, api]
+        text: "Two or three sentences you would be happy to send to anyone."
+    skills:
+      - group: Languages
+        items: [Python, Java, SQL]
+    experience:
+      - company: Example Inc.
+        title: "Software Engineer"
+        note: "the arrangement, stated plainly if it was unusual"
+        location: "Remote"
+        period: "Jul 2025 – Jun 2026"
+        bullets:
+          - text: "What you built, and what changed because of it."
+            tags: [kafka, python]
+    projects:
+      - name: "A Backend Platform"
+        stack: "Java · Spring Boot · Kafka"
+        tags: [java, spring boot, kafka]
+        bullets:
+          - text: "What it does."
+            tags: [java]
+    education:
+      - degree: "M.S. Computer Science"
+        institution: "A University"
+        location: "Somewhere"
+        period: "Aug 2023 – May 2025"
+        detail: "GPA 3.4 / 4.0"
+    extras:
+      - "Anything that does not fit above."

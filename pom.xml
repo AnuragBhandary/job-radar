@@ -90,6 +90,22 @@
       <version>1.52.0</version>
     </dependency>
 
+
+    <!--
+      Playwright drives the real application form. There is no public "submit an
+      application" API on any of the six ATSs this tool reads: the read APIs are
+      open, the write path is a browser session with CSRF tokens and, on some
+      boards, a captcha. So the form is filled the way a person fills it.
+
+      It earns its size twice, because the same browser renders the tailored
+      resume HTML to PDF - which is why there is no LaTeX or docx dependency here.
+    -->
+    <dependency>
+      <groupId>com.microsoft.playwright</groupId>
+      <artifactId>playwright</artifactId>
+      <version>1.62.0</version>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-configuration-processor</artifactId>

@@ -1,0 +1,41 @@
+package com.anuragbhandary.jobradar.apply;
+
+import com.anuragbhandary.jobradar.domain.Country;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
+/** A profile shaped like the real one, with nothing real in it. */
+public final class TestProfiles {
+
+    private TestProfiles() {
+    }
+
+    public static ApplicantProfile indianApplicant() {
+        return new ApplicantProfile(
+                new ApplicantProfile.Name("Ada", "M", "Lovelace", "Ada"),
+                new ApplicantProfile.Contact(
+                        "ada@example.com", "+91", "9876543210",
+                        "https://linkedin.com/in/example", "https://github.com/example",
+                        "https://example.github.io", "https://leetcode.com/example"),
+                new ApplicantProfile.Address(
+                        "1 Example Street", "Second Line", "Nagpur", "Maharashtra",
+                        "999999", "India", "Indian"),
+                new ApplicantProfile.WorkAuthorisation(
+                        List.of(Country.INDIA), true, "A sentence about sponsorship."),
+                new ApplicantProfile.Demographics(
+                        "Male", "Asian", "No", "I am not a protected veteran", "", ""),
+                new ApplicantProfile.Compensation(
+                        Map.of(
+                                Country.INDIA, new ApplicantProfile.Compensation.Band(
+                                        "INR", new BigDecimal("1200000"),
+                                        new BigDecimal("1800000"), "per year"),
+                                Country.GERMANY, new ApplicantProfile.Compensation.Band(
+                                        "EUR", new BigDecimal("55000"),
+                                        new BigDecimal("65000"), "per year")),
+                        "Open on compensation.", false),
+                new ApplicantProfile.Availability("None", "Immediately", true),
+                Map.of("how did you hear", "Company careers page",
+                        "are you at least 18", "Yes"));
+    }
+}

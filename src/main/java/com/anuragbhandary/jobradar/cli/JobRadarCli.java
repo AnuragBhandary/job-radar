@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
  * Command dispatcher.
  *
  * <p>An {@code ApplicationRunner} rather than Picocli: the command surface is
- * six verbs and two options, which is well under the point where a parsing
- * library earns its dependency.
+ * ten verbs and a handful of options, which is still under the point where a
+ * parsing library earns its dependency.
  */
 @Component
 public class JobRadarCli implements ApplicationRunner {
@@ -26,11 +26,14 @@ public class JobRadarCli implements ApplicationRunner {
     private final SheetListCommand sheetList;
     private final ProbeCommand probe;
     private final ServeCommand serve;
+    private final ApplyCommand apply;
+    private final ApplicationsCommand applications;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
-            ProbeCommand probe, ServeCommand serve) {
+            ProbeCommand probe, ServeCommand serve,
+            ApplyCommand apply, ApplicationsCommand applications) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -39,6 +42,8 @@ public class JobRadarCli implements ApplicationRunner {
         this.sheetList = sheetList;
         this.probe = probe;
         this.serve = serve;
+        this.apply = apply;
+        this.applications = applications;
     }
 
     @Override
@@ -63,6 +68,8 @@ public class JobRadarCli implements ApplicationRunner {
             case "sheet-list" -> sheetList.run(options);
             case "probe" -> probe.run(options);
             case "serve" -> serve.run(options);
+            case "apply" -> apply.run(options);
+            case "applications" -> applications.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -101,6 +108,16 @@ public class JobRadarCli implements ApplicationRunner {
                   serve                                   stay running for the daily schedule
                   sheet-list                              print the tracker (read-only)
                   sheet-append --posting-id=123           append to the tracker
+
+                Applying:
+                  apply --posting-id=123                  tailor, fill, stop before submit
+                  apply --posting-id=123 --submit         the same, then ask before sending
+                  apply --posting-id=123 --resume-only    tailor the resume only, no browser
+                  apply --all [--limit=5]                 prepare the candidate list
+                  applications [--status=NEEDS_HUMAN]     what has been prepared or sent
+
+                `apply` never sends anything on its own. --submit asks at the
+                terminal once the form is filled, and --all refuses --submit.
                 """);
     }
 }
