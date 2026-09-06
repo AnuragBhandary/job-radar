@@ -49,6 +49,22 @@ public class HttpFetchClient {
      *                        status that is not going to improve on a retry
      */
     public String get(String url, String fixtureName) throws FetchException {
+        HttpResult result = getRaw(url, fixtureName);
+        if (result.isSuccess()) {
+            return result.body();
+        }
+        // 404 and friends: the token is wrong or the board is gone. Retrying
+        // cannot help and would only be rude.
+        throw new FetchException("HTTP " + result.status() + " from " + url);
+    }
+
+    /**
+     * As {@link #get}, but returns the status instead of throwing on it.
+     *
+     * <p>For probing, where a 404 is the answer rather than a failure. Transient
+     * problems - 429 and 5xx - are still retried before being reported.
+     */
+    public HttpResult getRaw(String url, String fixtureName) throws FetchException {
         IOException lastIoFailure = null;
 
         for (int attempt = 1; attempt <= config.maxRetries(); attempt++) {
@@ -66,7 +82,7 @@ public class HttpFetchClient {
                 int status = response.statusCode();
                 if (status >= 200 && status < 300) {
                     fixtures.record(fixtureName, response.body());
-                    return response.body();
+                    return new HttpResult(status, response.body());
                 }
                 if (isRetryable(status)) {
                     log.warn("{} returned {} (attempt {}/{})",
@@ -74,9 +90,7 @@ public class HttpFetchClient {
                     backoff(attempt);
                     continue;
                 }
-                // 404 and friends: the token is wrong or the board is gone.
-                // Retrying cannot help and would only be rude.
-                throw new FetchException("HTTP " + status + " from " + url);
+                return new HttpResult(status, response.body());
 
             } catch (IOException e) {
                 lastIoFailure = e;
@@ -91,6 +105,18 @@ public class HttpFetchClient {
         throw new FetchException(
                 "Gave up on " + url + " after " + config.maxRetries() + " attempts",
                 lastIoFailure);
+    }
+
+    /** A response that reached us, whatever its status. */
+    public record HttpResult(int status, String body) {
+
+        public boolean isSuccess() {
+            return status >= 200 && status < 300;
+        }
+
+        public boolean isAbsent() {
+            return status == 404;
+        }
     }
 
     /** 429 and 5xx may succeed later; everything else will not. */
