@@ -48,6 +48,21 @@ job-radar:
     page-timeout-seconds: 45
 
   # ---------------------------------------------------------------------------
+  # Gmail, read-only, for matching replies back to applications.
+  #
+  # Cannot reuse the Sheets service account: a service account has no mailbox, and
+  # reading a personal Gmail with one needs domain-wide delegation a consumer
+  # account cannot grant. Create an OAuth client (Desktop app) in the same Cloud
+  # project, download the JSON, and point JOB_RADAR_GMAIL_KEY at it. The first run
+  # opens a browser once; the refresh token is cached in tokens-dir.
+  # ---------------------------------------------------------------------------
+  gmail:
+    credentials-path: ${JOB_RADAR_GMAIL_KEY:~/.config/job-radar/gmail-oauth.json}
+    # A live credential to the mailbox. Outside the repo, and in .gitignore.
+    tokens-dir: ${JOB_RADAR_GMAIL_TOKENS:~/.config/job-radar/gmail-tokens}
+    scan-days: 60
+
+  # ---------------------------------------------------------------------------
   # Optional. Used for one thing: drafting a cover letter when the form has a box
   # for one. Nothing else in the tool calls a model, and with this off the letter
   # falls back to a template assembled from the resume.

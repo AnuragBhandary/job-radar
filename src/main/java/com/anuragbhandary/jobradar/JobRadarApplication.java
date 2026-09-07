@@ -5,6 +5,7 @@ import com.anuragbhandary.jobradar.apply.ApplyProperties;
 import com.anuragbhandary.jobradar.apply.llm.LlmProperties;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.config.AppProperties;
+import com.anuragbhandary.jobradar.mail.GmailProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -29,7 +30,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         ApplicantProfile.class,
         ResumeModel.class,
         ApplyProperties.class,
-        LlmProperties.class})
+        LlmProperties.class,
+        GmailProperties.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {

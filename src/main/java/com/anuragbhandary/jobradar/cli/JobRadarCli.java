@@ -30,13 +30,14 @@ public class JobRadarCli implements ApplicationRunner {
     private final ApplicationsCommand applications;
     private final FollowUpCommand followUp;
     private final LearnCommand learn;
+    private final InboxCommand inbox;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
             ProbeCommand probe, ServeCommand serve,
             ApplyCommand apply, ApplicationsCommand applications,
-            FollowUpCommand followUp, LearnCommand learn) {
+            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -49,6 +50,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.applications = applications;
         this.followUp = followUp;
         this.learn = learn;
+        this.inbox = inbox;
     }
 
     @Override
@@ -77,6 +79,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "applications" -> applications.run(options);
             case "follow-up" -> followUp.run(options);
             case "learn" -> learn.run(options);
+            case "inbox" -> inbox.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -125,6 +128,7 @@ public class JobRadarCli implements ApplicationRunner {
                   follow-up [--days=14]                   applications that have gone quiet
                   follow-up --close-abandoned             mark six-week silences "No response"
                   learn [--write]                         questions that blocked forms, as YAML
+                  inbox [--days=60] [--apply]             read replies, update tracker status
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.
