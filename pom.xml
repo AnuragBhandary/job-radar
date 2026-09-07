@@ -90,7 +90,6 @@
       <version>1.52.0</version>
     </dependency>
 
-
     <!--
       Playwright drives the real application form. There is no public "submit an
       application" API on any of the six ATSs this tool reads: the read APIs are
@@ -121,21 +120,6 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
-
-    <!--
-      Authentication for the `ui` command. One user, one password, and the boring
-      correct implementation of session fixation, timing-safe comparison and CSRF
-      rather than a hand-rolled filter - this is the one place in the project
-      where writing it myself would be the reckless choice.
-
-      Inactive for every other command: main() picks WebApplicationType.NONE, so
-      no filter chain is built and `fetch` does not ask anyone to log in.
-    -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-
 
     <dependency>
       <groupId>com.google.apis</groupId>
