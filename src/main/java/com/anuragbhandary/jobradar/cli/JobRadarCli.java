@@ -28,12 +28,15 @@ public class JobRadarCli implements ApplicationRunner {
     private final ServeCommand serve;
     private final ApplyCommand apply;
     private final ApplicationsCommand applications;
+    private final FollowUpCommand followUp;
+    private final LearnCommand learn;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
             ProbeCommand probe, ServeCommand serve,
-            ApplyCommand apply, ApplicationsCommand applications) {
+            ApplyCommand apply, ApplicationsCommand applications,
+            FollowUpCommand followUp, LearnCommand learn) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -44,6 +47,8 @@ public class JobRadarCli implements ApplicationRunner {
         this.serve = serve;
         this.apply = apply;
         this.applications = applications;
+        this.followUp = followUp;
+        this.learn = learn;
     }
 
     @Override
@@ -70,6 +75,8 @@ public class JobRadarCli implements ApplicationRunner {
             case "serve" -> serve.run(options);
             case "apply" -> apply.run(options);
             case "applications" -> applications.run(options);
+            case "follow-up" -> followUp.run(options);
+            case "learn" -> learn.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -115,6 +122,9 @@ public class JobRadarCli implements ApplicationRunner {
                   apply --posting-id=123 --resume-only    tailor the resume only, no browser
                   apply --all [--limit=5]                 prepare the candidate list
                   applications [--status=NEEDS_HUMAN]     what has been prepared or sent
+                  follow-up [--days=14]                   applications that have gone quiet
+                  follow-up --close-abandoned             mark six-week silences "No response"
+                  learn [--write]                         questions that blocked forms, as YAML
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

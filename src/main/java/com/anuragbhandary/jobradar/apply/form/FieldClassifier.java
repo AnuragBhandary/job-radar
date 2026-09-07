@@ -240,8 +240,13 @@ public class FieldClassifier {
      * matched explicitly instead. The asterisk that marks a required field and
      * the trailing colon are the two most common differences between the same
      * question on two boards.
+     *
+     * <p>Public because {@link com.anuragbhandary.jobradar.apply.OpenQuestion}
+     * builds profile keys with it. A key normalised differently from the label it
+     * has to match is a key that never fires, so there is exactly one definition
+     * of "the same question".
      */
-    static String normalise(String label) {
+    public static String normalise(String label) {
         if (label == null) {
             return "";
         }

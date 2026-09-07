@@ -167,6 +167,8 @@ public class ApplyService {
                 // 3. Fill. Nothing in this call can submit.
                 FillReport report = filler.fill(page, fields, posting, documents);
                 attempt.setFieldLog(renderFieldLog(report));
+                attempt.setOpenQuestions(
+                        OpenQuestion.serialise(OpenQuestion.from(report)));
 
                 Path screenshot = workDir.resolve("filled-form.png");
                 page.screenshot(new Page.ScreenshotOptions()
