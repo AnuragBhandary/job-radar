@@ -42,6 +42,128 @@ final class Ui {
         return "<pre>" + esc(value) + "</pre>";
     }
 
+    /**
+     * The assistant panel.
+     *
+     * <p>Three modes, and they are separated because they carry different risk. An
+     * <em>answer</em> and a <em>letter</em> are text that will go to an employer
+     * under his name, so both are grounded in the profile and policed for tone; an
+     * <em>ask</em> is for him to read and is neither. The panel says which is
+     * which rather than presenting one box that quietly does three things.
+     *
+     * <p>Nothing here writes to a form. The answer box has a save button that
+     * appends to applicant.yml, which is a second, deliberate click.
+     */
+    static String assistant(long attemptId, boolean usable, java.util.List<String> questions) {
+        if (!usable) {
+            return """
+                    <h2>Assistant</h2>
+                    <div class="note">No model configured. Put a key in
+                    <code>~/.config/job-radar/secrets.yml</code> under
+                    <code>job-radar.llm</code> and restart.</div>
+                    """;
+        }
+
+        StringBuilder chips = new StringBuilder();
+        for (String question : questions) {
+            chips.append("<button type=\"button\" class=\"chip\" data-q=\"")
+                    .append(esc(question)).append("\">")
+                    .append(esc(shorten(question))).append("</button>");
+        }
+
+        return """
+                <h2>Assistant</h2>
+                <div class="assist">
+                  <div class="modes">
+                    <button type="button" class="mode on" data-mode="answer">Draft an answer</button>
+                    <button type="button" class="mode" data-mode="letter">Rewrite the letter</button>
+                    <button type="button" class="mode" data-mode="ask">Ask about this posting</button>
+                  </div>
+                  <div class="chips">%s</div>
+                  <textarea id="ap" rows="3" placeholder="Paste the question, or type what you want changed."></textarea>
+                  <div class="row">
+                    <button type="button" id="ag" class="primary">Draft it</button>
+                    <span class="meta" id="as"></span>
+                  </div>
+                  <div id="ao" hidden>
+                    <pre id="at"></pre>
+                    <div class="row">
+                      <button type="button" id="ac">Copy</button>
+                      <button type="button" id="av">Save to applicant.yml</button>
+                      <span class="meta" id="am"></span>
+                    </div>
+                  </div>
+                </div>
+                <script>
+                (function () {
+                  var id = %d, mode = 'answer', lastQuestion = '';
+                  var box = document.getElementById('ap'),
+                      out = document.getElementById('ao'),
+                      text = document.getElementById('at'),
+                      status = document.getElementById('as'),
+                      saved = document.getElementById('am');
+
+                  document.querySelectorAll('.mode').forEach(function (b) {
+                    b.onclick = function () {
+                      document.querySelectorAll('.mode').forEach(function (o) {
+                        o.classList.remove('on');
+                      });
+                      b.classList.add('on');
+                      mode = b.dataset.mode;
+                      box.placeholder = mode === 'letter'
+                        ? 'What should change? Leave empty for a straight rewrite.'
+                        : mode === 'ask'
+                          ? 'Does this posting say anything about sponsorship?'
+                          : 'Paste the question from the form.';
+                      document.getElementById('av').hidden = mode !== 'answer';
+                    };
+                  });
+
+                  document.querySelectorAll('.chip').forEach(function (c) {
+                    c.onclick = function () { box.value = c.dataset.q; box.focus(); };
+                  });
+
+                  document.getElementById('ag').onclick = function () {
+                    lastQuestion = box.value;
+                    status.textContent = 'thinking...';
+                    saved.textContent = '';
+                    fetch('/assistant', {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({attemptId: id, mode: mode, text: box.value})
+                    }).then(function (r) { return r.json(); }).then(function (d) {
+                      status.textContent = d.note || '';
+                      out.hidden = !d.ok;
+                      text.textContent = d.text || '';
+                      if (!d.ok) { status.textContent = d.note || 'nothing came back'; }
+                      if (mode === 'letter' && d.ok) { status.textContent += ' saved to this attempt'; }
+                    }).catch(function (e) { status.textContent = String(e); });
+                  };
+
+                  document.getElementById('ac').onclick = function () {
+                    navigator.clipboard.writeText(text.textContent);
+                    saved.textContent = 'copied';
+                  };
+
+                  document.getElementById('av').onclick = function () {
+                    fetch('/assistant/save-answer', {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({match: lastQuestion, answer: text.textContent})
+                    }).then(function (r) { return r.json(); }).then(function (d) {
+                      saved.textContent = d.note || '';
+                    });
+                  };
+                })();
+                </script>
+                """.formatted(chips, attemptId);
+    }
+
+    private static String shorten(String question) {
+        String flat = question.replaceAll("\\s+", " ").trim();
+        return flat.length() <= 46 ? flat : flat.substring(0, 44) + "...";
+    }
+
     private static String css() {
         return """
                 :root {
@@ -91,6 +213,18 @@ final class Ui {
                   margin:14px 0; color:var(--muted); }
                 .note { border-left:3px solid var(--warn); padding-left:11px;
                   color:var(--muted); margin:14px 0; }
+                .assist { background:var(--card); border:1px solid var(--line);
+                  border-radius:8px; padding:13px 14px; }
+                .modes { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:9px; }
+                .mode.on { background:var(--accent); color:#fff; border-color:transparent; }
+                .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:9px; }
+                .chip { font-size:12px; padding:3px 9px; color:var(--muted); }
+                .chip:hover { color:var(--fg); }
+                textarea { width:100%; font:inherit; padding:9px; border-radius:6px;
+                  border:1px solid var(--line); background:var(--bg); color:var(--fg);
+                  resize:vertical; }
+                #ao { margin-top:11px; }
+                #ao .row { margin-top:9px; justify-content:flex-start; }
                 """;
     }
 }

@@ -56,13 +56,16 @@ public class UiController {
     private final BoardTokenRepository boards;
     private final ApplicationAttemptRepository attempts;
     private final ApplyService applications;
+    private final AssistantService assistant;
 
     public UiController(PostingRepository postings, BoardTokenRepository boards,
-            ApplicationAttemptRepository attempts, ApplyService applications) {
+            ApplicationAttemptRepository attempts, ApplyService applications,
+            AssistantService assistant) {
         this.postings = postings;
         this.boards = boards;
         this.attempts = attempts;
         this.applications = applications;
+        this.assistant = assistant;
     }
 
     @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
@@ -173,6 +176,9 @@ public class UiController {
                     .append(id).append("\" alt=\"the filled application form\">");
         }
 
+        body.append(Ui.assistant(attempt.getId(), assistant.isUsable(),
+                openQuestions(attempt)));
+
         if (attempt.getStatus() == AttemptStatus.PREPARED) {
             body.append(submitForm(attempt));
         }
@@ -239,6 +245,23 @@ public class UiController {
         } catch (IOException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * The questions this form asked and the profile could not answer.
+     *
+     * <p>Offered to the assistant as one-click prompts, because they are the
+     * specific thing a human sitting on this page is stuck on. A free-text box
+     * alone would mean retyping a question that is already on screen.
+     */
+    private static List<String> openQuestions(ApplicationAttempt attempt) {
+        return com.anuragbhandary.jobradar.apply.OpenQuestion
+                .parse(attempt.getOpenQuestions()).stream()
+                .map(com.anuragbhandary.jobradar.apply.OpenQuestion::label)
+                .filter(label -> label != null && !label.isBlank())
+                .distinct()
+                .limit(8)
+                .toList();
     }
 
     private String submitForm(ApplicationAttempt attempt) {

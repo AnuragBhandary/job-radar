@@ -47,3 +47,8 @@ applicant.yml
 # read credential to the applicant's mailbox.
 gmail-oauth.json
 gmail-tokens/
+
+# API keys. The real file lives in ~/.config/job-radar/secrets.yml; this catches
+# a copy left in the working tree by accident.
+secrets.yml
+**/secrets.yml

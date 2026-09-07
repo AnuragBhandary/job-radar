@@ -51,13 +51,17 @@ public class LlmClient {
             return Optional.empty();
         }
         try {
-            String body = mapper.writeValueAsString(Map.of(
-                    "model", config.model(),
-                    "temperature", config.temperature(),
-                    "max_tokens", config.maxOutputTokens(),
-                    "messages", java.util.List.of(
-                            Map.of("role", "system", "content", system),
-                            Map.of("role", "user", "content", user))));
+            Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("model", config.model());
+            payload.put("temperature", config.temperature());
+            payload.put("max_tokens", config.maxOutputTokens());
+            payload.put("messages", java.util.List.of(
+                    Map.of("role", "system", "content", system),
+                    Map.of("role", "user", "content", user)));
+            if (config.reasoningEffort() != null && !config.reasoningEffort().isBlank()) {
+                payload.put("reasoning_effort", config.reasoningEffort());
+            }
+            String body = mapper.writeValueAsString(payload);
 
             HttpRequest request = HttpRequest.newBuilder(
                             URI.create(config.baseUrl().replaceAll("/+$", "")
@@ -78,10 +82,20 @@ public class LlmClient {
                 return Optional.empty();
             }
 
-            JsonNode content = mapper.readTree(response.body())
-                    .path("choices").path(0).path("message").path("content");
-            String text = content.asText("").trim();
-            return text.isEmpty() ? Optional.empty() : Optional.of(text);
+            JsonNode choice = mapper.readTree(response.body()).path("choices").path(0);
+            String text = choice.path("message").path("content").asText("").trim();
+
+            if (text.isEmpty()) {
+                // A 200 with nothing in it. On Gemini this means the thinking
+                // tokens consumed max_tokens before a word was written, and the
+                // finish_reason is the only thing that says so.
+                log.warn("Model returned an empty message (finish_reason: {}). "
+                        + "If this is Gemini, raise max-output-tokens or set "
+                        + "reasoning-effort: none.",
+                        choice.path("finish_reason").asText("unknown"));
+                return Optional.empty();
+            }
+            return Optional.of(text);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

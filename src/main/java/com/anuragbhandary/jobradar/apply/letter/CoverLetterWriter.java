@@ -1,6 +1,7 @@
 package com.anuragbhandary.jobradar.apply.letter;
 
 import com.anuragbhandary.jobradar.apply.ApplicantProfile;
+import com.anuragbhandary.jobradar.apply.llm.HumanTone;
 import com.anuragbhandary.jobradar.apply.llm.LlmClient;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.apply.resume.TailoredResume;
@@ -72,15 +73,69 @@ public class CoverLetterWriter {
         int cap = limit > 0 ? Math.min(limit, MAX_CHARS) : MAX_CHARS;
 
         if (llm.isUsable()) {
-            Optional<String> drafted = llm.complete(systemPrompt(cap), userPrompt(posting, company, resume))
-                    .map(CoverLetterWriter::tidy)
-                    .filter(text -> validate(text, cap));
-            if (drafted.isPresent()) {
-                return drafted;
+            String user = userPrompt(posting, company, resume);
+
+            Optional<String> first = draft(systemPrompt(cap), user, cap);
+            if (first.isPresent()) {
+                return first;
             }
-            log.info("Model letter rejected or unavailable - using the template");
+
+            // One retry, and only one. The retry is worth having because the
+            // second attempt is told exactly which words were wrong, which is a
+            // different request from the first. A third would be the same request
+            // again, and a model that has ignored named feedback once will ignore
+            // it twice.
+            Optional<String> second = draft(systemPrompt(cap), user + "\n\n" + lastRejection, cap);
+            if (second.isPresent()) {
+                log.info("Second draft accepted");
+                return second;
+            }
+            log.info("Both drafts rejected - using the template");
         }
-        return Optional.of(tidy(template(posting, company, resume))).filter(t -> !t.isBlank());
+        return Optional.of(clean(template(posting, company, resume))).filter(t -> !t.isBlank());
+    }
+
+    /** What was wrong with the previous draft, for the retry prompt. */
+    private String lastRejection = "";
+
+    /**
+     * One attempt: generate, strip dash punctuation, then judge what is left.
+     *
+     * <p>The order matters. Dashes are rewritten before judging because they are a
+     * formatting habit and fixing one changes nothing the sentence claims;
+     * everything else is grounds for rejection, because the tells are whole
+     * phrases and cutting them out leaves the sentence around them still shaped
+     * wrong.
+     */
+    private Optional<String> draft(String system, String user, int cap) {
+        Optional<String> raw = llm.complete(system, user);
+        if (raw.isEmpty()) {
+            lastRejection = "";
+            return Optional.empty();
+        }
+
+        String text = clean(raw.get());
+
+        if (!validate(text, cap)) {
+            lastRejection = "Your previous draft was rejected for stating something "
+                    + "that is not in the material given, or for leaving a placeholder "
+                    + "in. Use only the facts above.";
+            return Optional.empty();
+        }
+
+        List<String> tells = new java.util.ArrayList<>(HumanTone.tells(text));
+        tells.addAll(HumanTone.borrowedFromExample(text));
+        List<String> structure = HumanTone.structureProblems(text);
+        boolean dashes = HumanTone.hasDashes(text);
+        if (!tells.isEmpty() || dashes || !structure.isEmpty()) {
+            log.info("Draft reads as generated{}{}{}",
+                    tells.isEmpty() ? "" : " (" + String.join(", ", tells) + ")",
+                    dashes ? " and used a dash" : "",
+                    structure.isEmpty() ? "" : " [" + String.join("; ", structure) + "]");
+            lastRejection = HumanTone.retryNote(tells, dashes, structure);
+            return Optional.empty();
+        }
+        return Optional.of(text);
     }
 
     private String systemPrompt(int cap) {
@@ -93,14 +148,26 @@ public class CoverLetterWriter {
                 2. Never state a number of years of experience. Never estimate one.
                 3. Never use a placeholder such as [Company] or {{role}}. If you do
                    not have a fact, leave the sentence out.
-                4. No flattery about the company, and no sentence beginning "I am
-                   writing to express my interest". Say what he built and why it is
-                   relevant to this posting.
-                5. Plain British English. No em dashes. Short sentences.
+                4. No flattery about the company. Say what he built and why it bears
+                   on this posting.
+                5. Pick AT MOST TWO things he has built. Do not list everything he
+                   has done, that is what the resume is for. A letter that lists
+                   six projects is a worse letter than one that explains one.
+                6. One of those two must connect to something THIS posting actually
+                   asks for, and you must say which.
 
-                Format: three short paragraphs, no greeting line, no sign-off, under
-                %d characters total. Output the letter only.
-                """.formatted(cap);
+                %s
+                Format: exactly three paragraphs separated by a blank line. No
+                greeting, no sign-off. Under %d characters and under 200 words.
+
+                  Paragraph 1: the most relevant thing he has built, and what was
+                                hard about it. Do not open with "I".
+                  Paragraph 2: how that bears on this specific role.
+                  Paragraph 3: one or two sentences, what he is looking for.
+
+                %s
+                Output the letter only.
+                """.formatted(HumanTone.styleRules(), cap, HumanTone.letterExample());
     }
 
     private String userPrompt(Posting posting, String company, TailoredResume resume) {
@@ -196,8 +263,13 @@ public class CoverLetterWriter {
         return !lower.contains("sincerely,") && !lower.contains("yours faithfully");
     }
 
-    /** Strips the code fences and quote marks models wrap prose in. */
-    private static String tidy(String text) {
+    /**
+     * Strips the wrapping models add, then removes dash punctuation.
+     *
+     * <p>This used to replace an em dash with " - ", which is the same
+     * punctuation mark spelled differently and reads exactly as machine-written.
+     */
+    static String clean(String text) {
         String cleaned = text.trim();
         if (cleaned.startsWith("```")) {
             cleaned = cleaned.replaceAll("^```[a-zA-Z]*\\s*", "").replaceAll("```\\s*$", "");
@@ -205,7 +277,7 @@ public class CoverLetterWriter {
         if (cleaned.length() > 1 && cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
             cleaned = cleaned.substring(1, cleaned.length() - 1);
         }
-        return cleaned.replace("—", " - ").trim();
+        return HumanTone.removeDashes(cleaned);
     }
 
     private static String joinNaturally(List<String> items) {

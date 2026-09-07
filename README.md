@@ -152,7 +152,7 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `login --url=... \| --list` | Sign in to a board by hand, once per employer |
 | `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
 | `variants` | Which resume opening has actually produced replies |
-| `ui` | Review queue at http://localhost:8080 |
+| `ui` | Review queue and assistant at http://localhost:8080 |
 
 ---
 
@@ -222,11 +222,58 @@ checked first.
 replies from five against one from six looks like a 140% improvement and is three
 coin flips.
 
+### The assistant
+
+The review page has a panel with three modes, separated because they carry
+different risk:
+
+- **Draft an answer** to an application question. Grounded in the profile, and
+  told to reply `NOTHING` rather than invent one. Asked about Kubernetes and
+  Terraform, which are nowhere in the resume, it returns nothing at all.
+- **Rewrite the letter**, optionally against a typed steer. Saved to the attempt.
+- **Ask about this posting**, which is for reading and goes nowhere.
+
+Anything that would be sent to an employer runs through `HumanTone`:
+
+**Dash punctuation is rewritten, machine phrasing is rejected.** Different
+mechanisms on purpose. A dash is a formatting habit and removing one changes
+nothing the sentence claims; the tells are whole phrases, and cutting one out
+leaves the sentence around it still shaped wrong. Only punctuation dashes go, so
+`event-driven` and `scikit-learn` survive intact.
+
+**A rejected draft is regenerated once, with the offending words named.** The
+second attempt is a different request from the first. A third would be the same
+request again.
+
+**Structure is checked, not just vocabulary.** The first draft that passed every
+phrase filter was still obviously generated: one unbroken block, nine sentences,
+eight of them starting with "I", no mention of the job. Every sentence was fine
+and the shape was wrong.
+
 ### Setup
 
 ```bash
 cp applicant.example.yml ~/.config/job-radar/applicant.yml   # then fill it in
 ```
+
+The model is optional and lives in a separate file, because a profile is personal
+data you might one day show someone and a key is not:
+
+```yaml
+# ~/.config/job-radar/secrets.yml   (chmod 600, gitignored)
+job-radar:
+  llm:
+    enabled: true
+    base-url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-2.5-flash
+    api-key: ...
+    reasoning-effort: none
+```
+
+Any OpenAI-compatible endpoint works, including Anthropic's. `reasoning-effort:
+none` matters on Gemini 2.5: it thinks by default and charges those tokens
+against `max_tokens`, so a small cap returns HTTP 200 with an empty message and
+no error at all.
 
 That file holds a home address, EEO self-identification and salary bands, so it
 lives outside this repository and `application.yml` imports it as `optional:`.
@@ -476,6 +523,23 @@ binds every character as written.
 **A form that looks submittable and is not is the worst output this tool has.**
 Worse than a crash, which is visible. That is why unreadable widgets are now read,
 and why a click that navigates is a hard failure rather than a logged warning.
+
+**`"\s"` in a Java string is not the regex whitespace class.** It is the
+escaped-space literal added in Java 15, so `split("(?<=[.!?])\s+")` compiles,
+runs, and quietly splits on spaces only. A four-sentence list read as three and
+slipped under a check written to catch exactly it. Two rounds of prompt
+engineering went into a missing backslash.
+
+**A cleanup regex ate the thing it was about to be judged on.** `removeDashes`
+collapsed runs of whitespace with `\s{2,}`, which includes newlines, so every
+paragraph break was destroyed before the structure check ran, and the model was
+then told off for writing one unbroken block it had not written.
+
+**A few-shot example gets its words copied, not just its shape.** Adding a worked
+letter was the only thing that produced paragraph breaks, and the very next draft
+lifted its closing two sentences verbatim. Twenty applications carrying the same
+last line is precisely the problem the example was added to solve, so the
+example's own phrasing is now contraband and checked for.
 
 **The dangerous bugs were the ones that produced no error.** Every serious defect
 in this project was silent, and every one was found by looking at the actual

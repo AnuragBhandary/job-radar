@@ -79,8 +79,13 @@ job-radar:
     # Low, not zero. Zero produces the same three sentences for every posting,
     # which is worse than a template because it looks like it tried.
     temperature: 0.4
-    max-output-tokens: 600
-    timeout-seconds: 30
+    max-output-tokens: 900
+    timeout-seconds: 45
+    # Gemini 2.5 thinks by default and charges those tokens against max_tokens,
+    # so a small cap returns HTTP 200 with an empty message and no error at all.
+    # "none" spends the whole budget on the answer. Blank it for a provider that
+    # rejects the field.
+    reasoning-effort: ${JOB_RADAR_LLM_REASONING:none}
 
   # ---------------------------------------------------------------------------
   # Screening rules. In YAML rather than Java because they change often: the
@@ -243,6 +248,10 @@ spring:
     # command that does not apply for a job still boots without it.
     import:
       - optional:file:${JOB_RADAR_PROFILE:${user.home}/.config/job-radar/applicant.yml}
+      # Credentials, kept apart from the profile: that file is personal data you
+      # might one day show someone, this one is keys you never would. Imported
+      # second so it wins.
+      - optional:file:${JOB_RADAR_SECRETS:${user.home}/.config/job-radar/secrets.yml}
   main:
     banner-mode: off
   datasource:

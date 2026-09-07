@@ -112,3 +112,8 @@ job-radar:
         detail: "GPA 3.4 / 4.0"
     extras:
       - "Anything that does not fit above."
+
+# ---------------------------------------------------------------------------
+# The model is configured separately, in ~/.config/job-radar/secrets.yml, so that
+# a key never sits in the same file as the profile. See the README.
+# ---------------------------------------------------------------------------
