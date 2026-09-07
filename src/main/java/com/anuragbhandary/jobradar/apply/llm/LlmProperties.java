@@ -18,6 +18,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxOutputTokens a cover letter is 250 words. The cap is a cost ceiling
  *                        and a guard against a model that decides to write an
  *                        essay into a 2000-character box.
+ * @param reasoningEffort sent only when set. Gemini 2.5 thinks by default and
+ *                        those tokens come out of {@code maxOutputTokens}, so a
+ *                        low cap returns {@code finish_reason: length} with an
+ *                        empty message and no error - the request succeeds and
+ *                        produces nothing. "none" spends the budget on the answer.
+ *                        Left blank for providers that reject the field.
  */
 @ConfigurationProperties(prefix = "job-radar.llm")
 public record LlmProperties(
@@ -27,7 +33,8 @@ public record LlmProperties(
         String apiKey,
         double temperature,
         int maxOutputTokens,
-        int timeoutSeconds) {
+        int timeoutSeconds,
+        String reasoningEffort) {
 
     public boolean isUsable() {
         return enabled && apiKey != null && !apiKey.isBlank()
