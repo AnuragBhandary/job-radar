@@ -34,7 +34,11 @@ final class Ui {
                 <meta name="viewport" content="width=device-width,initial-scale=1">
                 <title>%s · job-radar</title><style>%s</style></head><body>
                 <header class="topbar">
-                  <a class="wordmark" href="/">job-radar</a>
+                  <span class="nav">
+                    <a class="wordmark" href="/">job-radar</a>
+                    <a href="/">feed</a>
+                    <a href="/board">board</a>
+                  </span>
                   <div class="statstrip">%s</div>
                 </header>
                 <main class="page">%s</main></body></html>
@@ -61,6 +65,15 @@ final class Ui {
         return """
                 <div class="panel-head"><h2>%s</h2>%s</div>
                 """.formatted(esc(title), aside == null ? "" : aside);
+    }
+
+    /** The score cell that opens a feed row. */
+    static String scoreCell(com.anuragbhandary.jobradar.match.MatchScore score) {
+        if (score == null) {
+            return "<div class=\"score score-none\">—</div>";
+        }
+        return "<div class=\"score score-" + score.band().label() + "\">"
+                + score.score() + "</div>";
     }
 
     static String badge(String kind, String text) {
@@ -523,6 +536,77 @@ final class Ui {
                 .confirm input { margin-top: 2px; accent-color: var(--accent); }
                 form { display: inline; }
                 .row-side .note-muted { max-width: 90px; line-height: 1.25; }
+
+                /* --- nav ------------------------------------------------- */
+                .nav { display: flex; gap: var(--sp-3); align-items: center; }
+                .nav a { color: var(--fg-muted); font-size: var(--fs-sm); }
+                .nav a.on { color: var(--fg); font-weight: 600; }
+
+                /* --- match score ----------------------------------------- */
+                .score {
+                  flex: 0 0 auto; width: 42px; text-align: right;
+                  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+                  font-size: var(--fs-md); font-weight: 600; padding-top: 1px;
+                }
+                .score-strong { color: var(--ok); }
+                .score-good { color: var(--accent); }
+                .score-fair { color: var(--fg-muted); }
+                .score-weak { color: var(--fg-faint); }
+                .score-none { color: var(--fg-faint); font-weight: 400; }
+                .why { margin-top: 3px; font-size: var(--fs-sm); color: var(--fg-faint); }
+
+                /* Factor bars on the review page. */
+                .factors { display: grid; gap: var(--sp-2); }
+                .factor { display: grid; grid-template-columns: 78px 1fr auto; gap: var(--sp-3);
+                  align-items: center; font-size: var(--fs-sm); }
+                .factor .name { color: var(--fg-muted); }
+                .factor .bar { height: 5px; background: var(--bg-subtle);
+                  border-radius: 3px; overflow: hidden; }
+                .factor .bar i { display: block; height: 100%; background: var(--accent); }
+                .factor .pts { font-family: var(--font-mono); font-size: var(--fs-xs);
+                  color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+                .factor .detail { grid-column: 2 / -1; font-size: var(--fs-xs);
+                  color: var(--fg-faint); margin-top: -2px; }
+
+                /* --- pipeline board -------------------------------------- */
+                .board {
+                  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr);
+                  gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-4);
+                  align-items: start;
+                }
+                .col {
+                  background: var(--bg-panel); border: 1px solid var(--border);
+                  border-radius: var(--radius); min-height: 90px;
+                }
+                .col-head {
+                  display: flex; justify-content: space-between; align-items: baseline;
+                  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border);
+                  font-size: var(--fs-xs); text-transform: uppercase;
+                  letter-spacing: 0.06em; color: var(--fg-muted); font-weight: 600;
+                }
+                .col-head .n { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+                .col-body { padding: var(--sp-2); display: grid; gap: var(--sp-2); }
+                .jobcard {
+                  border: 1px solid var(--border); border-radius: var(--radius);
+                  padding: var(--sp-2) var(--sp-3); background: var(--bg-inset);
+                }
+                .jobcard .c { font-weight: 600; font-size: var(--fs-base); }
+                .jobcard .r { color: var(--fg-muted); font-size: var(--fs-sm);
+                  margin-top: 1px; }
+                .jobcard .foot {
+                  display: flex; align-items: center; justify-content: space-between;
+                  gap: var(--sp-2); margin-top: var(--sp-2);
+                }
+                .jobcard select {
+                  font: inherit; font-size: var(--fs-xs); padding: 1px 4px;
+                  border: 1px solid var(--border); border-radius: 3px;
+                  background: var(--bg-panel); color: var(--fg-muted);
+                }
+                .jobcard .note { font-size: var(--fs-xs); color: var(--fg-faint);
+                  margin-top: var(--sp-2); white-space: pre-wrap; }
+                .due { color: var(--warn); font-size: var(--fs-xs); font-weight: 600; }
+                .col-empty { padding: var(--sp-3); font-size: var(--fs-xs);
+                  color: var(--fg-faint); }
 
                 """;
     }

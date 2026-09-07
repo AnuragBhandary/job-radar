@@ -9,6 +9,8 @@ import com.anuragbhandary.jobradar.apply.OpenQuestion;
 import com.anuragbhandary.jobradar.domain.Country;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.Verdict;
+import com.anuragbhandary.jobradar.match.MatchScorer;
+import com.anuragbhandary.jobradar.pipeline.JobInterestRepository;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import java.io.IOException;
@@ -59,15 +61,19 @@ public class UiController {
     private final ApplicationAttemptRepository attempts;
     private final ApplyService applications;
     private final AssistantService assistant;
+    private final MatchScorer scorer;
+    private final JobInterestRepository interests;
 
     public UiController(PostingRepository postings, BoardTokenRepository boards,
             ApplicationAttemptRepository attempts, ApplyService applications,
-            AssistantService assistant) {
+            AssistantService assistant, MatchScorer scorer, JobInterestRepository interests) {
         this.postings = postings;
         this.boards = boards;
         this.attempts = attempts;
         this.applications = applications;
         this.assistant = assistant;
+        this.scorer = scorer;
+        this.interests = interests;
     }
 
     // ------------------------------------------------------------------
@@ -82,12 +88,23 @@ public class UiController {
                 .map(ApplicationAttempt::getPostingId).collect(Collectors.toSet());
 
         List<Posting> candidates = postings.findByVerdict(Verdict.CANDIDATE);
-        List<Posting> waiting = candidates.stream()
+        Set<Long> tracked = interests.findAll().stream()
+                .map(com.anuragbhandary.jobradar.pipeline.JobInterest::getPostingId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // Scored, then ranked. Sorting by date was close to random: a posting is
+        // not more relevant for being newer, and "newest first" over 65 candidates
+        // meant reading them in the order the boards happened to publish them.
+        List<Scored> waiting = candidates.stream()
                 .filter(posting -> !attempted.contains(posting.getId()))
+                .filter(posting -> !tracked.contains(posting.getId()))
                 .filter(posting -> country == null
                         || country.equalsIgnoreCase(String.valueOf(posting.getCountry())))
-                .sorted(Comparator.comparing(Posting::getPostedDate,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(posting -> new Scored(posting, scorer.score(posting)))
+                .sorted(Comparator.comparingInt((Scored s) -> s.score().score()).reversed()
+                        .thenComparing(scored -> scored.posting().getPostedDate(),
+                                Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
         StringBuilder body = new StringBuilder();
@@ -107,7 +124,7 @@ public class UiController {
         if (waiting.isEmpty()) {
             body.append("<p class=\"empty\">None. Run <code>run</code> to fetch and screen.</p>");
         } else {
-            waiting.stream().limit(40).forEach(posting -> body.append(postingRow(posting)));
+            waiting.stream().limit(40).forEach(scored -> body.append(postingRow(scored)));
         }
         body.append("</div></section>");
         // Preparing blocks for the better part of a minute while a browser opens,
@@ -180,7 +197,12 @@ public class UiController {
         body.append("</div></section>");
     }
 
-    private String postingRow(Posting posting) {
+    /** A posting with its score, so the feed can rank before it renders. */
+    private record Scored(Posting posting, com.anuragbhandary.jobradar.match.MatchScore score) {
+    }
+
+    private String postingRow(Scored scored) {
+        Posting posting = scored.posting();
         String company = companyOf(posting);
 
         StringBuilder meta = new StringBuilder("<div class=\"meta\">");
@@ -210,23 +232,31 @@ public class UiController {
 
         return """
                 <article class="row">
+                  %s
                   <div class="row-main">
                     <div class="row-title">
                       <span class="company">%s</span>
                       <span class="role">%s</span>
                     </div>
                     %s
+                    <div class="why">%s</div>
                   </div>
                   <div class="row-side">
                     <a href="%s" target="_blank" rel="noreferrer">posting</a>
+                    <form method="post" action="/save">
+                      <input type="hidden" name="postingId" value="%d">
+                      <button class="btn btn-sm" type="submit">Save</button>
+                    </form>
                     <form method="post" action="/prepare" class="prepare-form">
                       <input type="hidden" name="postingId" value="%d">
                       <button class="btn" type="submit">Prepare</button>
                     </form>
                   </div>
                 </article>
-                """.formatted(Ui.esc(company), Ui.esc(posting.getTitle()), meta,
-                        Ui.esc(posting.getUrl()), posting.getId());
+                """.formatted(Ui.scoreCell(scored.score()),
+                        Ui.esc(company), Ui.esc(posting.getTitle()), meta,
+                        Ui.esc(scored.score().headline()),
+                        Ui.esc(posting.getUrl()), posting.getId(), posting.getId());
     }
 
     private String attemptRow(ApplicationAttempt attempt) {
