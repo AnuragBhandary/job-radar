@@ -91,7 +91,14 @@ public final class AnswerBank {
         return com.anuragbhandary.jobradar.apply.form.OptionMatcher.declineOption(options);
     }
 
-    /** Ready to paste under {@code job-radar.applicant.extra-answers}. */
+    /**
+     * Ready to paste under {@code job-radar.applicant.extra-answers}.
+     *
+     * <p>Emitted in the list form the profile actually binds. It used to emit
+     * {@code "key": "value"} pairs, which was the shape before extra-answers
+     * became a list - so every suggestion this produced was silently ignored by
+     * the thing it was written for.
+     */
     public static String toYaml(List<Suggestion> suggestions) {
         if (suggestions.isEmpty()) {
             return "";
@@ -103,12 +110,20 @@ public final class AnswerBank {
                     .append(suggestion.required() ? ", REQUIRED - blocks the form" : "")
                     .append(")\n");
             if (!suggestion.options().isEmpty()) {
-                yaml.append("      #   options: ")
+                // The options are half the answer: they say what the entry has to
+                // say to match.
+                yaml.append("      #   pick one: ")
                         .append(String.join(" | ", suggestion.options())).append('\n');
             }
-            yaml.append("      \"").append(suggestion.key()).append("\": \"")
-                    .append(suggestion.proposedAnswer().orElse("")).append("\"\n");
+            yaml.append("      - match: ").append(quote(suggestion.key())).append('\n')
+                    .append("        answer: ")
+                    .append(quote(suggestion.proposedAnswer().orElse(""))).append('\n');
         }
         return yaml.toString();
+    }
+
+    /** Double-quoted, with the two characters that would break the string escaped. */
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 }

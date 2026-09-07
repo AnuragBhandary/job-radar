@@ -78,6 +78,17 @@ public class ApplicationAttempt {
     @Column(name = "cover_letter", columnDefinition = "text")
     private String coverLetter;
 
+    /**
+     * Which summary variant the resume opened with.
+     *
+     * <p>Its own column rather than being read back out of {@code tailoringNote},
+     * because the note is prose written for a human and parsing it to count
+     * outcomes would make the wording load-bearing. This is the only field here
+     * that exists to be grouped by.
+     */
+    @Column(name = "summary_id", length = 64)
+    private String summaryId;
+
     /** What the tailor changed, and why. */
     @Column(name = "tailoring_note", length = 1024)
     private String tailoringNote;
@@ -173,6 +184,14 @@ public class ApplicationAttempt {
 
     public void setCoverLetter(String coverLetter) {
         this.coverLetter = coverLetter;
+    }
+
+    public String getSummaryId() {
+        return summaryId;
+    }
+
+    public void setSummaryId(String summaryId) {
+        this.summaryId = summaryId;
     }
 
     public String getTailoringNote() {
