@@ -27,7 +27,8 @@ public class TokenProber {
 
     /** Probing is a guess by definition, so each platform gets exactly one request. */
     private static final List<Source> PLATFORMS =
-            List.of(Source.GREENHOUSE, Source.ASHBY, Source.LEVER, Source.SMARTRECRUITERS);
+            List.of(Source.GREENHOUSE, Source.ASHBY, Source.LEVER,
+                    Source.SMARTRECRUITERS, Source.RECRUITEE);
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
@@ -90,6 +91,7 @@ public class TokenProber {
                 case GREENHOUSE, ASHBY -> root.path("jobs").size();
                 case LEVER -> root.isArray() ? root.size() : 0;
                 case SMARTRECRUITERS -> root.path("totalFound").asInt(0);
+                case RECRUITEE -> root.path("offers").size();
                 // Neither is probed this way: Amazon has no per-company board, and
                 // Workday's search is a POST against a two-part tenant/site token.
                 case AMAZON, WORKDAY -> 0;
@@ -121,6 +123,9 @@ public class TokenProber {
             case SMARTRECRUITERS ->
                     "https://api.smartrecruiters.com/v1/companies/%s/postings?limit=1"
                             .formatted(token);
+            // 404s an unknown subdomain, so - like Greenhouse and unlike
+            // SmartRecruiters - an empty board here is a real one with no openings.
+            case RECRUITEE -> "https://%s.recruitee.com/api/offers/".formatted(token);
             case AMAZON -> throw new IllegalArgumentException("Amazon is not probed by token");
             // A Workday board is a tenant, a datacentre and a site, and its search
             // is a POST. Verify one by adding it and reading board health rather

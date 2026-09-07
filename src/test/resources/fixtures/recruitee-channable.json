@@ -1,0 +1,208 @@
+{
+ "offers": [
+  {
+   "id": 2728481,
+   "slug": "apar-specialist-join-our-finance-team",
+   "title": "AP/AR Specialist - Join our finance team!",
+   "description": "<p><span style=\"color:#141217\">Channable is a successful scale-up with 12 years in business and offices in Denmark, Germany, the USA, and the Netherlands. With over 300 employees and after 4 acquisitions, we're now looking to hire an additional team member for our Finance team. In this role, you'll join a dynamic technical environment, where we operate in a diverse network of partners.</span></p><p style=\"min-height: 1.7em;\"></p><p><span style=\"color:#141217\">As an individual contributor, you'll join the Finance team within the Operations department.</span></p><p style=\"min-height: 1.7em;\"></p><p><strong><span style=\"color:#141217\">What you'll do</span></strong></p><p><span style=\"color:#141217\">Step into the developing and interesting field of eCommerce as our new AP / AR Specialist. In this growing industry, you will be the central point of contact for everything related to invoicing, both internally and externally. You will join a small but agile team that is always on the lookout to roll out the latest technological improvements, offering you an opportunity to learn how to use AI in finance &amp; accounting. You will be responsible for the flawless accounts receivable and accou",
+   "requirements": "<p><strong><span style=\"color:#141217\">Who are you?</span></strong></p><p><span style=\"color:#141217\">You are a communicative and perfectly organised professional. With your open and positive attitude, you are a valuable addition to our team. Furthermore, you possess:</span></p><p style=\"min-height: 1.7em;\"></p><ul><li><p><span style=\"color:#141217\">An MBO+ level of work and thought with a basic knowledge of accounting.</span></p></li><li><p><span style=\"color:#141217\">A minimum of 3 years of experience in a similar administrative role.</span></p></li><li><p><span style=\"color:#141217\">You are not afraid to say no to people when necessary.</span></p></li><li><p><span style=\"color:#141217\">Experience with Exact Online is a plus.</span></p></li><li><p><span style=\"color:#141217\">Building relationships and providing excellent service is second nature to you.</span></p></li><li><p><span style=\"color:#141217\">An excellent English speaking and writing skills.</span><br></p></li></ul><p style=\"min-height: 1.7em;\"></p><p><span style=\"color:#141217\">Some practical things we expect from you:</span></p><ul><li><p><span style=\"color:#141217\">You are living in The Netherlands with a travel dist",
+   "location": "Utrecht, Utrecht, Netherlands",
+   "city": "Utrecht",
+   "country": "Netherlands",
+   "country_code": "NL",
+   "careers_url": "https://jobs.channable.com/o/apar-specialist-join-our-finance-team",
+   "careers_apply_url": "https://jobs.channable.com/o/apar-specialist-join-our-finance-team/c/new",
+   "published_at": "2026-09-02 11:36:49 UTC",
+   "created_at": "2026-09-01 06:47:36 UTC",
+   "department": "Operations",
+   "employment_type_code": "fulltime_fixed_term",
+   "remote": false,
+   "hybrid": true,
+   "on_site": false,
+   "locations": [
+    {
+     "id": 64463,
+     "name": "Utrecht",
+     "state": "Utrecht",
+     "country": "Netherlands",
+     "city": "Utrecht",
+     "translations": {
+      "en": {
+       "name": "Utrecht",
+       "city": "Utrecht",
+       "postal_code": "3512 HL",
+       "street": "Kromme Nieuwegracht 66",
+       "note": null
+      }
+     },
+     "country_code": "NL",
+     "postal_code": "3512 HL",
+     "state_code": "UT",
+     "street": "Kromme Nieuwegracht 66",
+     "note": null
+    }
+   ],
+   "status": "published",
+   "salary": {
+    "max": "4252",
+    "min": "2976",
+    "period": "month",
+    "currency": "EUR"
+   },
+   "tags": []
+  },
+  {
+   "id": 2723126,
+   "slug": "technical-customer-support-benelux-dutch-speaking-1",
+   "title": "Technical Customer Support Benelux - Dutch speaking",
+   "description": "<p><span style=\"color:#000000\">Are you passionate about solving complex problems for a diverse range of customers? Do you want to help eCommerce businesses grow by delivering high-quality technical support? Then this role might be for you!</span></p><p style=\"min-height: 1.7em;\"></p><p><span style=\"color:#000000\">You’ll be joining our international Support department, which consists of 5 teams supporting 9+ markets worldwide. Within this global setup, you’ll work in our Benelux &amp; International inbox, supporting customers across multiple markets including Netherlands, Belgium, France, Italy, the UK, and beyond. Your Dutch language skills are essential to ensure strong support coverage for our Dutch-speaking customers, while your role will extend across the broader international scope.</span></p><p style=\"min-height: 1.7em;\"></p><p><span style=\"color:#000000\">We’re an open-minded and collaborative team of Support professionals. We believe Support isn’t just about fixing problems, it’s about setting our customers up for success, and we do this together. We learn from each other, keep things honest and direct, and enjoy the occasional fun moment along the way. Expect flat hierarchi",
+   "requirements": null,
+   "location": "Utrecht, Utrecht, Netherlands",
+   "city": "Utrecht",
+   "country": "Netherlands",
+   "country_code": "NL",
+   "careers_url": "https://jobs.channable.com/o/technical-customer-support-benelux-dutch-speaking-1",
+   "careers_apply_url": "https://jobs.channable.com/o/technical-customer-support-benelux-dutch-speaking-1/c/new",
+   "published_at": "2026-08-28 11:47:47 UTC",
+   "created_at": "2026-08-26 13:27:15 UTC",
+   "department": "Support",
+   "employment_type_code": "fulltime_fixed_term",
+   "remote": false,
+   "hybrid": true,
+   "on_site": false,
+   "locations": [
+    {
+     "id": 64463,
+     "name": "Utrecht",
+     "state": "Utrecht",
+     "country": "Netherlands",
+     "city": "Utrecht",
+     "translations": {
+      "en": {
+       "name": "Utrecht",
+       "city": "Utrecht",
+       "postal_code": "3512 HL",
+       "street": "Kromme Nieuwegracht 66",
+       "note": null
+      }
+     },
+     "country_code": "NL",
+     "postal_code": "3512 HL",
+     "state_code": "UT",
+     "street": "Kromme Nieuwegracht 66",
+     "note": null
+    }
+   ],
+   "status": "published",
+   "salary": {
+    "max": "2950",
+    "min": "2850",
+    "period": "month",
+    "currency": "EUR"
+   },
+   "tags": []
+  },
+  {
+   "id": 2714984,
+   "slug": "technischer-kundensupport-dach-deutschsprachig",
+   "title": "Technischer Kundensupport DACH - Deutschsprachig",
+   "description": "<p><span style=\"color:#000000\">Du sprichst fließend Deutsch und hast Spaß daran, komplexe Probleme für eine Vielzahl von Kunden zu lösen? Du möchtest E-Commerce-Unternehmen durch hochwertigen technischen Support beim Wachstum unterstützen? Dann könnte diese Stelle genau das Richtige für dich sein!</span></p><p><span style=\"color:#000000\">Werde Teil unserer internationalen Support-Abteilung (6 Teams, 9 Märkte) als Mitglied des DACH-Support-Teams, einer unserer größten und am schnellsten wachsenden Regionen. Das Team besteht derzeit aus 7 technischen Support-MitarbeiterInnen, die Kunden in Deutschland, Österreich und der Schweiz betreuen.</span></p><p><span style=\"color:#000000\">Wir sind ein aufgeschlossenes und kooperatives Team von Support-Experten. Wir glauben, dass es beim Support nicht nur darum geht, Probleme zu beheben, sondern unseren Kunden zum Erfolg zu verhelfen, und das tun wir gemeinsam. Wir lernen voneinander, sind ehrlich und direkt und haben dabei auch regelmäßig Spaß zusammen. Es erwarten dich flache Hierarchien, Raum für Ihre Ideen und ein Team, das dir den Rücken stärkt!</span></p><h4><strong><span style=\"color:#000000\">Dein Job</span></strong></h4><p><span style=\"",
+   "requirements": "<h4><strong><span style=\"color:#000000\">Wer sind wir?</span></strong></h4><p><span style=\"color:#000000\">Teil unseres Teams zu sein bedeutet, mit vielfältigen und sympathischen Menschen zusammenzuarbeiten, die dir vertrauen und dich auf deinem Weg unterstützen. Channable wurde 2014 im Herzen von Utrecht gegründet. Heute sind wir ein starkes Team von mehr als 250 vielfältigen Mitarbeitern aus über 40 Nationen mit einem brandneuen, lebendigen Hauptsitz in Utrecht, von dem aus wir Kunden auf der ganzen Welt betreuen. Wir sind auch von anderen Standorten aus tätig, darunter New York City, Berlin und Aarhus.<br></span></p><p><span style=\"color:#000000\">Wenn du bei Channable einsteigst, suchst du mehr als nur einen Job. Wir verbringen gerne Zeit miteinander. Sei es im Büro, an unserer Channabar oder in einem unserer internen Chats. Wir sind aufgeschlossene und bodenständige Menschen. Wir sind sehr stolz darauf, dass jeder seine eigene Note zur Kultur von Channable beiträgt. So unterschiedlich wir auch sind, wir alle teilen unsere Liebe zum Wachstum, zum Helfen, zum Übernehmen von Verantwortung und zum gemeinsamen Gestalten einer großartigen Zukunft. Schau dir gerne unser </span><u><a rel",
+   "location": "Utrecht, Utrecht, Netherlands",
+   "city": "Utrecht",
+   "country": "Netherlands",
+   "country_code": "NL",
+   "careers_url": "https://jobs.channable.com/o/technischer-kundensupport-dach-deutschsprachig",
+   "careers_apply_url": "https://jobs.channable.com/o/technischer-kundensupport-dach-deutschsprachig/c/new",
+   "published_at": "2026-08-19 13:55:09 UTC",
+   "created_at": "2026-08-19 08:17:13 UTC",
+   "department": "Support",
+   "employment_type_code": "fulltime_permanent",
+   "remote": false,
+   "hybrid": true,
+   "on_site": false,
+   "locations": [
+    {
+     "id": 64463,
+     "name": "Utrecht",
+     "state": "Utrecht",
+     "country": "Netherlands",
+     "city": "Utrecht",
+     "translations": {
+      "en": {
+       "name": "Utrecht",
+       "city": "Utrecht",
+       "postal_code": "3512 HL",
+       "street": "Kromme Nieuwegracht 66",
+       "note": null
+      }
+     },
+     "country_code": "NL",
+     "postal_code": "3512 HL",
+     "state_code": "UT",
+     "street": "Kromme Nieuwegracht 66",
+     "note": null
+    }
+   ],
+   "status": "published",
+   "salary": {
+    "max": "2950",
+    "min": "2850",
+    "period": "month",
+    "currency": "EUR"
+   },
+   "tags": []
+  },
+  {
+   "id": 2694685,
+   "slug": "account-executive-north-america-1",
+   "title": "Account Executive - North America",
+   "description": "<p><span style=\"color:#000000\">Channable powers product feeds and digital advertising for 14,000+ brands and agencies across 3,500+ channels. We're a market leader entering our next phase of North American growth.&nbsp; We need an AE who knows eCommerce technology, builds real relationships, and wants to own a market, not just a quota.</span></p><p style=\"min-height: 1.7em;\"></p><h4><strong><span style=\"color:#000000\">The opportunity</span></strong></h4><p><span style=\"color:#000000\">Our North American business is growing fast. The team is small, the market is massive, and the company has the product maturity and global footprint to back serious ambition. You'll have direct influence on how we go to market, who we target, and how we win.</span></p><p style=\"min-height: 1.7em;\"></p><p><span style=\"color:#000000\">We sell to eCommerce operators and the agencies that serve them. Our buyers care about product data, feed quality, and operational efficiency. If you've sold into the infrastructure layer of eCommerce (the systems that make products show up correctly, everywhere, at scale), you'll feel at home here.</span></p><p style=\"min-height: 1.7em;\"></p><h4><strong><span style=\"color:#",
+   "requirements": "<p style=\"min-height: 1.7em;\"></p><h4><strong><span style=\"color:#000000\">Who you are</span></strong></h4><ul><li><p><span style=\"color:#000000\">3+ years closing new business in B2B SaaS, ideally in eCommerce technology, feed management, product data, or martech.</span></p></li><li><p><span style=\"color:#000000\">You understand the eCommerce tech stack, including platforms, ERPs, PIMs, marketplaces, advertising channels, and can hold a real conversation about how products get from a back-end system to a customer.</span></p></li><li><p><span style=\"color:#000000\">You've sold to </span><strong><span style=\"color:#000000\">operations-minded buyers</span></strong><span style=\"color:#000000\"> (eCommerce Ops, Digital Merchandising, Catalog teams), not just marketing personas.</span></p></li><li><p><span style=\"color:#000000\">You're energized by early-stage markets where your work directly shapes the company's trajectory.</span></p></li><li><p><span style=\"color:#000000\">You qualify out as confidently as you qualify in.</span></p></li></ul><p style=\"min-height: 1.7em;\"></p><p><strong><span style=\"color:#000000\">Bonus points</span></strong></p><ul><li><p><span style=\"color:#000000\">Existing ",
+   "location": "New York City, New York, United States",
+   "city": "New York City",
+   "country": "United States",
+   "country_code": "US",
+   "careers_url": "https://jobs.channable.com/o/account-executive-north-america-1",
+   "careers_apply_url": "https://jobs.channable.com/o/account-executive-north-america-1/c/new",
+   "published_at": "2026-08-06 16:09:53 UTC",
+   "created_at": "2026-07-30 07:49:07 UTC",
+   "department": "US",
+   "employment_type_code": "fulltime_permanent",
+   "remote": false,
+   "hybrid": true,
+   "on_site": false,
+   "locations": [
+    {
+     "id": 64457,
+     "name": "New York City",
+     "state": "New York",
+     "country": "United States",
+     "city": "New York City",
+     "translations": {
+      "en": {
+       "name": "New York City",
+       "city": "New York City",
+       "postal_code": "10168",
+       "street": "122 East 42nd Street, Suite 1708",
+       "note": null
+      }
+     },
+     "country_code": "US",
+     "postal_code": "10168",
+     "state_code": "NY",
+     "street": "122 East 42nd Street, Suite 1708",
+     "note": null
+    }
+   ],
+   "status": "published",
+   "salary": {
+    "max": "250000",
+    "min": "200000",
+    "period": "year",
+    "currency": "USD"
+   },
+   "tags": []
+  }
+ ]
+}
