@@ -162,7 +162,43 @@ public class LlmClient {
         return wire;
     }
 
+    /**
+     * Longest we will sit waiting out a rate limit before giving up.
+     *
+     * <p>Gemini's free tier allows twenty requests a minute, and one chat turn
+     * with tool calling spends three or four of them, so a 429 is the normal
+     * failure rather than an exceptional one. The response says how long to wait;
+     * ignoring that and reporting failure made the assistant unusable in practice
+     * after a few questions.
+     */
+    private static final long MAX_BACKOFF_SECONDS = 50;
+
+    private static final java.util.regex.Pattern RETRY_AFTER =
+            java.util.regex.Pattern.compile("retry in ([0-9.]+)s", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Sends, and waits out one rate limit if the server asks us to.
+     *
+     * <p>One retry, not a loop: a second 429 after honouring the server's own
+     * delay means the quota is genuinely gone rather than briefly busy, and
+     * retrying harder into a rate limit is how a free tier becomes a blocked one.
+     */
     private HttpResponse<String> send(String body) throws Exception {
+        HttpResponse<String> response = sendOnce(body);
+        if (response.statusCode() != 429) {
+            return response;
+        }
+
+        long wait = retryAfterSeconds(response.body());
+        if (wait <= 0 || wait > MAX_BACKOFF_SECONDS) {
+            return response;
+        }
+        log.info("Rate limited; waiting {}s as the API asked, then retrying once", wait);
+        Thread.sleep(Duration.ofSeconds(wait + 1));
+        return sendOnce(body);
+    }
+
+    private HttpResponse<String> sendOnce(String body) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(
                         URI.create(config.baseUrl().replaceAll("/+$", "") + "/chat/completions"))
                 .timeout(Duration.ofSeconds(Math.max(10, config.timeoutSeconds())))
@@ -171,6 +207,22 @@ public class LlmClient {
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return http.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /** The delay the server named, or -1 when it named none. */
+    static long retryAfterSeconds(String body) {
+        if (body == null) {
+            return -1;
+        }
+        java.util.regex.Matcher matcher = RETRY_AFTER.matcher(body);
+        if (!matcher.find()) {
+            return -1;
+        }
+        try {
+            return (long) Math.ceil(Double.parseDouble(matcher.group(1)));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     public Optional<String> complete(String system, String user) {
@@ -190,18 +242,9 @@ public class LlmClient {
             }
             String body = mapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder(
-                            URI.create(config.baseUrl().replaceAll("/+$", "")
-                                    + "/chat/completions"))
-                    .timeout(Duration.ofSeconds(Math.max(10, config.timeoutSeconds())))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + config.apiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-
-            HttpResponse<String> response =
-                    http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = send(body);
             if (response.statusCode() != 200) {
+                lastFailure = describe(response.statusCode());
                 // Deliberately not logging the body: a 401 from some gateways
                 // echoes the Authorization header back.
                 log.warn("Model returned HTTP {} - falling back to the template",

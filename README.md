@@ -152,7 +152,8 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `login --url=... \| --list` | Sign in to a board by hand, once per employer |
 | `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
 | `variants` | Which resume opening has actually produced replies |
-| `ui` | Review queue and assistant at http://localhost:8080 |
+| `ui` | Feed, board, chat and review at http://localhost:8080 |
+| `board [--import]` | The pipeline in the terminal; `--import` seeds it from the sheet |
 
 ---
 
@@ -221,6 +222,41 @@ checked first.
 **`variants` prints its own sample size and refuses to conclude below it.** Two
 replies from five against one from six looks like a 140% improvement and is three
 coin flips.
+
+### The feed, the board and the chat
+
+`ui` serves four pages.
+
+**The feed** ranks every candidate by a 0-100 match score rather than by date.
+Sorting by date was close to random: a posting is not more relevant for being
+newer. The score is arithmetic - skills 40, experience 25, geography 20,
+freshness 10, signals 5 - and every point traces to a rule, which is what lets
+the posting page show it as five bars with the reasoning under each.
+
+It is **not a filter**. Screening already decides what is eligible and says why
+per rejection; the score only orders what survived.
+
+**The board** is the pipeline: saved, prepared, applied, screening, interview,
+then offer, rejected or dropped. `board --import` seeds it from the spreadsheet,
+which is worth running once - the tracker holds applications made before any of
+this existed, and a board that started empty would be a worse record than the
+sheet on its first day.
+
+The database is the source of truth and the sheet is a mirror. Writes go local
+first; a failed sheet write is logged and rolls nothing back. Nothing before
+APPLIED is mirrored, because the tracker is the record of applications sent and
+filling it with bookmarks would destroy the one question it answers.
+
+**The chat** is a Gemini assistant with six tools: it can search postings, read
+one in full, summarise the board and the profile, bookmark a job and move a card.
+It cannot submit an application and does not offer to.
+
+Two things to know about the free tier. It allows **twenty requests a minute**,
+and one chat turn with tool calling spends three or four, so a rate limit is the
+normal failure rather than an exceptional one. The client reads the delay out of
+the API's own error and waits it out once. And Gemini 2.5 thinks by default,
+charging those tokens against `max_tokens`, so a small cap returns HTTP 200 with
+an empty message and no error - hence `reasoning-effort: none`.
 
 ### The assistant
 
