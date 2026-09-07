@@ -51,18 +51,20 @@ class TokenProberTest {
     }
 
     @Test
-    @DisplayName("all four platforms are tried")
+    @DisplayName("every probeable platform is tried")
     void triesEveryPlatform() throws Exception {
         answer("greenhouse.io", 404, "");
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0}");
+        answer("recruitee.com", 404, "");
 
-        // Amazon is deliberately absent: its tokens are country codes, not
-        // companies, and all four are swept on every run anyway.
+        // Amazon and Workday are deliberately absent: Amazon's tokens are
+        // country codes rather than companies and all four are swept anyway, and
+        // a Workday board is a tenant/datacentre/site triple behind a POST.
         assertThat(prober.probe("acme")).extracting(ProbeResult::source)
-                .containsExactly(Source.GREENHOUSE, Source.ASHBY,
-                        Source.LEVER, Source.SMARTRECRUITERS);
+                .containsExactly(Source.GREENHOUSE, Source.ASHBY, Source.LEVER,
+                        Source.SMARTRECRUITERS, Source.RECRUITEE);
     }
 
     @Test
@@ -72,6 +74,7 @@ class TokenProberTest {
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0}");
+        answer("recruitee.com", 404, "");
 
         ProbeResult greenhouse = resultFor(prober.probe("acme"), Source.GREENHOUSE);
         assertThat(greenhouse.outcome()).isEqualTo(ProbeResult.Outcome.FOUND);
@@ -86,6 +89,7 @@ class TokenProberTest {
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0}");
+        answer("recruitee.com", 404, "");
 
         assertThat(resultFor(prober.probe("acme"), Source.LEVER).outcome())
                 .isEqualTo(ProbeResult.Outcome.ABSENT);
@@ -98,6 +102,7 @@ class TokenProberTest {
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0,\"content\":[]}");
+        answer("recruitee.com", 404, "");
 
         // Greenhouse, Ashby and Lever 404 an unknown token, so their empty means
         // a real board with no openings. SmartRecruiters answers 200 for any
@@ -130,6 +135,7 @@ class TokenProberTest {
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0}");
+        answer("recruitee.com", 404, "");
 
         assertThat(resultFor(prober.probe("stripe"), Source.GREENHOUSE).outcome())
                 .isEqualTo(ProbeResult.Outcome.ALREADY_KNOWN);
@@ -142,6 +148,7 @@ class TokenProberTest {
         answer("ashbyhq.com", 404, "");
         answer("lever.co", 404, "");
         answer("smartrecruiters.com", 200, "{\"totalFound\":0}");
+        answer("recruitee.com", 404, "");
 
         List<ProbeResult> results = prober.probe("Delivery Hero");
 

@@ -35,6 +35,7 @@ public class BoardTokenSeeder {
     private static final Map<String, String> LEVER = new LinkedHashMap<>();
 
     private static final Map<String, String> SMARTRECRUITERS = new LinkedHashMap<>();
+    private static final Map<String, String> RECRUITEE = new LinkedHashMap<>();
 
     /**
      * Amazon has one job site, not one board per company, so the "token" is a
@@ -159,6 +160,14 @@ public class BoardTokenSeeder {
         SMARTRECRUITERS.put("Swiggy", "Swiggy");
         SMARTRECRUITERS.put("Picnic", "Picnic");
 
+        // Recruitee is heavily Dutch, which is why the seed list is. Every one of
+        // these was verified as returning offers rather than {"error":"Not Found"} -
+        // the platform 404s an unknown subdomain, so a seeded token that is wrong
+        // shows up as a failing board rather than as a quiet one.
+        RECRUITEE.put("channable", "Channable");
+        RECRUITEE.put("vandebron", "Vandebron");
+        RECRUITEE.put("nmbrs", "Nmbrs");
+
         AMAZON.put("IND", "Amazon India");
         AMAZON.put("DEU", "Amazon Germany");
         AMAZON.put("IRL", "Amazon Ireland");
@@ -237,7 +246,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.LEVER, LEVER)
                 + seedSource(Source.SMARTRECRUITERS, SMARTRECRUITERS)
                 + seedSource(Source.AMAZON, AMAZON)
-                + seedSource(Source.WORKDAY, WORKDAY);
+                + seedSource(Source.WORKDAY, WORKDAY)
+                + seedSource(Source.RECRUITEE, RECRUITEE);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }
