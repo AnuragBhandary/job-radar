@@ -6,7 +6,6 @@ import com.anuragbhandary.jobradar.domain.Country;
 import com.anuragbhandary.jobradar.domain.Posting;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
@@ -50,7 +49,21 @@ public class FieldMapper {
         if (!field.isChoice()) {
             return raw;
         }
-        return toOption(raw, field);
+        Answer resolved = toOption(raw, field);
+
+        // The escape hatch applies to every field, not only unrecognised ones.
+        // A question this classifies correctly can still offer options no derived
+        // answer fits - "select the status that allows you to work and live in
+        // that country" is genuinely the authorisation question and its options
+        // are three bespoke sentences. Without this, the only way to answer it is
+        // to stop having the field classified at all.
+        if (resolved.origin() == Answer.Origin.UNANSWERED) {
+            Answer configured = fromExtras(field, null);
+            if (configured.hasValue()) {
+                return toOption(configured, field);
+            }
+        }
+        return resolved;
     }
 
     /** The answer as text, before it is reconciled with a dropdown's wording. */
@@ -115,6 +128,10 @@ public class FieldMapper {
             case PRONOUNS -> optional(eeo.pronouns());
 
             case REFERRAL_SOURCE -> fromExtras(field, "how did you hear");
+
+            // Never ticked. See FieldKind.CONSENT.
+            case CONSENT -> Answer.unanswered(
+                    "consent checkbox - tick it yourself after reading it");
 
             case UNKNOWN -> fromExtras(field, null);
         };
@@ -194,15 +211,19 @@ public class FieldMapper {
      */
     private Answer fromExtras(FormField field, String fallbackKey) {
         String label = FieldClassifier.normalise(field.label());
-        for (Map.Entry<String, String> entry : profile.extraAnswers().entrySet()) {
-            if (label.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
-                return Answer.profile(entry.getValue());
+        for (ApplicantProfile.ExtraAnswer entry : profile.extraAnswers()) {
+            // Both sides normalised the same way. The configured match is written
+            // as a person would quote the question - with slashes and question
+            // marks - and the label has already had those flattened to spaces, so
+            // comparing them raw fails on exactly the entries most worth having.
+            if (label.contains(FieldClassifier.normalise(entry.match()))) {
+                return Answer.profile(entry.answer());
             }
         }
         if (fallbackKey != null) {
-            for (Map.Entry<String, String> entry : profile.extraAnswers().entrySet()) {
-                if (entry.getKey().toLowerCase(Locale.ROOT).contains(fallbackKey)) {
-                    return Answer.profile(entry.getValue());
+            for (ApplicantProfile.ExtraAnswer entry : profile.extraAnswers()) {
+                if (entry.match().toLowerCase(Locale.ROOT).contains(fallbackKey)) {
+                    return Answer.profile(entry.answer());
                 }
             }
         }

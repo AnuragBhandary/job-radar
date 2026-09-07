@@ -30,7 +30,7 @@ public record ApplicantProfile(
         Demographics demographics,
         Compensation compensation,
         Availability availability,
-        Map<String, String> extraAnswers) {
+        List<ExtraAnswer> extraAnswers) {
 
     public record Name(String first, String middle, String last, String preferred) {
 
@@ -188,14 +188,31 @@ public record ApplicantProfile(
     }
 
     /**
+     * One configured answer, matched by a substring of the question.
+     *
+     * <p>A list of pairs rather than a {@code Map<String, String>}, and that is not
+     * a style choice. Spring's relaxed binding canonicalises map keys, so a YAML
+     * key containing a space or a slash - which every real question does - arrives
+     * mangled or not at all unless it is written in bracket notation. The
+     * behaviour is silent: the map binds, it is simply empty of the entries that
+     * matter, and the escape hatch looks like it is working while answering
+     * nothing. A list of records binds every character as written.
+     *
+     * @param match  a lowercased substring of the question as the form words it
+     * @param answer what to put in the field, or the option to select
+     */
+    public record ExtraAnswer(String match, String answer) {
+    }
+
+    /**
      * Answers to questions this tool has met before and has no field for.
      *
-     * <p>Keyed by a lowercased substring of the question. The escape hatch that
-     * stops every new company-specific question ("How did you hear about us?",
-     * "Do you have a valid passport?") from needing a code change - and the reason
-     * an unmatched question is reported rather than guessed at.
+     * <p>The escape hatch that stops every new company-specific question ("How did
+     * you hear about us?", "Do you have a valid passport?") from needing a code
+     * change - and the reason an unmatched question is reported rather than
+     * guessed at. First match wins, so more specific entries belong higher.
      */
-    public Map<String, String> extraAnswers() {
-        return extraAnswers == null ? Map.of() : extraAnswers;
+    public List<ExtraAnswer> extraAnswers() {
+        return extraAnswers == null ? List.of() : extraAnswers;
     }
 }

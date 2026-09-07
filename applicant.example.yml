@@ -63,12 +63,15 @@ job-radar:
       earliest-start: "Immediately"
       open-to-remote: true
 
-    # Answers keyed by a lowercased substring of the question, first match wins.
-    # Grown from `applications --status=NEEDS_HUMAN`, which prints every question
-    # that stopped an application.
+    # A LIST of {match, answer}, matched by substring of the question, first match
+    # wins. Not a map: Spring canonicalises map keys, so a key with a space or a
+    # slash - which every real question has - binds mangled or not at all.
+    # Grown from `applications --status=NEEDS_HUMAN`; `learn --write` appends them.
     extra-answers:
-      "how did you hear": "Company careers page"
-      "are you at least 18": "Yes"
+      - match: "how did you hear"
+        answer: "Company careers page"
+      - match: "are you at least 18"
+        answer: "Yes"
 
   resume:
     headline: "Backend Software Engineer"

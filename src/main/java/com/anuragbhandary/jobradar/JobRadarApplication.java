@@ -7,7 +7,8 @@ import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
 import com.anuragbhandary.jobradar.mail.GmailProperties;
-import org.springframework.boot.SpringApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
@@ -42,7 +43,23 @@ public class JobRadarApplication {
         // the first insert. See SchemaMigrator for why plain JDBC in main is the
         // honest place for this.
         SchemaMigrator.migrate(jdbcUrl());
-        SpringApplication.run(JobRadarApplication.class, args);
+
+        // spring-boot-starter-web is on the classpath for one command. Left to
+        // itself Spring Boot would bind a port for all eleven, so `fetch` would
+        // start a servlet container to make HTTP requests and `digest` would hold
+        // 8080 while writing a markdown file. The web layer is opt-in per run.
+        new SpringApplicationBuilder(JobRadarApplication.class)
+                .web(wantsUi(args) ? WebApplicationType.SERVLET : WebApplicationType.NONE)
+                .run(args);
+    }
+
+    private static boolean wantsUi(String[] args) {
+        for (String arg : args) {
+            if ("ui".equals(arg)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

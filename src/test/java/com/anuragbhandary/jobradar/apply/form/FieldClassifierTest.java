@@ -129,6 +129,49 @@ class FieldClassifierTest {
         assertThat(classify("Race / Ethnicity")).isEqualTo(FieldKind.RACE);
     }
 
+    // -----------------------------------------------------------------------
+    // Somebody else's name.
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a referral field is not the applicant's own name")
+    void referralNamesAreNotTheApplicant() {
+        // Found on a live Ashby form. This label contains "full name", so it was
+        // classified FULL_NAME and filled with the applicant's own - stating on
+        // the application that he was referred by himself. A false claim of an
+        // internal referral is the kind of thing that gets checked.
+        assertThat(classify("If you have discussed this role with a current Camunda "
+                + "employee, please enter their full name here"))
+                .isEqualTo(FieldKind.UNKNOWN);
+
+        assertThat(classify("Name of the employee who referred you")).isEqualTo(FieldKind.UNKNOWN);
+        assertThat(classify("Referrer's email")).isEqualTo(FieldKind.UNKNOWN);
+        assertThat(classify("Your manager's name")).isEqualTo(FieldKind.UNKNOWN);
+
+        // ...while the applicant's own fields still classify.
+        assertThat(classify("Full name")).isEqualTo(FieldKind.FULL_NAME);
+        assertThat(classify("Email")).isEqualTo(FieldKind.EMAIL);
+    }
+
+    @Test
+    @DisplayName("an address asked as a sentence is still an address")
+    void addressAskedAsASentence() {
+        assertThat(classify("What is the first line of your address?"))
+                .isEqualTo(FieldKind.ADDRESS_LINE_1);
+        assertThat(classify("Post Code")).isEqualTo(FieldKind.POSTAL_CODE);
+    }
+
+    @Test
+    @DisplayName("a consent box is recognised so it can be left alone on purpose")
+    void consentIsItsOwnKind() {
+        assertThat(classify("I agree to the privacy policy",
+                FormField.ControlType.CHECKBOX)).isEqualTo(FieldKind.CONSENT);
+        assertThat(classify("I consent to the processing of my personal data",
+                FormField.ControlType.CHECKBOX)).isEqualTo(FieldKind.CONSENT);
+        assertThat(classify("I have read and accept the terms and conditions",
+                FormField.ControlType.CHECKBOX)).isEqualTo(FieldKind.CONSENT);
+    }
+
     @Test
     @DisplayName("an unrecognised question is UNKNOWN, never a near miss")
     void unknownRatherThanGuessing() {

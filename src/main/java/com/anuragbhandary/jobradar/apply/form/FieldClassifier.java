@@ -57,7 +57,16 @@ public class FieldClassifier {
                             || contains(l, "authorized to work") || contains(l, "authorised to work")
                             || contains(l, "right to work") || contains(l, "eligible to work")
                             || contains(l, "work authorization") || contains(l, "work authorisation")
-                            || contains(l, "legally entitled to work")),
+                            || contains(l, "legally entitled to work")
+                            // Asked as a sentence: "If you are eligible, please
+                            // select the status that allows you to work and live
+                            // in that Country". It contains "country", so without
+                            // this it reached the COUNTRY rule and was answered
+                            // "India" - a country name offered to a question whose
+                            // options are three sentences about visa status.
+                            || (word(l, "eligible") && word(l, "work"))
+                            || (contains(l, "status") && contains(l, "work")
+                                    && contains(l, "live"))),
 
             new Rule(FieldKind.RELOCATION_WILLING,
                     l -> contains(l, "relocat")),
@@ -73,6 +82,27 @@ public class FieldClassifier {
             new Rule(FieldKind.COVER_LETTER_UPLOAD,
                     l -> contains(l, "cover letter") || contains(l, "covering letter")
                             || contains(l, "motivation letter") || contains(l, "motivational letter")),
+
+            // --- Somebody else's name. Before every name rule. -------------------
+            //
+            // "If you have discussed this role with a current Camunda employee,
+            // please enter their full name here" contains "full name", so it was
+            // classified FULL_NAME and filled with the applicant's own - which
+            // states on an application that he was referred by himself. Not a
+            // near miss: a false claim of an internal referral is the kind of
+            // thing that is checked.
+            // Every marker here is matched as a whole word. "referred" is inside
+            // "preferred", so a substring test sends "What is your preferred
+            // name?" to UNKNOWN - which is this same bug for the third time in
+            // this file, introduced by the fix for the second one.
+            new Rule(FieldKind.UNKNOWN,
+                    l -> (contains(l, "name") || contains(l, "email"))
+                            && (word(l, "employee") || word(l, "referred")
+                                    || word(l, "referrer") || word(l, "referral")
+                                    || word(l, "their") || contains(l, "his or her")
+                                    || word(l, "manager") || word(l, "recruiter")
+                                    || word(l, "reference") || contains(l, "who told you")
+                                    || word(l, "colleague") || word(l, "friend"))),
 
             // --- Name. Specific before general, or "name" swallows all four. ----
             new Rule(FieldKind.FIRST_NAME,
@@ -130,6 +160,12 @@ public class FieldClassifier {
             new Rule(FieldKind.ADDRESS_LINE_1,
                     l -> contains(l, "address line 1") || contains(l, "address 1")
                             || contains(l, "street address") || contains(l, "street")
+                            // Ashby asks it as a sentence: "What is the first line
+                            // of your address?" - which matches none of the
+                            // fragments above and none of the exact forms below.
+                            || contains(l, "first line of your address")
+                            || contains(l, "first line of address")
+                            || contains(l, "line 1 of your address")
                             || equalsAny(l, "address", "your address", "home address",
                                     "current address", "mailing address")),
             new Rule(FieldKind.POSTAL_CODE,
@@ -183,6 +219,17 @@ public class FieldClassifier {
                     l -> contains(l, "gender") || word(l, "sex")),
             new Rule(FieldKind.RACE,
                     l -> word(l, "race") || contains(l, "ethnicity") || contains(l, "ethnic")),
+
+            // Consent, recognised so it can be reported and deliberately not
+            // answered. Before REFERRAL_SOURCE because privacy notices mention
+            // where data came from.
+            new Rule(FieldKind.CONSENT,
+                    l -> contains(l, "privacy policy") || contains(l, "privacy notice")
+                            || contains(l, "terms and conditions") || contains(l, "i agree")
+                            || contains(l, "i consent") || contains(l, "gdpr")
+                            || contains(l, "data retention") || contains(l, "i acknowledge")
+                            || contains(l, "processing of my") || contains(l, "store my data")
+                            || contains(l, "i have read")),
 
             new Rule(FieldKind.REFERRAL_SOURCE,
                     l -> contains(l, "how did you hear") || contains(l, "how did you find")

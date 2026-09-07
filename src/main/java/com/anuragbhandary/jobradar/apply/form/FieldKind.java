@@ -67,6 +67,18 @@ public enum FieldKind {
     REFERRAL_SOURCE,
 
     /**
+     * A consent tickbox: privacy policy, data retention, terms.
+     *
+     * <p>Recognised so it can be reported clearly, and <strong>never ticked</strong>.
+     * Agreeing to a company's terms on someone's behalf is not form-filling, and a
+     * tool that ticks consent boxes automatically is one that has agreed to things
+     * its user has not read. It is left for the human along with the submit button,
+     * and the review file says so rather than filing it under "no configured
+     * answer" as though the profile were merely incomplete.
+     */
+    CONSENT,
+
+    /**
      * Recognised as a question, but not one this tool has an answer for.
      *
      * <p>The most important value in the enum. Everything the classifier cannot

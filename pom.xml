@@ -110,6 +110,18 @@
       flow - one browser consent, a refresh token cached in ~/.config/job-radar -
       and google-oauth-client-jetty is what serves the localhost redirect.
     -->
+
+    <!--
+      The review UI, and the only reason there is a web layer at all. It is off
+      unless the `ui` command is used: main() picks NONE for every other command,
+      so fetch, screen and digest still start in under a second and never bind a
+      port. See UiCommand for why a queue in a browser earned this.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-gmail</artifactId>

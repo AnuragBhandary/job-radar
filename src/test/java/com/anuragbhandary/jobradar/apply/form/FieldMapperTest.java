@@ -210,6 +210,53 @@ class FieldMapperTest {
     }
 
     @Test
+    @DisplayName("a profile field left blank says so, rather than reporting null")
+    void blankProfileValuesExplainThemselves() {
+        // The blocked list printed "Post Code — null" for an empty postal code,
+        // which is the report failing at the one job it has.
+        Answer answer = mapper.answer(
+                field(FieldKind.PRONOUNS, "Pronouns"), postingIn(Country.INDIA), DOCS);
+
+        assertThat(answer.origin()).isEqualTo(Answer.Origin.DECLINED);
+        assertThat(answer.note()).isNotNull();
+
+        Answer missing = Answer.profile("");
+        assertThat(missing.origin()).isEqualTo(Answer.Origin.UNANSWERED);
+        assertThat(missing.note()).contains("applicant.yml");
+    }
+
+    @Test
+    @DisplayName("a consent box is never ticked automatically")
+    void consentIsLeftForTheHuman() {
+        // Agreeing to a company's terms on someone's behalf is not form-filling.
+        Answer answer = mapper.answer(
+                new FormField("#x", "I agree to the privacy policy",
+                        FormField.ControlType.CHECKBOX, List.of(), true, FieldKind.CONSENT),
+                postingIn(Country.INDIA), DOCS);
+
+        assertThat(answer.origin()).isEqualTo(Answer.Origin.UNANSWERED);
+        assertThat(answer.note()).contains("tick it yourself");
+    }
+
+    @Test
+    @DisplayName("a configured extra answer resolves a classified field whose options do not fit")
+    void extraAnswersAlsoRescueClassifiedFields() {
+        // A question this classifies correctly can still offer bespoke options no
+        // derived yes/no fits. Without the fallback the only way to answer it
+        // would be to stop having it classified at all.
+        Answer answer = mapper.answer(
+                choice(FieldKind.WORK_AUTHORISATION,
+                        "If you are eligible, please select the status that allows you "
+                                + "to work and live in that Country",
+                        List.of("I am a citizen / permanent resident",
+                                "I have a work visa",
+                                "I require sponsorship")),
+                postingIn(Country.REMOTE), DOCS);
+
+        assertThat(answer.value()).isEqualTo("I am a citizen / permanent resident");
+    }
+
+    @Test
     @DisplayName("an answer matching no option is refused rather than approximated")
     void unmatchedChoiceIsRefused() {
         Answer answer = mapper.answer(

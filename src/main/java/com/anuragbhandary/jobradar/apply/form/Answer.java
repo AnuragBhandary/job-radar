@@ -44,8 +44,18 @@ public record Answer(String value, Origin origin, String note) {
         UNANSWERED
     }
 
+    /**
+     * A value copied from the profile.
+     *
+     * <p>A blank one becomes UNANSWERED with a reason rather than a PROFILE answer
+     * carrying an empty string. Both leave the field empty, but only one of them
+     * says why: the blocked-field list printed "Post Code — null" for an empty
+     * postal code, which is the report failing at the one job it has.
+     */
     public static Answer profile(String value) {
-        return new Answer(value, Origin.PROFILE, null);
+        return value == null || value.isBlank()
+                ? new Answer(null, Origin.UNANSWERED, "not set in applicant.yml")
+                : new Answer(value, Origin.PROFILE, null);
     }
 
     public static Answer derived(String value, String why) {
