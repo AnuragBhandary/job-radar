@@ -33,8 +33,16 @@ public record FillReport(List<Entry> entries, List<Entry> blockers) {
             String value = field.kind() == FieldKind.COVER_LETTER_TEXT
                     ? "(cover letter, " + answer.value().length() + " chars)"
                     : answer.value();
-            return "filled  " + label + " = " + value
-                    + (answer.needsReview() ? "   [" + answer.origin() + "]" : "");
+            // The reasoning rides along with the origin, not just the word
+            // DERIVED. "posting country is REMOTE; authorised = true" is the
+            // whole point of flagging the answer - without it the review panel
+            // can say an answer was worked out and not how, which is the half
+            // that lets a human catch it being wrong.
+            String note = answer.needsReview()
+                    ? "   [" + answer.origin()
+                            + (answer.note() == null ? "" : ": " + answer.note()) + "]"
+                    : "";
+            return "filled  " + label + " = " + value + note;
         }
     }
 
