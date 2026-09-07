@@ -8,6 +8,11 @@ import java.util.Set;
 /**
  * The technologies worth noticing in a job description.
  *
+ * <p>Public because {@link com.anuragbhandary.jobradar.match.MatchScorer} runs
+ * both the posting and the resume through it. Normalising both sides with the
+ * same vocabulary is what makes "PostgreSQL" in one and "Postgres" in the other
+ * the same skill; a string comparison says they are not.
+ *
  * <p>A fixed list, not extraction. Pulling "notable terms" out of prose with
  * frequency or capitalisation finds "Our", "Team" and "Engineering" - the words a
  * job advert repeats - and misses "gRPC", which appears once. The interesting
@@ -17,7 +22,7 @@ import java.util.Set;
  * <p>Order is significant only for the multi-word entries: "spring boot" has to be
  * checked before "spring" or the more specific match is never reported.
  */
-final class TechVocabulary {
+public final class TechVocabulary {
 
     private TechVocabulary() {
     }
@@ -69,7 +74,7 @@ final class TechVocabulary {
             "mlops", "kubeflow", "sagemaker", "nlp", "computer vision");
 
     /** Every vocabulary term appearing in the text, in vocabulary order. */
-    static Set<String> found(String text) {
+    public static Set<String> found(String text) {
         if (text == null || text.isBlank()) {
             return Set.of();
         }

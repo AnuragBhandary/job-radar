@@ -76,7 +76,9 @@ public final class SchemaMigrator {
                 new EnumColumn("board_token", "source", names(
                         com.anuragbhandary.jobradar.domain.Source.class)),
                 new EnumColumn("application_attempt", "status", names(
-                        com.anuragbhandary.jobradar.apply.AttemptStatus.class)));
+                        com.anuragbhandary.jobradar.apply.AttemptStatus.class)),
+                new EnumColumn("job_interest", "stage", names(
+                        com.anuragbhandary.jobradar.pipeline.PipelineStage.class)));
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl)) {
             for (EnumColumn column : columns) {
