@@ -38,6 +38,7 @@ final class Ui {
                     <a class="wordmark" href="/">job-radar</a>
                     <a href="/">feed</a>
                     <a href="/board">board</a>
+                    <a href="/chat">chat</a>
                   </span>
                   <div class="statstrip">%s</div>
                 </header>
@@ -65,6 +66,97 @@ final class Ui {
         return """
                 <div class="panel-head"><h2>%s</h2>%s</div>
                 """.formatted(esc(title), aside == null ? "" : aside);
+    }
+
+    /**
+     * The chat page body.
+     *
+     * <p>Plain fetch and plain DOM. The whole page is a list of bubbles and a text
+     * box, and reaching for a framework here would mean a build step for something
+     * that is forty lines of vanilla JavaScript.
+     */
+    static String chat() {
+        return """
+                <section class="card panel">
+                  <div class="panel-head">
+                    <h2>Assistant</h2>
+                    <form method="post" action="/chat/clear">
+                      <button class="btn btn-sm" type="submit">new chat</button>
+                    </form>
+                  </div>
+                  <div class="panel-body">
+                    <div id="log" class="chatlog">
+                      <div class="bubble bot">Ask me about the 9,032 postings, your
+                      board, or what to apply to next. I can bookmark jobs and move
+                      them between columns. I cannot submit an application.</div>
+                    </div>
+                    <div class="suggest">
+                      <button class="chip" type="button">Which 5 should I apply to this week, and why?</button>
+                      <button class="chip" type="button">What is on my board right now?</button>
+                      <button class="chip" type="button">Which remote jobs pay above my India band?</button>
+                      <button class="chip" type="button">What should I learn to unlock more of these jobs?</button>
+                    </div>
+                    <textarea class="input" id="q" rows="2"
+                      placeholder="Ask anything. Shift+Enter for a new line."></textarea>
+                    <div class="assist-actions">
+                      <button class="btn btn-primary" type="button" id="send">Send</button>
+                      <span class="note-muted" id="status"></span>
+                    </div>
+                  </div>
+                </section>
+                <script>
+                (function () {
+                  var log = document.getElementById('log'),
+                      box = document.getElementById('q'),
+                      send = document.getElementById('send'),
+                      status = document.getElementById('status');
+
+                  function bubble(text, who) {
+                    var d = document.createElement('div');
+                    d.className = 'bubble ' + who;
+                    d.textContent = text;
+                    log.appendChild(d);
+                    log.scrollTop = log.scrollHeight;
+                    return d;
+                  }
+
+                  function ask() {
+                    var text = box.value.trim();
+                    if (!text) { return; }
+                    bubble(text, 'me');
+                    box.value = '';
+                    send.disabled = true;
+                    status.textContent = 'thinking...';
+
+                    fetch('/chat/send', {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({message: text})
+                    }).then(function (r) { return r.json(); }).then(function (d) {
+                      bubble(d.answer || '(nothing came back)', 'bot');
+                      if (d.actions && d.actions.length) {
+                        bubble(d.actions.join(', '), 'did');
+                      }
+                      status.textContent = '';
+                      send.disabled = false;
+                      box.focus();
+                    }).catch(function (e) {
+                      status.textContent = String(e);
+                      send.disabled = false;
+                    });
+                  }
+
+                  send.onclick = ask;
+                  box.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+                  });
+                  document.querySelectorAll('.suggest .chip').forEach(function (c) {
+                    c.onclick = function () { box.value = c.textContent.trim(); ask(); };
+                  });
+                  box.focus();
+                })();
+                </script>
+                """;
     }
 
     /** The score cell that opens a feed row. */
@@ -607,6 +699,28 @@ final class Ui {
                 .due { color: var(--warn); font-size: var(--fs-xs); font-weight: 600; }
                 .col-empty { padding: var(--sp-3); font-size: var(--fs-xs);
                   color: var(--fg-faint); }
+
+                /* --- chat ------------------------------------------------ */
+                .chatlog {
+                  max-height: 58vh; overflow-y: auto; display: grid; gap: var(--sp-3);
+                  padding-right: var(--sp-2); margin-bottom: var(--sp-4);
+                }
+                .bubble {
+                  padding: var(--sp-3); border-radius: var(--radius);
+                  font-size: var(--fs-md); line-height: 1.55; white-space: pre-wrap;
+                  max-width: 74ch;
+                }
+                .bubble.me {
+                  background: var(--accent-soft); border: 1px solid transparent;
+                  justify-self: end; color: var(--fg);
+                }
+                .bubble.bot { background: var(--bg-inset); border: 1px solid var(--border); }
+                .bubble.did {
+                  background: transparent; border: 1px dashed var(--border);
+                  font-size: var(--fs-xs); color: var(--fg-faint); padding: var(--sp-2);
+                }
+                .suggest { display: flex; flex-wrap: wrap; gap: var(--sp-2);
+                  margin-bottom: var(--sp-3); }
 
                 """;
     }

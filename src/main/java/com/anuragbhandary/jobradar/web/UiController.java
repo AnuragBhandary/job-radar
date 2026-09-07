@@ -235,7 +235,7 @@ public class UiController {
                   %s
                   <div class="row-main">
                     <div class="row-title">
-                      <span class="company">%s</span>
+                      <a class="company" href="/posting/%d">%s</a>
                       <span class="role">%s</span>
                     </div>
                     %s
@@ -254,7 +254,7 @@ public class UiController {
                   </div>
                 </article>
                 """.formatted(Ui.scoreCell(scored.score()),
-                        Ui.esc(company), Ui.esc(posting.getTitle()), meta,
+                        posting.getId(), Ui.esc(company), Ui.esc(posting.getTitle()), meta,
                         Ui.esc(scored.score().headline()),
                         Ui.esc(posting.getUrl()), posting.getId(), posting.getId());
     }

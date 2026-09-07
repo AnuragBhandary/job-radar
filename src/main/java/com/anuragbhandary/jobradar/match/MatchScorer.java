@@ -42,10 +42,13 @@ public class MatchScorer {
 
     private final ResumeModel resume;
     private final MatchProperties config;
+    private final com.anuragbhandary.jobradar.apply.ApplicantProfile profile;
 
-    public MatchScorer(ResumeModel resume, MatchProperties config) {
+    public MatchScorer(ResumeModel resume, MatchProperties config,
+            com.anuragbhandary.jobradar.apply.ApplicantProfile profile) {
         this.resume = resume;
         this.config = config;
+        this.profile = profile;
     }
 
     public MatchScore score(Posting posting) {
@@ -144,7 +147,30 @@ public class MatchScorer {
                 "asks for " + years + "+ years, " + over + " more than you can evidence");
     }
 
+    /**
+     * Where the job is, and whether he could take it.
+     *
+     * <p>A posting that states it will not sponsor, in a country where he needs
+     * sponsorship, scores zero here however good the rest of it is. The signal was
+     * already extracted and classified as blocked or supportive; the scorer used
+     * to award points for merely <em>mentioning</em> sponsorship, so "EU
+     * citizenship or a valid work permit required" and "we sponsor visas" were
+     * worth the same. That is the polarity mistake this codebase keeps making, and
+     * here it promotes exactly the postings he cannot take.
+     */
     private MatchScore.Factor geography(Posting posting) {
+        String signal = posting.getSponsorshipSignal();
+        boolean blocked = signal != null
+                && signal.toLowerCase(Locale.ROOT).startsWith("blocked");
+        boolean needsSponsorship = posting.getCountry() != null
+                && posting.getCountry() != com.anuragbhandary.jobradar.domain.Country.REMOTE
+                && !profile.workAuthorisation().isAuthorisedIn(posting.getCountry());
+
+        if (blocked && needsSponsorship) {
+            return new MatchScore.Factor("Location", 0, GEOGRAPHY_MAX,
+                    "says it will not sponsor, and you would need it here");
+        }
+
         int preference = config.preferenceFor(posting.getCountry());
         int points = Math.round(GEOGRAPHY_MAX * preference / 100f);
         return new MatchScore.Factor("Location", points, GEOGRAPHY_MAX,
@@ -195,9 +221,13 @@ public class MatchScorer {
             points += 3;
             found.add("names new graduates");
         }
-        if (posting.getSponsorshipSignal() != null && !posting.getSponsorshipSignal().isBlank()) {
+        String sponsorship = posting.getSponsorshipSignal();
+        if (sponsorship != null && sponsorship.toLowerCase(Locale.ROOT).startsWith("supportive")) {
             points += 2;
-            found.add("mentions sponsorship");
+            found.add("says it sponsors");
+        } else if (sponsorship != null
+                && sponsorship.toLowerCase(Locale.ROOT).startsWith("blocked")) {
+            found.add("says it does not sponsor");
         }
         return new MatchScore.Factor("Signals", points, SIGNALS_MAX,
                 found.isEmpty() ? "says nothing about graduates or visas"
