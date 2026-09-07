@@ -100,6 +100,34 @@
       It earns its size twice, because the same browser renders the tailored
       resume HTML to PDF - which is why there is no LaTeX or docx dependency here.
     -->
+
+    <!--
+      Gmail, read-only, for matching replies back to applications.
+      
+      Unlike Sheets this cannot use the service account: a service account has no
+      inbox, and reading a personal Gmail with one needs domain-wide delegation
+      that a consumer account cannot grant. So this is the installed-app OAuth
+      flow - one browser consent, a refresh token cached in ~/.config/job-radar -
+      and google-oauth-client-jetty is what serves the localhost redirect.
+    -->
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-gmail</artifactId>
+      <version>v1-rev20260727-2.0.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>listenablefuture</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-jetty</artifactId>
+      <version>1.39.0</version>
+    </dependency>
+
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>

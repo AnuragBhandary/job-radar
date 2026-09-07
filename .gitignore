@@ -42,3 +42,8 @@ applicant.yml
 # Chromium's user-data directory, if it is ever pointed inside the repo. It holds
 # live session cookies for every job board signed into.
 /browser/
+
+# Gmail OAuth client secret and the cached refresh token. The token is a live
+# read credential to the applicant's mailbox.
+gmail-oauth.json
+gmail-tokens/
