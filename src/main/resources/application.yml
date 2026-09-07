@@ -273,9 +273,14 @@ spring:
 
 # Only bound by the `ui` command - every other command starts with the web layer
 # switched off in main(), so nothing else holds a port.
+#
+# 127.0.0.1, not 0.0.0.0. Changing this makes the UI reachable from other machines
+# on the network, and the UI can drive a browser that is signed in to your job
+# boards. SecurityConfig refuses to start on a non-loopback address with no
+# password set, which is the combination worth guarding rather than either half.
 server:
   port: ${JOB_RADAR_UI_PORT:8080}
-  address: 127.0.0.1
+  address: ${JOB_RADAR_UI_BIND:127.0.0.1}
 
 logging:
   level:

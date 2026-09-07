@@ -1,6 +1,7 @@
 package com.anuragbhandary.jobradar.web;
 
 import java.util.List;
+import org.springframework.security.web.csrf.CsrfToken;
 
 /**
  * Page chrome and the stylesheet.
@@ -28,17 +29,44 @@ final class Ui {
      *             the useful number on the queue is how many candidates there are
      *             and on a review page it is which attempt this is.
      */
-    static String page(String title, String stat, String body) {
+    static String page(String title, String stat, String body, CsrfToken token) {
+        String meta = token == null ? "" : """
+                <meta name="_csrf" content="%s">
+                <meta name="_csrf_header" content="%s">
+                """.formatted(esc(token.getToken()), esc(token.getHeaderName()));
+
+        String signOut = token == null ? "" : """
+                <form method="post" action="/logout">
+                  <input type="hidden" name="%s" value="%s">
+                  <button class="btn btn-sm signout" type="submit">sign out</button>
+                </form>
+                """.formatted(esc(token.getParameterName()), esc(token.getToken()));
+
+        return """
+                <!doctype html><html lang="en"><head><meta charset="utf-8">
+                <meta name="viewport" content="width=device-width,initial-scale=1">
+                %s<title>%s · job-radar</title><style>%s</style></head><body>
+                <header class="topbar">
+                  <a class="wordmark" href="/">job-radar</a>
+                  <div class="statstrip">%s<span class="sep">·</span>%s</div>
+                </header>
+                <main class="page">%s</main></body></html>
+                """.formatted(meta, esc(title), css(), stat, signOut, body);
+    }
+
+    /**
+     * A page with no top bar, for the one page reached before signing in.
+     *
+     * <p>The top bar carries a link to the queue and a count of candidates, and
+     * neither should render for someone who has not logged in.
+     */
+    static String bare(String title, String body) {
         return """
                 <!doctype html><html lang="en"><head><meta charset="utf-8">
                 <meta name="viewport" content="width=device-width,initial-scale=1">
                 <title>%s · job-radar</title><style>%s</style></head><body>
-                <header class="topbar">
-                  <a class="wordmark" href="/">job-radar</a>
-                  <div class="statstrip">%s</div>
-                </header>
                 <main class="page">%s</main></body></html>
-                """.formatted(esc(title), css(), stat, body);
+                """.formatted(esc(title), css(), body);
     }
 
     static String esc(String value) {
@@ -139,6 +167,16 @@ final class Ui {
                 <script>
                 (function () {
                   var id = %d, mode = 'answer', lastQuestion = '';
+                  // Same token the forms carry. Without it every assistant call is
+                  // a 403, because CSRF applies to fetch exactly as it does to a
+                  // form post.
+                  var csrf = document.querySelector('meta[name="_csrf"]');
+                  var csrfHeader = document.querySelector('meta[name="_csrf_header"]');
+                  function headers() {
+                    var h = {'Content-Type': 'application/json'};
+                    if (csrf && csrfHeader) { h[csrfHeader.content] = csrf.content; }
+                    return h;
+                  }
                   var box = document.getElementById('ap'),
                       out = document.getElementById('ao'),
                       text = document.getElementById('at'),
@@ -172,7 +210,7 @@ final class Ui {
                     rejected.hidden = true;
                     fetch('/assistant', {
                       method: 'POST',
-                      headers: {'Content-Type': 'application/json'},
+                      headers: headers(),
                       body: JSON.stringify({attemptId: id, mode: mode, text: box.value})
                     }).then(function (r) { return r.json(); }).then(function (d) {
                       out.hidden = !d.ok;
@@ -197,7 +235,7 @@ final class Ui {
                   document.getElementById('av').onclick = function () {
                     fetch('/assistant/save-answer', {
                       method: 'POST',
-                      headers: {'Content-Type': 'application/json'},
+                      headers: headers(),
                       body: JSON.stringify({match: lastQuestion, answer: text.textContent})
                     }).then(function (r) { return r.json(); }).then(function (d) {
                       saved.textContent = d.note || '';
@@ -523,6 +561,34 @@ final class Ui {
                 .confirm input { margin-top: 2px; accent-color: var(--accent); }
                 form { display: inline; }
                 .row-side .note-muted { max-width: 90px; line-height: 1.25; }
+
+                .login {
+                  max-width: 330px; margin: 12vh auto 0; background: var(--bg-panel);
+                  border: 1px solid var(--border); border-radius: var(--radius);
+                  padding: var(--sp-5); box-shadow: var(--shadow);
+                }
+                .login h1 {
+                  font-family: var(--font-mono); font-size: var(--fs-lg);
+                  letter-spacing: -0.02em; margin-bottom: var(--sp-2);
+                }
+                .login form { display: block; margin-top: var(--sp-4); }
+                .login label {
+                  display: block; font-size: var(--fs-xs); text-transform: uppercase;
+                  letter-spacing: 0.05em; color: var(--fg-faint);
+                  margin: var(--sp-3) 0 var(--sp-1);
+                }
+                .login input.input {
+                  width: 100%; min-height: 0; padding: var(--sp-2) var(--sp-3);
+                  font-size: var(--fs-base);
+                }
+                .login button { width: 100%; margin-top: var(--sp-4); padding: 6px 10px; }
+                .login-error {
+                  margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3);
+                  font-size: var(--fs-sm); color: var(--bad);
+                  background: var(--bad-soft); border: 1px solid var(--bad);
+                  border-radius: var(--radius);
+                }
+                .signout { font-size: var(--fs-sm); }
                 """;
     }
 }

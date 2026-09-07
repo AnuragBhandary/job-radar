@@ -20,6 +20,9 @@ public final class TestProfiles {
                         "https://example.github.io", "https://leetcode.com/example"),
                 new ApplicantProfile.Address(
                         "1 Example Street", "Second Line", "Nagpur", "Maharashtra",
+                        // Not a real postal code. The rest of this fixture is
+                        // openly fictional and this one value was the applicant's
+                        // actual PIN, sitting in a public repository.
                         "999999", "India", "Indian"),
                 new ApplicantProfile.WorkAuthorisation(
                         List.of(Country.INDIA), true, "A sentence about sponsorship."),
