@@ -5,6 +5,9 @@ import com.anuragbhandary.jobradar.config.SheetsConfig.SheetsClientFactory;
 import com.google.api.services.sheets.v4.model.AppendValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -88,7 +91,8 @@ public class SheetsClient {
                 continue;
             }
             applications.add(new ExistingApplication(
-                    i + 1, company, cell(row, 1), cell(row, 4), cell(row, 7)));
+                    i + 1, company, cell(row, 1), parseDate(cell(row, 3)),
+                    cell(row, 4), cell(row, 7)));
         }
         return applications;
     }
@@ -208,8 +212,42 @@ public class SheetsClient {
         return m.find() ? Integer.parseInt(m.group(1)) : -1;
     }
 
+    /**
+     * The date in column D, or null if it cannot be read.
+     *
+     * <p>Null rather than today: the follow-up logic measures age from this, and
+     * a missing date substituted with today makes an application that has been
+     * silent for two months look like it was sent this morning. It is written by
+     * this tool in ISO form, but the sheet predates the tool and older rows were
+     * typed by hand in whatever format was convenient.
+     */
+    static LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String text = value.trim();
+        for (DateTimeFormatter format : DATE_FORMATS) {
+            try {
+                return LocalDate.parse(text, format);
+            } catch (DateTimeParseException ignored) {
+                // Try the next one. A date this cannot read is reported as
+                // unknown, which is visible, rather than guessed at.
+            }
+        }
+        return null;
+    }
+
+    private static final List<DateTimeFormatter> DATE_FORMATS = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("d/M/uuuu"),
+            DateTimeFormatter.ofPattern("d-M-uuuu"),
+            DateTimeFormatter.ofPattern("d MMM uuuu"),
+            DateTimeFormatter.ofPattern("d MMMM uuuu"),
+            DateTimeFormatter.ofPattern("MMM d, uuuu"));
+
     /** An application already in the sheet. */
     public record ExistingApplication(
-            int rowNumber, String company, String role, String status, String link) {
+            int rowNumber, String company, String role, LocalDate dateApplied,
+            String status, String link) {
     }
 }

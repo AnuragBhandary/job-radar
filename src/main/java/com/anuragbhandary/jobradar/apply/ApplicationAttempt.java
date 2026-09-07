@@ -93,6 +93,16 @@ public class ApplicationAttempt {
     @Column(name = "blocker_reason", length = 1024)
     private String blockerReason;
 
+    /**
+     * Questions this form asked that the profile could not answer, tab-separated.
+     *
+     * <p>The feedback loop. Read by {@code learn}, which turns them into ready-made
+     * {@code extra-answers} entries - so the profile improves by being used rather
+     * than by being imagined in advance.
+     */
+    @Column(name = "open_questions", columnDefinition = "text")
+    private String openQuestions;
+
     /** Path to the screenshot taken before submitting. The proof of what was on screen. */
     @Column(name = "screenshot_path", length = 1024)
     private String screenshotPath;
@@ -187,6 +197,14 @@ public class ApplicationAttempt {
 
     public void setBlockerReason(String blockerReason) {
         this.blockerReason = blockerReason;
+    }
+
+    public String getOpenQuestions() {
+        return openQuestions;
+    }
+
+    public void setOpenQuestions(String openQuestions) {
+        this.openQuestions = openQuestions;
     }
 
     public String getScreenshotPath() {
