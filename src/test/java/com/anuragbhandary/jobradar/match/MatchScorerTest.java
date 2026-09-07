@@ -26,7 +26,8 @@ class MatchScorerTest {
     private static final MatchProperties CONFIG = new MatchProperties(
             Map.of(Country.REMOTE, 100, Country.INDIA, 70, Country.GERMANY, 55), 2, 7, 45);
 
-    private final MatchScorer scorer = new MatchScorer(RESUME, CONFIG);
+    private final MatchScorer scorer = new MatchScorer(RESUME, CONFIG,
+            com.anuragbhandary.jobradar.apply.TestProfiles.indianApplicant());
 
     private static Posting posting(String title, String description) {
         Posting posting = new Posting(Source.GREENHOUSE, "acme", "1", title);
@@ -142,6 +143,44 @@ class MatchScorerTest {
         assertThat(factor(score, "Experience").detail()).contains("6+ years");
         // The headline is the factor losing the most points: what to fix first.
         assertThat(score.headline()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("a posting that refuses to sponsor scores zero on location")
+    void refusingToSponsorKillsTheLocation() {
+        // The signal was already classified as blocked or supportive, and the
+        // scorer awarded points for merely mentioning sponsorship - so "EU
+        // citizenship required" and "we sponsor visas" were worth the same, which
+        // promotes exactly the postings he cannot take.
+        Posting germany = posting("Backend Engineer", "Java and Kafka.");
+        germany.setCountry(Country.GERMANY);
+        germany.setSponsorshipSignal("blocked: EU citizenship or a valid work permit");
+
+        assertThat(factor(scorer.score(germany, TODAY), "Location").points()).isZero();
+        assertThat(factor(scorer.score(germany, TODAY), "Location").detail())
+                .contains("will not sponsor");
+    }
+
+    @Test
+    @DisplayName("refusing to sponsor is irrelevant where he needs no sponsorship")
+    void refusingToSponsorDoesNotMatterAtHome() {
+        Posting india = posting("Backend Engineer", "Java and Kafka.");
+        india.setCountry(Country.INDIA);
+        india.setSponsorshipSignal("blocked: no visa sponsorship available");
+
+        assertThat(factor(scorer.score(india, TODAY), "Location").points()).isPositive();
+    }
+
+    @Test
+    @DisplayName("only a supportive signal earns signal points")
+    void sponsorshipPolarityInSignals() {
+        Posting supportive = posting("Engineer", "Java.");
+        supportive.setSponsorshipSignal("supportive: we sponsor visas");
+        Posting blocked = posting("Engineer", "Java.");
+        blocked.setSponsorshipSignal("blocked: no sponsorship");
+
+        assertThat(factor(scorer.score(supportive, TODAY), "Signals").points())
+                .isGreaterThan(factor(scorer.score(blocked, TODAY), "Signals").points());
     }
 
     @Test
