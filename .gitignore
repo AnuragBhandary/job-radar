@@ -52,3 +52,6 @@ gmail-tokens/
 # a copy left in the working tree by accident.
 secrets.yml
 **/secrets.yml
+
+# Local MCP server config. Personal tooling, not part of the project.
+.mcp.json
