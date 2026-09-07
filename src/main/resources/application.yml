@@ -48,6 +48,32 @@ job-radar:
     page-timeout-seconds: 45
 
   # ---------------------------------------------------------------------------
+  # Match scoring. Strategy, not personal data, which is why it lives here and
+  # the address does not.
+  #
+  # NOT a filter. Screening has already decided what is eligible, with a stated
+  # reason per rejection; these weights only order what survived. A low score
+  # means "read this one later", never "you cannot apply".
+  # ---------------------------------------------------------------------------
+  match:
+    # 0-100 per geography. Ordered by annual surplus after living costs rather
+    # than by salary: remote-from-home and the Gulf leave the most, Europe the
+    # least, because rent eats the premium.
+    country-preference:
+      REMOTE: 100
+      INDIA: 70
+      IRELAND: 60
+      GERMANY: 55
+      NETHERLANDS: 55
+      OTHER: 30
+    # Years he can evidence without stretching. A posting asking for this or less
+    # scores full marks; past it the score falls away fast, because two years over
+    # is a stretch worth trying and five is a different job with the same title.
+    comfortable-years: 2
+    fresh-days: 7
+    stale-days: 45
+
+  # ---------------------------------------------------------------------------
   # Gmail, read-only, for matching replies back to applications.
   #
   # Cannot reuse the Sheets service account: a service account has no mailbox, and
