@@ -35,13 +35,14 @@ public class JobRadarCli implements ApplicationRunner {
     private final UiCommand ui;
     private final PrepCommand prep;
     private final VariantsCommand variants;
+    private final PasswdCommand passwd;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
             ProbeCommand probe, ServeCommand serve,
             ApplyCommand apply, ApplicationsCommand applications,
-            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants) {
+            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, PasswdCommand passwd) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -59,6 +60,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.ui = ui;
         this.prep = prep;
         this.variants = variants;
+        this.passwd = passwd;
     }
 
     @Override
@@ -92,6 +94,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "ui" -> ui.run(options);
             case "prep" -> prep.run(options);
             case "variants" -> variants.run(options);
+            case "passwd" -> passwd.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -145,6 +148,7 @@ public class JobRadarCli implements ApplicationRunner {
                   ui                                      review queue at http://localhost:8080
                   prep --posting-id=123 [--print]         interview prep: gaps, questions, answers
                   variants                                which resume opening gets replies
+                  passwd                                  make a password hash for the ui
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

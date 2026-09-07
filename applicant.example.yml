@@ -117,3 +117,17 @@ job-radar:
 # The model is configured separately, in ~/.config/job-radar/secrets.yml, so that
 # a key never sits in the same file as the profile. See the README.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# The `ui` login and the model key live in ~/.config/job-radar/secrets.yml:
+#
+#   job-radar:
+#     auth:
+#       username: me
+#       password-hash: "$2a$10$..."     # from the `passwd` command
+#     llm:
+#       enabled: true
+#       api-key: ...
+#
+# See the README. Neither belongs in this file, and neither belongs in the repo.
+# ---------------------------------------------------------------------------
