@@ -722,6 +722,25 @@ final class Ui {
                 .suggest { display: flex; flex-wrap: wrap; gap: var(--sp-2);
                   margin-bottom: var(--sp-3); }
 
+                .jotter { margin-top: var(--sp-2); }
+                .jotter summary {
+                  cursor: pointer; font-size: var(--fs-xs); color: var(--fg-faint);
+                  list-style: none;
+                }
+                .jotter summary::-webkit-details-marker { display: none; }
+                .jotter summary:hover { color: var(--fg-muted); }
+                .jotter textarea.input { min-height: 44px; font-size: var(--fs-sm);
+                  margin-top: var(--sp-2); }
+                .jotter .remind {
+                  display: flex; gap: var(--sp-2); align-items: center;
+                  font-size: var(--fs-xs); color: var(--fg-faint); margin: var(--sp-2) 0;
+                }
+                .jotter input[type=date] {
+                  font: inherit; font-size: var(--fs-xs); padding: 1px 4px;
+                  border: 1px solid var(--border); border-radius: 3px;
+                  background: var(--bg-panel); color: var(--fg-muted);
+                }
+
                 """;
     }
 }

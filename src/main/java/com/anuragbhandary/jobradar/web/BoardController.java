@@ -124,6 +124,8 @@ public class BoardController {
         String due = entry.isDue(today)
                 ? "<div class=\"due\">follow up · " + interest.getRemindOn() + "</div>" : "";
 
+        // The note form is collapsed behind a <details>. Fifteen open textareas on
+        // a board is not a board, and a note is written once and read often.
         return """
                 <div class="jobcard">
                   <div class="c">%s</div>
@@ -136,9 +138,26 @@ public class BoardController {
                     </form>
                     <span>%s %s</span>
                   </div>
+                  <details class="jotter">
+                    <summary>note %s</summary>
+                    <form method="post" action="/board/annotate">
+                      <input type="hidden" name="interestId" value="%d">
+                      <textarea class="input" name="notes" rows="2"
+                        placeholder="Anything worth remembering.">%s</textarea>
+                      <label class="remind">remind me
+                        <input type="date" name="remindOn" value="%s">
+                      </label>
+                      <button class="btn btn-sm" type="submit">Save</button>
+                    </form>
+                  </details>
                 </div>
                 """.formatted(Ui.esc(interest.getCompany()), Ui.esc(interest.getRole()),
-                        note, due, interest.getId(), options, score, link);
+                        note, due, interest.getId(), options, score, link,
+                        interest.getNotes() == null || interest.getNotes().isBlank()
+                                ? "" : "•",
+                        interest.getId(),
+                        Ui.esc(interest.getNotes()),
+                        interest.getRemindOn() == null ? "" : interest.getRemindOn());
     }
 
     // ------------------------------------------------------------------
