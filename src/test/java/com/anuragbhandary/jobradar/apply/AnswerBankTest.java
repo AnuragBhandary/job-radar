@@ -77,10 +77,14 @@ class AnswerBankTest {
         String yaml = AnswerBank.toYaml(AnswerBank.suggest(List.of(
                 attemptAsking(question("Do you have a valid passport?", true, "Yes", "No")))));
 
+        // The list shape the profile actually binds. Emitting the old
+        // "key": "value" pairs meant every suggestion was silently ignored by the
+        // file it was written for.
         assertThat(yaml)
-                .contains("\"do you have a valid passport\"")
+                .contains("- match: \"do you have a valid passport\"")
+                .contains("        answer: ")
                 .contains("REQUIRED - blocks the form")
-                .contains("options: Yes | No");
+                .contains("pick one: Yes | No");
     }
 
     @Test

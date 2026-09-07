@@ -40,7 +40,8 @@ decision — with the exact phrase that disqualified everything else.
   Lever       ──┼──▶│      (throttled, retrying, one UA)       │
   SmartRecr.  ──┤   │    PostingMapper ── one RawPosting→Posting│
   Workday     ──┤   │    SmartRecruiters and Workday filter    │
-  amazon.jobs ──┘   │      before fetching descriptions        │
+  Recruitee   ──┤   │      before fetching descriptions        │
+  amazon.jobs ──┘   │                                          │
                     └────────────────┬─────────────────────────┘
                                      │
                                      ▼
@@ -77,8 +78,12 @@ URL and a dialect in `application.yml`.
 ## Stack
 
 Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite ·
-Maven · JUnit 5 + Mockito (**311 tests**) · `java.net.http.HttpClient` · Jackson ·
-Google Sheets API · Playwright · Docker
+Maven · JUnit 5 + Mockito (**419 tests**) · `java.net.http.HttpClient` · Jackson ·
+Google Sheets API · Gmail API · Playwright · Spring MVC · Docker
+
+The web layer is opt-in per run: `main()` picks `WebApplicationType.NONE` for
+every command except `ui`, so `fetch` does not start a servlet container to make
+HTTP requests and `digest` does not hold a port while writing a markdown file.
 
 No test contacts a live endpoint and none opens a browser. Every fixture is a
 trimmed copy of a real response captured during a live run, and the form logic —
@@ -141,6 +146,13 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `apply --posting-id=N --resume-only` | Render the tailored resume only. No browser, no board |
 | `apply --all [--limit=5]` | Prepare the candidate list. Refuses `--submit` |
 | `applications [--status=NEEDS_HUMAN]` | What has been prepared, sent or blocked |
+| `learn [--write]` | Questions that blocked forms, as profile entries |
+| `follow-up [--days=14] [--close-abandoned]` | Applications that have gone quiet |
+| `inbox [--days=60] [--apply]` | Read replies, update the tracker's status column |
+| `login --url=... \| --list` | Sign in to a board by hand, once per employer |
+| `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
+| `variants` | Which resume opening has actually produced replies |
+| `ui` | Review queue at http://localhost:8080 |
 
 ---
 
@@ -186,6 +198,29 @@ discarded in favour of the template rather than repaired.
 filled with something plausible and never left blank in the hope that it was
 optional. `applications --status=NEEDS_HUMAN` prints every question that stopped a
 run, which is the list of edits that make the next one go further.
+
+### After it is sent
+
+```
+inbox      ──▶ classify each reply ──▶ propose a tracker status ──▶ --apply writes it
+follow-up  ──▶ rows still "Applied" after 14 days, oldest first
+learn      ──▶ every question that stopped a form, as profile entries to paste
+prep       ──▶ what this posting names that your resume does not
+variants   ──▶ which resume opening produced replies (and whether that means anything)
+```
+
+**Acknowledgements are not replies.** Every application produces one within a
+minute, so counting them clears the follow-up list and reports total success.
+
+**Rejections are written to sound like near-misses**, so they share almost all
+their vocabulary with invitations: *"we would like to invite you to the next
+stage"* and *"we have decided not to invite you to the next stage"* differ by two
+words. The negation carries the meaning, so rejection markers are phrases and are
+checked first.
+
+**`variants` prints its own sample size and refuses to conclude below it.** Two
+replies from five against one from six looks like a 140% improvement and is three
+coin flips.
 
 ### Setup
 
@@ -316,6 +351,17 @@ role is worked from home on an Indian contract.
 **An answer that matches no dropdown option is refused, not approximated.** On a
 two-option yes/no field the closest wrong option is the opposite answer.
 
+**A consent checkbox is recognised and never ticked.** Agreeing to a company's
+terms on someone's behalf is not form-filling. It is left for the human along
+with the submit button.
+
+**Adding a `Source` value is no longer a database rebuild.** Hibernate writes a
+SQLite `CHECK` constraint listing the enum names, SQLite cannot alter one, and
+`ddl-auto` will not notice it is too narrow — so the failure arrives at the first
+insert, on a table that looks correct. `SchemaMigrator` patches the stored DDL
+before Spring starts, unions rather than replaces the value list, and recreates
+the indexes that the `DROP` would otherwise take with it.
+
 ---
 
 **A number in the "Preferred" section is not the bar.** Amazon's Network Dev
@@ -406,6 +452,30 @@ skills column had no gap. `box-sizing: border-box` on a shrink-to-fit cell was a
 plausible cause and was the wrong one: `table.skills td` beats a bare `.sk-items`
 on specificity, so the rule never applied. The visible symptom of a specificity
 loss and of a box-model quirk are identical.
+
+**One live form found more than the whole test suite.** Driving a single Ashby
+application end to end turned up eight defects, every one of which reported
+success while the page on screen disagreed: a relative resume path whose failure
+surfaced on a field called "Name"; a referral question filled with the applicant's
+own name because its label contains the words "full name"; a selector fallback of
+`input:nth-child(3)` that was not scoped to a parent and resolved to a hidden file
+input three sections away; checkbox groups read as one field per option, so the
+blocked list filled with entries like "I agree"; Yes/No toggles built from bare
+`<button type="submit">` that a reader querying `input, select, textarea` cannot
+see at all — two required questions sat empty while the report said zero blockers;
+comboboxes where `fill()` sets a value the widget never notices; a
+`Map<String, String>` of profile answers whose keys Spring canonicalised, so every
+key with a space or a slash bound mangled or not at all; and a blank profile value
+that printed as `null`.
+
+**The `Map<String, String>` one is the one to remember.** It bound without error,
+the property was present, and it was simply empty of the entries that mattered —
+so the escape hatch appeared to work while answering nothing. A list of records
+binds every character as written.
+
+**A form that looks submittable and is not is the worst output this tool has.**
+Worse than a crash, which is visible. That is why unreadable widgets are now read,
+and why a click that navigates is a hard failure rather than a logged warning.
 
 **The dangerous bugs were the ones that produced no error.** Every serious defect
 in this project was silent, and every one was found by looking at the actual

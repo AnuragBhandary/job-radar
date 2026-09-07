@@ -136,6 +136,7 @@ public class ApplyService {
             pdf.write(renderer.toHtml(tailored, resume.headline()), resumePdf);
             attempt.setResumePath(resumePdf.toString());
             attempt.setTailoringNote(tailored.note());
+            attempt.setSummaryId(tailored.summary().id());
             log.info("Resume: {}", tailored.note());
 
             try (BrowserSession session = BrowserSession.persistent(
@@ -256,6 +257,7 @@ public class ApplyService {
         attempt.setStatus(AttemptStatus.SKIPPED);
         attempt.setResumePath(resumePdf.toString());
         attempt.setTailoringNote(tailored.note());
+        attempt.setSummaryId(tailored.summary().id());
         attempt.setBlockerReason("resume-only run - no form was opened");
         attempt.setFinishedAt(Instant.now());
 
