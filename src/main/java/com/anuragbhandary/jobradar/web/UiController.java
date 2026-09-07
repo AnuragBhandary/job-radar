@@ -11,7 +11,6 @@ import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.Verdict;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -78,8 +76,7 @@ public class UiController {
 
     @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public String queue(@RequestParam(required = false) String country,
-            HttpServletRequest request) {
+    public String queue(@RequestParam(required = false) String country) {
         List<ApplicationAttempt> recent = attempts.findTop30ByOrderByStartedAtDesc();
         Set<Long> attempted = recent.stream()
                 .map(ApplicationAttempt::getPostingId).collect(Collectors.toSet());
@@ -110,8 +107,7 @@ public class UiController {
         if (waiting.isEmpty()) {
             body.append("<p class=\"empty\">None. Run <code>run</code> to fetch and screen.</p>");
         } else {
-            String csrfInput = csrfInput(csrf(request));
-            waiting.stream().limit(40).forEach(posting -> body.append(postingRow(posting, csrfInput)));
+            waiting.stream().limit(40).forEach(posting -> body.append(postingRow(posting)));
         }
         body.append("</div></section>");
         // Preparing blocks for the better part of a minute while a browser opens,
@@ -143,7 +139,7 @@ public class UiController {
                         .formatted(candidates.size())
                 + "<strong>%d</strong> attempts".formatted(attempts.count());
 
-        return Ui.page("Queue", stat, body.toString(), csrf(request));
+        return Ui.page("Queue", stat, body.toString());
     }
 
     /** One filter link per country that actually has candidates. */
@@ -184,7 +180,7 @@ public class UiController {
         body.append("</div></section>");
     }
 
-    private String postingRow(Posting posting, String csrfInput) {
+    private String postingRow(Posting posting) {
         String company = companyOf(posting);
 
         StringBuilder meta = new StringBuilder("<div class=\"meta\">");
@@ -225,13 +221,12 @@ public class UiController {
                     <a href="%s" target="_blank" rel="noreferrer">posting</a>
                     <form method="post" action="/prepare" class="prepare-form">
                       <input type="hidden" name="postingId" value="%d">
-                      %s
                       <button class="btn" type="submit">Prepare</button>
                     </form>
                   </div>
                 </article>
                 """.formatted(Ui.esc(company), Ui.esc(posting.getTitle()), meta,
-                        Ui.esc(posting.getUrl()), posting.getId(), csrfInput);
+                        Ui.esc(posting.getUrl()), posting.getId());
     }
 
     private String attemptRow(ApplicationAttempt attempt) {
@@ -317,11 +312,11 @@ public class UiController {
 
     @GetMapping(value = "/attempt/{id}", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public String attempt(@PathVariable Long id, HttpServletRequest request) {
+    public String attempt(@PathVariable Long id) {
         Optional<ApplicationAttempt> found = attempts.findById(id);
         if (found.isEmpty()) {
             return Ui.page("Not found", "",
-                    "<p class=\"empty\">No attempt " + id + ".</p>", csrf(request));
+                    "<p class=\"empty\">No attempt " + id + ".</p>");
         }
         ApplicationAttempt attempt = found.get();
         Optional<Posting> posting = postings.findById(attempt.getPostingId());
@@ -342,12 +337,12 @@ public class UiController {
         body.append(Ui.assistant(attempt.getId(), assistant.isUsable(), openQuestions(attempt)));
 
         if (attempt.getStatus() == AttemptStatus.PREPARED) {
-            body.append(submitBlock(attempt, csrfInput(csrf(request))));
+            body.append(submitBlock(attempt));
         }
 
         String stat = "attempt <strong>" + id + "</strong><span class=\"sep\">·</span>"
                 + (attempt.getStatus() == AttemptStatus.SUBMITTED ? "sent" : "nothing sent yet");
-        return Ui.page(attempt.getCompany(), stat, body.toString(), csrf(request));
+        return Ui.page(attempt.getCompany(), stat, body.toString());
     }
 
     private String head(ApplicationAttempt attempt, Posting posting) {
@@ -520,7 +515,7 @@ public class UiController {
                         """.formatted(attempt.getId()));
     }
 
-    private String submitBlock(ApplicationAttempt attempt, String csrfInput) {
+    private String submitBlock(ApplicationAttempt attempt) {
         return """
                 <section class="submit-block">
                   <h2>Submit</h2>
@@ -529,7 +524,6 @@ public class UiController {
                   Most boards accept one application per posting, ever.</p>
                   <form method="post" action="/submit">
                     <input type="hidden" name="attemptId" value="%d">
-                    %s
                     <label class="confirm">
                       <input type="checkbox" name="read" onchange="go.disabled=!checked">
                       <span>I have read the filled form above, including the derived
@@ -538,7 +532,7 @@ public class UiController {
                     <button id="go" class="btn btn-primary" disabled>Submit to %s</button>
                   </form>
                 </section>
-                """.formatted(attempt.getId(), csrfInput, Ui.esc(attempt.getCompany()));
+                """.formatted(attempt.getId(), Ui.esc(attempt.getCompany()));
     }
 
     // ------------------------------------------------------------------
@@ -600,24 +594,6 @@ public class UiController {
                 .distinct()
                 .limit(8)
                 .toList();
-    }
-
-    /**
-     * The CSRF token for this request, or null when security is not in the chain.
-     *
-     * <p>Null-tolerant so the pages still render in a test slice that has no
-     * security filters, rather than failing on something orthogonal to what is
-     * being tested.
-     */
-    private static CsrfToken csrf(HttpServletRequest request) {
-        return request == null ? null
-                : (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-    }
-
-    private static String csrfInput(CsrfToken token) {
-        return token == null ? ""
-                : "<input type=\"hidden\" name=\"" + Ui.esc(token.getParameterName())
-                        + "\" value=\"" + Ui.esc(token.getToken()) + "\">";
     }
 
     private String companyOf(Posting posting) {

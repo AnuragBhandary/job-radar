@@ -79,7 +79,7 @@ URL and a dialect in `application.yml`.
 
 Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite ·
 Maven · JUnit 5 + Mockito (**419 tests**) · `java.net.http.HttpClient` · Jackson ·
-Google Sheets API · Gmail API · Playwright · Spring MVC · Spring Security · Docker
+Google Sheets API · Gmail API · Playwright · Spring MVC · Docker
 
 The web layer is opt-in per run: `main()` picks `WebApplicationType.NONE` for
 every command except `ui`, so `fetch` does not start a servlet container to make
@@ -153,7 +153,6 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
 | `variants` | Which resume opening has actually produced replies |
 | `ui` | Review queue and assistant at http://localhost:8080 |
-| `passwd` | Print a bcrypt line for the `ui` login |
 
 ---
 
@@ -251,30 +250,18 @@ phrase filter was still obviously generated: one unbroken block, nine sentences,
 eight of them starting with "I", no mention of the job. Every sentence was fine
 and the shape was wrong.
 
-### Signing in, and reaching it from elsewhere
+### It runs on your machine only
 
-`ui` is behind a password. One account, from `~/.config/job-radar/secrets.yml`:
+`ui` binds `127.0.0.1`. There is no login, because there is no second user and no
+route in: the port is not reachable from another machine, including one on the
+same wifi.
 
-```bash
-mvn -q spring-boot:run -Dspring-boot.run.arguments=passwd   # prints a bcrypt line
-```
-
-It binds to `127.0.0.1`. **Do not put this on the public internet.** A login stops
-someone who reaches the port; it does nothing about the machine, and the machine
-is where the value is: a Chromium profile holding live session cookies for every
-job board signed into, a Gmail refresh token, a Google service-account key, and a
-database of applications. Hosting that somewhere means hosting all of it.
-
-`SecurityConfig` refuses to start when bound to a non-loopback address with no
-password set, because that pair is one line of YAML away and is the combination
-that matters.
-
-**To reach it from your phone, put the machine on a private network rather than
-the app on a public one.** [Tailscale](https://tailscale.com) is the short answer:
-install it on the laptop and the phone, and `http://<laptop>:8080` works from
-anywhere with nothing exposed to the internet. [Cloudflare
-Tunnel](https://developers.cloudflare.com/cloudflare-one/) with Access in front of
-it is the same idea with a real hostname.
+That is a deliberate trade and it rests on the binding. The machine holds a
+Chromium profile with live session cookies for every job board signed into, a
+Gmail refresh token and a Google service-account key, so **do not expose this
+port**. To reach it from a phone, put the machine on a private network with
+[Tailscale](https://tailscale.com) rather than the app on a public one, and add a
+password first.
 
 **GitHub Pages cannot host this.** Pages serves static files; this is a Spring
 Boot server that drives a browser.
