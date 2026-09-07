@@ -88,7 +88,22 @@ public class MatchScorer {
         List<String> have = wanted.stream().filter(known::contains).toList();
         List<String> missing = wanted.stream().filter(term -> !known.contains(term)).toList();
 
-        int points = Math.round(SKILLS_MAX * (float) have.size() / wanted.size());
+        // Fraction AND depth, blended.
+        //
+        // Fraction alone rewards a vague advert: a posting naming two
+        // technologies he happens to know scored a perfect 40, while a rich
+        // backend posting naming twelve where he knows nine scored 30. The first
+        // real run put three security roles at the top of the feed on exactly
+        // that, over the Java and Kafka postings the tool exists to find.
+        //
+        // Counting matches alone has the opposite fault and rewards length. So
+        // coverage is most of the score and absolute depth is the rest, which
+        // means "all of two" loses to "nine of twelve" without a long advert
+        // winning by being long.
+        float coverage = (float) have.size() / wanted.size();
+        float depth = Math.min(1f, have.size() / 8f);
+        int points = Math.round(SKILLS_MAX * (0.7f * coverage + 0.3f * depth));
+
         String detail = missing.isEmpty()
                 ? "you have all " + wanted.size() + " technologies it names"
                 : "you have %d of %d; missing %s".formatted(

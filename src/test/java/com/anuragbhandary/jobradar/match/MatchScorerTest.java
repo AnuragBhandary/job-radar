@@ -50,7 +50,7 @@ class MatchScorerTest {
     }
 
     @Test
-    @DisplayName("skills score on the fraction covered, not the count matched")
+    @DisplayName("a long advert cannot win by being long")
     void longAdvertsDoNotWinByBeingLong() {
         // Counting matches rewards the advert for being verbose, which is a
         // property of the advert and not of the fit.
@@ -60,6 +60,20 @@ class MatchScorerTest {
 
         assertThat(factor(narrow, "Skills").points())
                 .isGreaterThan(factor(wide, "Skills").points());
+    }
+
+    @Test
+    @DisplayName("a vague advert cannot win by being vague")
+    void twoTechnologiesDoNotBeatNine() {
+        // The first real run put three security roles at the top of the feed
+        // because each named two technologies he happened to know, scoring a
+        // perfect 40 over the Java and Kafka postings the tool exists to find.
+        MatchScore vague = scorer.score(posting("Security Engineer", "Docker and Python."), TODAY);
+        MatchScore rich = scorer.score(posting("Backend Engineer",
+                "Java, Spring Boot, Kafka, PostgreSQL, Docker, Python, Rust, Elixir."), TODAY);
+
+        assertThat(factor(rich, "Skills").points())
+                .isGreaterThan(factor(vague, "Skills").points());
     }
 
     @Test
