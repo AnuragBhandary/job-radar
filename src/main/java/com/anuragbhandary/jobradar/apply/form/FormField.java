@@ -32,7 +32,20 @@ public record FormField(
         RADIO,
         CHECKBOX,
         FILE,
-        DATE
+        DATE,
+
+        /**
+         * A choice built out of buttons and ARIA roles rather than {@code <input>}.
+         *
+         * <p>Its own type because it is filled by clicking, not by checking - and
+         * because it exists at all. Ashby renders "Are you legally eligible to
+         * work in the country where you're planning to work from?" as a pair of
+         * styled buttons with {@code role="radio"}. A reader that queries
+         * {@code input, select, textarea} cannot see it, so a required question
+         * sat empty on screen while the report said zero blockers. A form that
+         * looks submittable and is not is the worst output this tool has.
+         */
+        ARIA_CHOICE
     }
 
     public FormField withKind(FieldKind newKind) {
@@ -45,6 +58,7 @@ public record FormField(
 
     /** True when the field offers a fixed set of answers that must be matched. */
     public boolean isChoice() {
-        return control == ControlType.SELECT || control == ControlType.RADIO;
+        return control == ControlType.SELECT || control == ControlType.RADIO
+                || control == ControlType.ARIA_CHOICE;
     }
 }

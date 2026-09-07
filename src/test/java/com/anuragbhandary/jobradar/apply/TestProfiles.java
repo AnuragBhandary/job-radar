@@ -35,7 +35,15 @@ public final class TestProfiles {
                                         new BigDecimal("65000"), "per year")),
                         "Open on compensation.", false),
                 new ApplicantProfile.Availability("None", "Immediately", true),
-                Map.of("how did you hear", "Company careers page",
-                        "are you at least 18", "Yes"));
+                List.of(
+                        new ApplicantProfile.ExtraAnswer(
+                                "how did you hear", "Company careers page"),
+                        new ApplicantProfile.ExtraAnswer(
+                                "are you at least 18", "Yes"),
+                        // A match written the way the question is actually worded,
+                        // punctuation and all - the case the Map version dropped.
+                        new ApplicantProfile.ExtraAnswer(
+                                "status that allows you to work",
+                                "I am a citizen / permanent resident")));
     }
 }

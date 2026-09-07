@@ -127,7 +127,12 @@ public class ApplyService {
             // 1. Documents. Rendered before the browser opens, so a resume that
             //    fails to render costs nothing and leaves no half-filled form.
             TailoredResume tailored = tailor.tailor(posting);
-            Path resumePdf = workDir.resolve(resumeFileName(company));
+            // Absolute, not "./applications/...". Playwright's setInputFiles rejects
+            // a relative path with "Cannot get absolute file path", and the failure
+            // arrives on whatever field the file input's label resolved to - which
+            // on Ashby is "Name", so it reads as the name field being broken.
+            Path resumePdf = workDir.resolve(resumeFileName(company))
+                    .toAbsolutePath().normalize();
             pdf.write(renderer.toHtml(tailored, resume.headline()), resumePdf);
             attempt.setResumePath(resumePdf.toString());
             attempt.setTailoringNote(tailored.note());
@@ -141,7 +146,7 @@ public class ApplyService {
                 page.navigate(posting.getUrl());
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 
-                List<FormField> fields = readFormRevealingItIfNeeded(page);
+                List<FormField> fields = readFormRevealingItIfNeeded(page, posting);
                 if (fields.isEmpty()) {
                     return stop(attempt, AttemptStatus.NEEDS_HUMAN, workDir, null,
                             "No form found at " + posting.getUrl()
@@ -266,26 +271,77 @@ public class ApplyService {
      * beyond that is guessing at a page's structure, and the tool stops and says
      * so instead.
      */
-    private List<FormField> readFormRevealingItIfNeeded(Page page) {
+    private List<FormField> readFormRevealingItIfNeeded(Page page, Posting posting) {
         List<FormField> fields = reader.read(page);
         if (!fields.isEmpty()) {
             return fields;
         }
-        for (String name : List.of("Apply for this job", "Apply now", "Apply")) {
-            Locator button = page.getByRole(AriaRole.BUTTON,
-                    new Page.GetByRoleOptions().setName(name).setExact(false));
-            if (button.count() == 0) {
-                button = page.getByRole(AriaRole.LINK,
-                        new Page.GetByRoleOptions().setName(name).setExact(false));
+
+        // Try the known address before trying to find a button. Ashby and Lever
+        // both put the form on their own URL, and Ashby exposes the link with
+        // role=tab rather than as a button or a link named "Apply" - so no amount
+        // of looking for an Apply control finds it. Navigating is also cheaper and
+        // more repeatable than clicking something that might be a scroll anchor.
+        String applyUrl = applicationUrlFor(posting);
+        if (applyUrl != null) {
+            log.info("No form on the page - trying {}", applyUrl);
+            page.navigate(applyUrl);
+            page.waitForLoadState(LoadState.NETWORKIDLE);
+            fields = reader.read(page);
+            if (!fields.isEmpty()) {
+                return fields;
             }
-            if (button.count() > 0 && button.first().isVisible()) {
+        }
+        for (String name : List.of(
+                "Apply for this job", "Apply for this position", "Apply now",
+                "Apply to this job", "Submit application", "Apply")) {
+
+            for (AriaRole role : List.of(AriaRole.BUTTON, AriaRole.LINK)) {
+                Locator control = page.getByRole(role,
+                        new Page.GetByRoleOptions().setName(name).setExact(false));
+                if (control.count() == 0 || !control.first().isVisible()) {
+                    continue;
+                }
                 log.info("No form on the page - clicking '{}'", name);
-                button.first().click();
+                control.first().click();
                 page.waitForLoadState(LoadState.NETWORKIDLE);
-                return reader.read(page);
+                List<FormField> revealed = reader.read(page);
+                if (!revealed.isEmpty()) {
+                    return revealed;
+                }
+                // The click may have scrolled to an anchor rather than navigated.
+                // One more attempt is the limit; past that this is guessing at a
+                // page's structure, and it stops and says so instead.
             }
         }
         return List.of();
+    }
+
+    /**
+     * The URL of the application form, where the platform puts it somewhere else.
+     *
+     * <p>Only for the two where the pattern is documented and stable. Guessing a
+     * URL on the others would mean navigating away from a page that does have the
+     * form, which turns a working application into a 404.
+     *
+     * @return the form's address, or null when the posting URL is already it
+     */
+    static String applicationUrlFor(Posting posting) {
+        String url = posting.getUrl();
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String trimmed = url.replaceAll("[?#].*$", "").replaceAll("/+$", "");
+        return switch (posting.getSource()) {
+            // https://jobs.ashbyhq.com/{token}/{id} -> .../application
+            case ASHBY -> trimmed.endsWith("/application") ? null : trimmed + "/application";
+            // https://jobs.lever.co/{token}/{id} -> .../apply
+            case LEVER -> trimmed.endsWith("/apply") ? null : trimmed + "/apply";
+            // Greenhouse renders the form inline; Recruitee's careers_apply_url
+            // already lands on it; SmartRecruiters, Amazon and Workday all differ
+            // per tenant and are left to the click fallback.
+            case GREENHOUSE, SMARTRECRUITERS, AMAZON, WORKDAY, RECRUITEE -> null;
+        };
     }
 
     /**
@@ -311,11 +367,21 @@ public class ApplyService {
         }
     }
 
+    /**
+     * Records a stopped attempt.
+     *
+     * <p>The blocker defaults to the message rather than to null. It was null on
+     * the "no form found" path, and the result was an attempt row that said
+     * NEEDS_HUMAN with an empty reason - which is the one thing a blocked attempt
+     * must never be, because the reason is the entire output. It looked fine in
+     * the terminal, where the message is printed, and was empty everywhere the
+     * row is read afterwards.
+     */
     private ApplyOutcome stop(
             ApplicationAttempt attempt, AttemptStatus status,
             Path workDir, String blocker, String message) {
         attempt.setStatus(status);
-        attempt.setBlockerReason(blocker);
+        attempt.setBlockerReason(blocker != null ? blocker : message);
         attempt.setFinishedAt(Instant.now());
         return new ApplyOutcome(attempts.save(attempt), null, workDir, message);
     }

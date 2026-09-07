@@ -31,13 +31,16 @@ public class JobRadarCli implements ApplicationRunner {
     private final FollowUpCommand followUp;
     private final LearnCommand learn;
     private final InboxCommand inbox;
+    private final LoginCommand login;
+    private final UiCommand ui;
+    private final PrepCommand prep;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
             ProbeCommand probe, ServeCommand serve,
             ApplyCommand apply, ApplicationsCommand applications,
-            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox) {
+            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -51,6 +54,9 @@ public class JobRadarCli implements ApplicationRunner {
         this.followUp = followUp;
         this.learn = learn;
         this.inbox = inbox;
+        this.login = login;
+        this.ui = ui;
+        this.prep = prep;
     }
 
     @Override
@@ -80,6 +86,9 @@ public class JobRadarCli implements ApplicationRunner {
             case "follow-up" -> followUp.run(options);
             case "learn" -> learn.run(options);
             case "inbox" -> inbox.run(options);
+            case "login" -> login.run(options);
+            case "ui" -> ui.run(options);
+            case "prep" -> prep.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -129,6 +138,9 @@ public class JobRadarCli implements ApplicationRunner {
                   follow-up --close-abandoned             mark six-week silences "No response"
                   learn [--write]                         questions that blocked forms, as YAML
                   inbox [--days=60] [--apply]             read replies, update tracker status
+                  login --url=... | --list                sign in to a board by hand, once
+                  ui                                      review queue at http://localhost:8080
+                  prep --posting-id=123 [--print]         interview prep: gaps, questions, answers
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

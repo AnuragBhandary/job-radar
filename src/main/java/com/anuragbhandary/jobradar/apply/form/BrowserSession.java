@@ -98,6 +98,31 @@ public class BrowserSession implements AutoCloseable {
         return context.newPage();
     }
 
+    /**
+     * The domains this profile currently holds cookies for, with a count each.
+     *
+     * <p>The only way to answer "am I still signed in to that Workday tenant?"
+     * without opening the board. Cookie counts rather than names: the names are
+     * session tokens and there is no reason to print them.
+     */
+    public java.util.Map<String, Long> cookieDomains() {
+        return context.cookies().stream()
+                .map(cookie -> cookie.domain.startsWith(".")
+                        ? cookie.domain.substring(1) : cookie.domain)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        domain -> domain, java.util.TreeMap::new,
+                        java.util.stream.Collectors.counting()));
+    }
+
+    /** Blocks until the page is closed by hand, or the timeout passes. */
+    public void waitForManualWork(Page page, long timeoutMs) {
+        try {
+            page.waitForClose(new Page.WaitForCloseOptions().setTimeout(timeoutMs), () -> { });
+        } catch (RuntimeException e) {
+            log.debug("Stopped waiting for the page: {}", e.getMessage());
+        }
+    }
+
     @Override
     public void close() {
         try {
