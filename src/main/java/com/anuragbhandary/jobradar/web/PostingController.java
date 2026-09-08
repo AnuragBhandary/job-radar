@@ -34,14 +34,20 @@ public class PostingController {
     private final MatchScorer scorer;
     private final PrepService prep;
     private final PipelineService pipeline;
+    private final CompanyNames companies;
+    private final com.anuragbhandary.jobradar.money.SalaryGuide salary;
 
     public PostingController(PostingRepository postings, BoardTokenRepository boards,
-            MatchScorer scorer, PrepService prep, PipelineService pipeline) {
+            MatchScorer scorer, PrepService prep, PipelineService pipeline,
+            com.anuragbhandary.jobradar.money.SalaryGuide salary,
+            CompanyNames companies) {
         this.postings = postings;
         this.boards = boards;
         this.scorer = scorer;
         this.prep = prep;
         this.pipeline = pipeline;
+        this.salary = salary;
+        this.companies = companies;
     }
 
     @GetMapping(value = "/posting/{id}", produces = MediaType.TEXT_HTML_VALUE)
@@ -58,10 +64,11 @@ public class PostingController {
         Optional<JobInterest> interest = pipeline.forPosting(id);
 
         StringBuilder body = new StringBuilder();
-        body.append("<p class=\"crumbs\"><a href=\"/\">feed</a> · ")
+        body.append("<p class=\"crumbs\"><a href=\"/jobs\">jobs</a> · ")
                 .append(Ui.esc(company)).append("</p>");
 
         body.append(header(posting, company, score, interest));
+        body.append(pay(posting));
         body.append(factors(score));
         body.append(gaps(pack));
         body.append(description(posting));
@@ -102,7 +109,8 @@ public class PostingController {
                     %s
                     <form method="post" action="/prepare" class="prepare-form">
                       <input type="hidden" name="postingId" value="%d">
-                      <button class="btn btn-primary btn-sm" type="submit">Prepare</button>
+                      <button class="btn btn-primary btn-sm" type="submit"
+                              data-busy="filling the form">Prepare</button>
                     </form>
                   </div>
                 </section>
@@ -119,6 +127,23 @@ public class PostingController {
                         Ui.esc(nullSafe(posting.getUrl())),
                         action,
                         posting.getId());
+    }
+
+    /**
+     * What to write in the salary box.
+     *
+     * <p>On this page rather than only in the list because this is where the
+     * decision to apply is made, and the question "what do I put?" is the one
+     * that sends people to a currency converter at midnight. Both periods,
+     * because forms ask for both, and the rupee equivalent because a euro figure
+     * means nothing until it is one.
+     */
+    private String pay(Posting posting) {
+        return salary.forPosting(posting)
+                .map(price -> Components.panel("What to ask for",
+                        Ui.noteMuted("from your profile band"),
+                        Components.moneyDetail(price)))
+                .orElse("");
     }
 
     /** The score, broken into its five factors with a bar each. */
@@ -195,9 +220,7 @@ public class PostingController {
     }
 
     private String companyOf(Posting posting) {
-        return boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
-                .map(board -> board.getLabel() == null ? board.getToken() : board.getLabel())
-                .orElse(posting.getBoardToken());
+        return companies.of(posting);
     }
 
     private static String nullSafe(String value) {

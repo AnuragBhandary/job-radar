@@ -35,7 +35,7 @@ public record MatchProperties(
     }
 
     public int comfortableYears() {
-        return comfortableYears <= 0 ? 2 : comfortableYears;
+        return comfortableYears <= 0 ? 1 : comfortableYears;
     }
 
     /** Below this many days old, a posting is fresh enough to score full marks. */

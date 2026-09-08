@@ -29,13 +29,81 @@ public class MailController {
 
     private final GmailConnection connection;
     private final InboxScanner scanner;
+    private final com.anuragbhandary.jobradar.repo.BoardTokenRepository boards;
 
-    public MailController(GmailConnection connection, InboxScanner scanner) {
+    public MailController(GmailConnection connection, InboxScanner scanner,
+            com.anuragbhandary.jobradar.repo.BoardTokenRepository boards) {
         this.connection = connection;
         this.scanner = scanner;
+        this.boards = boards;
     }
 
-    @GetMapping(value = "/mail", produces = MediaType.TEXT_HTML_VALUE)
+    /**
+     * Which boards are answering, and which have stopped.
+     *
+     * <p>Here because a broken board is invisible by its nature. It does not
+     * produce a wrong posting, it produces no postings, and a feed that is short
+     * because eight boards are failing looks exactly like a feed that is short
+     * because nobody is hiring. Eight of these were failing with nothing anywhere
+     * saying so.
+     */
+    private String boardHealth() {
+        var all = boards.findAll();
+        var flagged = boards.findByLastErrorIsNotNull();
+        var broken = flagged.stream()
+                .filter(com.anuragbhandary.jobradar.domain.BoardToken::isBroken).toList();
+        var retired = flagged.stream()
+                .filter(com.anuragbhandary.jobradar.domain.BoardToken::isRetired).toList();
+        long live = all.size() - flagged.size();
+
+        StringBuilder inner = new StringBuilder("<div class=\"tiles\">")
+                .append(Components.tile(String.valueOf(live), "Answering", null, false))
+                .append(Components.tile(String.valueOf(broken.size()), "Failing",
+                        broken.isEmpty() ? "nothing is broken" : "jobs are being missed",
+                        broken.isEmpty()))
+                .append(Components.tile(String.valueOf(retired.size()), "Retired",
+                        "switched off on purpose", true))
+                .append("</div>");
+
+        if (broken.isEmpty()) {
+            inner.append("<p class=\"check-why\">Every board that is supposed to answer, "
+                    + "answered on the last run.</p>");
+        } else {
+            inner.append("<ul class=\"blocked-list\">");
+            broken.forEach(board -> inner.append("<li><span class=\"q\">")
+                    .append(Ui.esc(board.getToken())).append("</span> ")
+                    .append(Ui.badge("origin", String.valueOf(board.getSource())))
+                    .append("<div class=\"why\">").append(Ui.esc(shorten(board.getLastError())))
+                    .append("</div></li>"));
+            inner.append("</ul>")
+                    .append("<p class=\"check-why\">A board usually fails because the company "
+                            + "renamed or closed it. Fix or drop these in "
+                            + "<code>application.yml</code>, then run <code>fetch</code>.</p>");
+        }
+
+        if (!retired.isEmpty()) {
+            inner.append("<details class=\"jotter\" style=\"margin-top:14px\">")
+                    .append("<summary>")
+                    .append(retired.size()).append(" retired on purpose</summary>")
+                    .append("<ul class=\"blocked-list\">");
+            retired.forEach(board -> inner.append("<li><span class=\"q\">")
+                    .append(Ui.esc(board.getToken())).append("</span> ")
+                    .append("<span class=\"why\">")
+                    .append(Ui.esc(shorten(board.retirementReason())))
+                    .append("</span></li>"));
+            inner.append("</ul></details>");
+        }
+        return Components.panel("Boards", null, inner.toString());
+    }
+
+    private static String shorten(String error) {
+        if (error == null) {
+            return "no reason recorded";
+        }
+        return error.length() > 140 ? error.substring(0, 139) + "…" : error;
+    }
+
+    @GetMapping(value = {"/setup", "/mail"}, produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public String page(@RequestParam(required = false) String said, HttpServletRequest request) {
         GmailConnection.Status status = connection.status();
@@ -53,10 +121,11 @@ public class MailController {
                 .append(explain(status))
                 .append(actions(status, request))
                 .append("</div></section>")
-                .append(whatItIsFor());
+                .append(whatItIsFor())
+                .append(boardHealth());
 
         String stat = status.connected() ? "<strong>connected</strong>" : "not connected";
-        return Ui.page("Mail", stat, body.toString(), Ui.Tab.MAIL);
+        return Ui.page("Setup", stat, body.toString(), Ui.Tab.SETUP);
     }
 
     /**
@@ -74,13 +143,13 @@ public class MailController {
             RedirectAttributes flash) {
 
         flash.addAttribute("said", connection.complete(code, error, redirectUri(request)));
-        return "redirect:/mail";
+        return "redirect:/setup";
     }
 
     @PostMapping("/mail/disconnect")
     public String disconnect(RedirectAttributes flash) {
         flash.addAttribute("said", connection.disconnect());
-        return "redirect:/mail";
+        return "redirect:/setup";
     }
 
     // ------------------------------------------------------------------

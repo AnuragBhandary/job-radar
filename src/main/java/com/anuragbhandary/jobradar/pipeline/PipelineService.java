@@ -165,6 +165,12 @@ public class PipelineService {
         JobInterest interest = interests.findById(interestId).orElseThrow(
                 () -> new IllegalArgumentException("No interest " + interestId));
         interest.setStage(stage);
+        // Stamped on the first move into a sent stage and never revised: moving
+        // Applied to Screening a fortnight later must not reset the clock that
+        // says how long this has been running.
+        if (stage.isSent() && interest.getAppliedOn() == null) {
+            interest.setAppliedOn(LocalDate.now());
+        }
         mirrorToSheet(interest);
         return interests.save(interest);
     }
@@ -223,19 +229,57 @@ public class PipelineService {
      * anything, and it never overwrites a stage a human has since moved.
      */
     @Transactional
-    public int importFromTracker() throws IOException {
-        if (!sheets.isConfigured()) {
-            return 0;
+    /**
+     * @param imported  rows the board had never seen
+     * @param refreshed rows it already had, with a gap now filled from the sheet
+     */
+    public record ImportResult(int imported, int refreshed) {
+
+        public String describe() {
+            if (imported == 0 && refreshed == 0) {
+                return "Nothing to import. The board already matches the sheet.";
+            }
+            StringBuilder said = new StringBuilder();
+            if (imported > 0) {
+                said.append("Imported ").append(imported)
+                        .append(imported == 1 ? " row" : " rows");
+            }
+            if (refreshed > 0) {
+                said.append(said.isEmpty() ? "Filled in dates on " : ", and refreshed ")
+                        .append(refreshed).append(refreshed == 1 ? " row" : " rows");
+            }
+            return said.append('.').toString();
         }
-        List<Integer> known = interests.findAll().stream()
-                .map(JobInterest::getTrackerRow)
-                .filter(java.util.Objects::nonNull)
-                .toList();
+    }
+
+    public ImportResult importFromTracker() throws IOException {
+        if (!sheets.isConfigured()) {
+            return new ImportResult(0, 0);
+        }
+        // Keyed rather than listed: a re-import updates the row it already has
+        // instead of skipping it. Skipping made the import a one-shot, so a
+        // column added later - the applied date, for instance - could never
+        // reach the rows imported before it existed.
+        java.util.Map<Integer, JobInterest> known = new java.util.HashMap<>();
+        interests.findAll().stream()
+                .filter(i -> i.getTrackerRow() != null)
+                .forEach(i -> known.put(i.getTrackerRow(), i));
 
         int imported = 0;
+        int refreshed = 0;
         for (ExistingApplication row : sheets.readExistingApplications()) {
-            if (known.contains(row.rowNumber()) || row.company() == null
-                    || row.company().isBlank()) {
+            if (row.company() == null || row.company().isBlank()) {
+                continue;
+            }
+            JobInterest existing = known.get(row.rowNumber());
+            if (existing != null) {
+                // Only fills gaps. The stage is not overwritten: a card moved on
+                // the board is a decision the spreadsheet has not heard about yet.
+                if (existing.getAppliedOn() == null && row.dateApplied() != null) {
+                    existing.setAppliedOn(row.dateApplied());
+                    interests.save(existing);
+                    refreshed++;
+                }
                 continue;
             }
             Optional<Posting> posting = findPosting(row);
@@ -252,11 +296,16 @@ public class PipelineService {
                     PipelineStage.fromTrackerStatus(row.status()),
                     posting.map(p -> scorer.score(p).score()).orElse(null));
             interest.setTrackerRow(row.rowNumber());
+            // The sheet's own Date Applied. Previously dropped on the floor, which
+            // left every imported row looking like it was sent the day of the
+            // import - so nothing could tell a fresh application from one that had
+            // been silent for a month.
+            interest.setAppliedOn(row.dateApplied());
             interests.save(interest);
             imported++;
         }
-        log.info("Imported {} tracker row(s) into the board", imported);
-        return imported;
+        log.info("Imported {} tracker row(s), refreshed {}", imported, refreshed);
+        return new ImportResult(imported, refreshed);
     }
 
     /**

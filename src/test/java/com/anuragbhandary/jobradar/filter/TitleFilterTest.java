@@ -152,7 +152,7 @@ class TitleFilterTest {
             "Software Engineer (v/m/x)",
             "Software Engineer (m/v)",
             "Backend Developer (m/w/d)",
-            "Cloud Security Engineer (m,f,x)",
+            "Data Engineer (m,f,x)",
             "Platform Engineer (all genders)",
     })
     @DisplayName("Dutch and German gender tags are not seniority levels")

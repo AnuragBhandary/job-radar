@@ -132,6 +132,34 @@ public class BoardToken {
         this.lastPostingCount = lastPostingCount;
     }
 
+    /**
+     * The prefix that marks a board switched off on purpose.
+     *
+     * <p>{@code lastError} carries two different meanings and always has: a board
+     * that broke, and a board deliberately retired because the company moved ATS
+     * or is already covered elsewhere. Eight of the boards here are the second
+     * kind and none are the first, so counting the field as failures reported
+     * "8 boards are failing, jobs are being missed" on a home page when nothing
+     * was wrong at all.
+     */
+    private static final String RETIRED = "retired:";
+
+    /** Switched off deliberately. Worth listing, never worth alarming about. */
+    public boolean isRetired() {
+        return lastError != null
+                && lastError.regionMatches(true, 0, RETIRED, 0, RETIRED.length());
+    }
+
+    /** Stopped answering when it was expected to. This one is a problem. */
+    public boolean isBroken() {
+        return lastError != null && !lastError.isBlank() && !isRetired();
+    }
+
+    /** The reason without the marker, for showing next to a retired board. */
+    public String retirementReason() {
+        return isRetired() ? lastError.substring(RETIRED.length()).trim() : lastError;
+    }
+
     public String getLastError() {
         return lastError;
     }

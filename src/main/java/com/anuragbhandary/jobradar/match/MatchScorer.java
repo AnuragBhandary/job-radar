@@ -135,9 +135,17 @@ public class MatchScorer {
         }
 
         int comfortable = config.comfortableYears();
-        if (years <= comfortable) {
+        if (years == 0) {
             return new MatchScore.Factor("Experience", EXPERIENCE_MAX, EXPERIENCE_MAX,
-                    "asks for " + years + "+ years, which you have");
+                    "asks for no prior experience");
+        }
+        if (years <= comfortable) {
+            // "which matches what you can evidence", not "which you have". The
+            // difference is the whole point: what a CV claims and what survives
+            // being checked are not always the same length, and a scorer that
+            // asserts the first is talking about a different candidate.
+            return new MatchScore.Factor("Experience", EXPERIENCE_MAX, EXPERIENCE_MAX,
+                    "asks for " + years + "+ years, which matches what you can evidence");
         }
         // Falls away fast. Two years over is a stretch worth trying; five is a
         // different job with the same title.

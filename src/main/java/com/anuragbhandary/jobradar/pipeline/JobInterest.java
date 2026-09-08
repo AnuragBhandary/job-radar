@@ -103,6 +103,21 @@ public class JobInterest {
     @Column(name = "score_when_saved")
     private Integer scoreWhenSaved;
 
+    /**
+     * The day the application went out.
+     *
+     * <p>Null until it does, and null for rows imported from a tracker that left
+     * the date column blank. Nothing else on this entity can stand in for it:
+     * {@code savedAt} is when the row was created, which for the seventeen rows
+     * imported from the spreadsheet is the afternoon of the import, not the day
+     * any of those applications were actually sent.
+     *
+     * <p>Without it nothing downstream can tell a three-day-old application from
+     * a three-week-old one, which is the only question that matters once
+     * something has been sent.
+     */
+    private LocalDate appliedOn;
+
     protected JobInterest() {
         // for JPA
     }
@@ -117,6 +132,9 @@ public class JobInterest {
         this.scoreWhenSaved = score;
         this.savedAt = Instant.now();
         this.updatedAt = this.savedAt;
+        if (stage != null && stage.isSent()) {
+            this.appliedOn = LocalDate.now();
+        }
     }
 
     public Long getId() {
@@ -186,6 +204,20 @@ public class JobInterest {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public LocalDate getAppliedOn() {
+        return appliedOn;
+    }
+
+    public void setAppliedOn(LocalDate appliedOn) {
+        this.appliedOn = appliedOn;
+    }
+
+    /** Days since it was sent, or empty when it has not been sent or has no date. */
+    public java.util.Optional<Long> daysSinceApplied(LocalDate today) {
+        return appliedOn == null ? java.util.Optional.empty()
+                : java.util.Optional.of(java.time.temporal.ChronoUnit.DAYS.between(appliedOn, today));
     }
 
     public Integer getScoreWhenSaved() {
