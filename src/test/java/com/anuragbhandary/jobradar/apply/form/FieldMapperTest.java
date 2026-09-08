@@ -16,7 +16,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class FieldMapperTest {
 
-    private final FieldMapper mapper = new FieldMapper(TestProfiles.indianApplicant());
+    private static final com.anuragbhandary.jobradar.apply.ApplicantProfile PROFILE =
+            TestProfiles.indianApplicant();
+
+    // A store over a profile path that does not exist: the mapper only reads, and
+    // a test that wrote to the real applicant.yml would be a test that edits
+    // personal data on the machine running it.
+    private final FieldMapper mapper = new FieldMapper(PROFILE,
+            new com.anuragbhandary.jobradar.apply.AnswerStore(PROFILE,
+                    java.nio.file.Path.of("/nowhere/applicant.yml")));
 
     private static final ApplicationDocuments DOCS =
             new ApplicationDocuments(Path.of("/tmp/resume.pdf"), "A letter.", "note");

@@ -34,7 +34,7 @@ final class Ui {
      * this tool", not "which URL is this".
      */
     enum Tab {
-        TODAY, JOBS, BOARD, ASSISTANT, SETUP
+        TODAY, JOBS, BOARD, ANSWERS, ASSISTANT, SETUP
     }
 
     static String page(String title, String stat, String body) {
@@ -52,6 +52,7 @@ final class Ui {
                     <a class="%s" href="/">today</a>
                     <a class="%s" href="/jobs">jobs</a>
                     <a class="%s" href="/board">board</a>
+                    <a class="%s" href="/answers">answers</a>
                     <a class="%s" href="/chat">assistant</a>
                     <a class="%s" href="/setup">setup</a>
                   </span>
@@ -61,7 +62,8 @@ final class Ui {
                 <script>%s</script></body></html>
                 """.formatted(esc(title), css(),
                         on(current, Tab.TODAY), on(current, Tab.JOBS), on(current, Tab.BOARD),
-                        on(current, Tab.ASSISTANT), on(current, Tab.SETUP),
+                        on(current, Tab.ANSWERS), on(current, Tab.ASSISTANT),
+                        on(current, Tab.SETUP),
                         stat, current == Tab.BOARD ? "wide" : "", body, behaviour());
     }
 
@@ -356,6 +358,12 @@ final class Ui {
                   var b = e.target.querySelector('button[data-busy]');
                   if (b) { b.setAttribute('data-pending', '1'); }
                 }, true);
+                document.addEventListener('click', function (e) {
+                  var chip = e.target.closest('[data-fill]');
+                  if (!chip) { return; }
+                  var box = document.getElementById(chip.getAttribute('data-fill'));
+                  if (box) { box.value = chip.getAttribute('data-value'); box.focus(); }
+                });
                 document.querySelectorAll('.toast').forEach(function (t) {
                   setTimeout(function () {
                     t.style.transition = 'opacity 400ms';
@@ -1634,6 +1642,25 @@ final class Ui {
                   .statstrip { font-size: var(--fs-xs); }
                   .page { padding: var(--sp-4) var(--sp-3) 64px; }
                   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                }
+
+                /* ---------- answers ---------- */
+
+                .qa { margin-bottom: var(--sp-3); }
+                .qa-blocking { border-left: 3px solid var(--bad); }
+                .qa-blocking .panel-head h2 { color: var(--bad); }
+                .qa-q {
+                  margin: 0 0 var(--sp-3);
+                  font-size: var(--fs-md);
+                  line-height: 1.5;
+                  color: var(--fg);
+                  max-width: 76ch;
+                }
+                .qa-form { display: flex; gap: var(--sp-2); align-items: stretch; margin-bottom: var(--sp-2); }
+                .qa-form .input { flex: 1 1 auto; padding: var(--sp-2) var(--sp-3); }
+                .qa-form .btn { flex: 0 0 auto; }
+                @media (max-width: 560px) {
+                  .qa-form { flex-direction: column; }
                 }
                 """;
     }

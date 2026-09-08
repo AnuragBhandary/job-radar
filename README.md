@@ -1,15 +1,21 @@
 # job-radar
 
-A scheduled command-line pipeline that reads public ATS job boards, screens the
-results against a fixed eligibility and salary profile, works out what changed
-since yesterday, and writes a short daily digest.
+A job search for one person, run from their own laptop. It reads public ATS job
+boards, screens the results against a fixed eligibility and salary profile,
+scores what survives, fills in application forms in a real browser and stops
+before the submit button, then tracks what happens next.
 
-No web UI, no REST API. It is a batch job that produces a markdown file and
-updates a spreadsheet.
+It began as a batch job that wrote a markdown digest, and that half still works
+and still runs on a schedule. The other half is a local web application at
+`localhost:8080`, added once it became clear the interesting question was not
+"which jobs exist" but "what should I do today".
 
 ```
-106 boards · 9,000 postings · 64 candidates · 8,936 rejection reasons you can argue with
+117 boards · 9,032 postings · 56 candidates · 8,976 rejection reasons you can argue with
 ```
+
+Nothing leaves the machine except calls to the job boards themselves and, if you
+connect them, your own Google Sheet and mailbox.
 
 ---
 
@@ -64,9 +70,24 @@ decision — with the exact phrase that disqualified everything else.
       │ repo/  JPA   │◀────────▶│ digest/       │◀───── tracker read
       │ Posting      │          │ DigestService │       (suppresses
       │ BoardToken   │          │ DigestWriter  │        companies
-      └──────────────┘          └────┬──────────┘        applied to)
-                                     ▼
-                          digests/YYYY-MM-DD.md
+      │ Attempt      │          └────┬──────────┘        applied to)
+      │ JobInterest  │               ▼
+      └──────┬───────┘     digests/YYYY-MM-DD.md
+             │
+             ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │  match/MatchScorer      arithmetic 0-100, five factors       │
+  │  worklist/Worklist      what needs a decision today          │
+  │  money/SalaryGuide      what to ask for, and in rupees       │
+  │  apply/  ApplyService ── Playwright ── stops before submit   │
+  │            AnswerStore   answers learned from blocked forms  │
+  │  pipeline/PipelineService  the board; mirrors to the sheet   │
+  │  mail/InboxScanner      replies → proposed status changes    │
+  │  chat/ChatService       Gemini, six read tools, cannot send  │
+  └───────────────────────────────┬──────────────────────────────┘
+                                  ▼
+                    web/  server-rendered HTML, no build step
+                    today · jobs · board · answers · assistant · setup
 ```
 
 Six fetchers behind one interface; mapping to the domain happens in exactly one
@@ -146,13 +167,13 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `apply --posting-id=N --resume-only` | Render the tailored resume only. No browser, no board |
 | `apply --all [--limit=5]` | Prepare the candidate list. Refuses `--submit` |
 | `applications [--status=NEEDS_HUMAN]` | What has been prepared, sent or blocked |
-| `learn [--write]` | Questions that blocked forms, as profile entries |
+| `learn [--write]` | Questions that blocked forms, as profile entries. The `answers` page does this in one click |
 | `follow-up [--days=14] [--close-abandoned]` | Applications that have gone quiet |
 | `inbox [--days=60] [--apply]` | Read replies, update the tracker's status column |
 | `login --url=... \| --list` | Sign in to a board by hand, once per employer |
 | `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
 | `variants` | Which resume opening has actually produced replies |
-| `ui` | Feed, board, chat, mail and review at http://localhost:8080 |
+| `ui` | The web application at http://localhost:8080. Six pages; see below |
 | `board [--import]` | The pipeline in the terminal; `--import` seeds it from the sheet |
 
 ---
@@ -223,11 +244,42 @@ checked first.
 replies from five against one from six looks like a 140% improvement and is three
 coin flips.
 
-### The feed, the board, the chat and the mailbox
+### The web application
 
-`ui` serves five pages.
+`ui` serves six pages: **today**, **jobs**, **board**, **answers**, **assistant**
+and **setup**.
 
-**The feed** ranks every candidate by a 0-100 match score rather than by date.
+**Today** is the home page, and it is deliberately not a list of jobs. The list
+was the home page first and it answered a question nobody has in the morning:
+nine thousand postings screen down to fifty-odd, of which a handful arrived this
+week and the rest were read days ago. Meanwhile the things that actually needed
+a decision were on no screen at all - applications filled and never sent, forms
+stopped on an unanswered question, applications silent for weeks.
+
+So it opens with what needs a decision, then the funnel, then this week's
+arrivals:
+
+```
+screened   open now   new this week   applied   answered   in process
+   9,032        56               7        17          2            0
+
+  "17 applications and no interview yet. At this volume that points at
+   the application rather than the search."
+```
+
+That sentence names the narrowest point rather than the most flattering number.
+"Screened" is rendered quiet on purpose: nine thousand is the denominator, not
+an achievement.
+
+Two things it deliberately does not do. It does not count a board retired on
+purpose as a board that is failing - `lastError` carries both meanings and all
+eight boards carrying it were retired, so the first version of this page
+announced "8 boards are failing" while nothing was wrong. And it does not file
+"the board never showed a form" under questions to answer: there is nothing to
+learn from those, only an application to make by hand.
+
+**Jobs** is the full ranked list, at `/jobs`, somewhere you go on purpose rather
+than somewhere you land. It ranks by a 0-100 match score rather than by date.
 Sorting by date was close to random: a posting is not more relevant for being
 newer. The score is arithmetic - skills 40, experience 25, geography 20,
 freshness 10, signals 5 - and every point traces to a rule, which is what lets
@@ -235,6 +287,35 @@ the posting page show it as five bars with the reasoning under each.
 
 It is **not a filter**. Screening already decides what is eligible and says why
 per rejection; the score only orders what survived.
+
+Every row also carries what to ask for, in the employer's currency and in
+rupees:
+
+```
+  EUR 55,000 - 65,000   Rs 55L - 65L
+```
+
+The rates are configured in `application.yml` with the date they were set, and
+the posting page prints both the rate and that date, because a conversion that
+silently goes stale is worse than none. Rupee figures use lakhs and Indian
+grouping: `INR 1,800,000` is a number the person reading this has to stop and
+count.
+
+**Answers** is the loop that was open at both ends. A form that stops on a
+question it cannot answer records that question; `learn` would print a block of
+YAML with the answers blank, leaving you to find `applicant.yml`, paste it in
+the right place, fill it in and restart. Every step there is somewhere to stop,
+and stopping means the next form blocks on the same question.
+
+The page lists those questions, blocking ones first, with the form's own options
+as buttons where it offered any - the answer has to match one of them exactly or
+the filler refuses it. Typing an answer writes it to the profile, backs the file
+up first, and **takes effect on the next form without a restart**: the mapper
+reads an answer store rather than the startup-bound profile.
+
+The leverage is easy to miss. The match is a substring of the question, so
+answering "do you need sponsorship" once answers it on every board that asks,
+in whatever words they ask it.
 
 **The board** is the pipeline: saved, prepared, applied, screening, interview,
 then offer, rejected or dropped. `board --import` seeds it from the spreadsheet,
@@ -247,6 +328,17 @@ first; a failed sheet write is logged and rolls nothing back. Nothing before
 APPLIED is mirrored, because the tracker is the record of applications sent and
 filling it with bookmarks would destroy the one question it answers.
 
+An offer is a **live** stage, not a closed one. It is the single stage where the
+next move is yours and it usually has a date on it, so it sits in the live band
+and a reminder set against it fires.
+
+Each sent application carries the day it went out, taken from the sheet's own
+Date Applied column on import. Nothing else could stand in for it - `savedAt` is
+when the row was created, which for seventeen imported rows was the afternoon of
+the import - and without a date nothing can tell a three-day-old application
+from a three-week-old one, which is the only question that matters once
+something has been sent.
+
 **The chat** is a Gemini assistant with six tools: it can search postings, read
 one in full, summarise the board and the profile, bookmark a job and move a card.
 It cannot submit an application and does not offer to.
@@ -258,23 +350,33 @@ the API's own error and waits it out once. And Gemini 2.5 thinks by default,
 charging those tokens against `max_tokens`, so a small cap returns HTTP 200 with
 an empty message and no error - hence `reasoning-effort: none`.
 
-**The mail page** is one button and a status line, and it exists because of a
-detail of how Google issues tokens. An OAuth app whose consent screen is still in
-**Testing** gets refresh tokens that **expire after seven days**. Re-approving is
-therefore not a setup step, it is a weekly chore, and a weekly chore that needs a
-terminal is a chore that gets skipped. So the page says whether replies are being
-read, how old the approval is, warns when it is near the seven-day edge, and has
-**Connect** / **Reconnect** / **Disconnect**.
+**Setup** holds the two connections and the board health, because they answer the
+same question: is the machinery actually working. It separates boards that
+answered, boards retired on purpose, and boards that broke - three numbers, not
+one, for the reason above.
+
+Gmail lives here, and it exists because of a detail of how Google issues tokens.
+An OAuth app whose consent screen is still in **Testing** gets refresh tokens
+that **expire after seven days**. Re-approving is therefore not a setup step, it
+is a weekly chore, and a weekly chore that needs a terminal is a chore that gets
+skipped. So the page says whether replies are being read, how old the approval
+is, and warns on the sixth day rather than letting the next scan be the thing
+that tells you.
+
+Consent is a **link**, not a button that opens a browser. The first version used
+Google's installed-app helper, which starts a second web server on its own port
+and opens a browser itself. Spring Boot runs the JVM headless, so no browser ever
+opened: the helper printed the address into a log nobody reads. Worse, an
+abandoned attempt kept its port, and every later attempt collided with it and
+reported "Address already in use" forever.
+
+None of that was necessary. This is already a web server with a browser pointed
+at it, so Google redirects back to `/mail/callback` on the port already in use.
+No second server, no thread, nothing that can be left running.
 
 Publishing the consent screen removes the seven-day expiry, at the cost of an
 "unverified app" warning at consent. For a single-user local tool that warning is
 accurate and the trade is worth making; the page works either way.
-
-Consent blocks until a browser round-trip finishes, which can be a minute, so the
-button starts it on its own thread and the page reports on it rather than the
-request hanging. Disconnecting deliberately does not go through the OAuth client:
-it clears the token store directly, because a broken or missing client secret is
-one of the situations you would be disconnecting in.
 
 ### The assistant
 
@@ -651,5 +753,25 @@ Engineer 2" passed as entry-level. The bare token `engineer` pulled 31 hardware
 roles at a defence company into the first 80 candidates. None of that is visible
 in a test you wrote yourself; all of it is obvious in thirty seconds of reading
 real output.
+
+**A dashboard that flatters you is a dashboard you stop reading.** The first
+version of the home page announced "8 boards are failing, jobs are being missed".
+All eight had been retired on purpose; `lastError` carried both meanings and
+nothing had distinguished them. A red banner about nothing teaches the reader to
+ignore red, which costs more than the banner was ever worth. The same instinct
+runs through the funnel: "screened" is nine thousand and is rendered quiet,
+because it is the denominator, not an achievement.
+
+**The backend knew things the interface never said.** Applications that had gone
+quiet, boards that had stopped answering, questions that kept blocking forms,
+what a job should pay - all of it was already in the database and none of it was
+on a screen, while the home page listed sixty jobs that had mostly been read
+days before. Rewriting the home page around the day's decisions took no new data
+at all. It only took asking what someone opens the tool to find out.
+
+**A loop with a restart in the middle is a loop nobody closes.** Answering a
+blocked question meant reading a terminal, editing a YAML file, and restarting.
+Each step is somewhere to stop, and stopping means the next form blocks on the
+same question. Making the answer take effect immediately was thirty lines.
 
 Full build log, milestone by milestone, in [`docs/`](docs/).

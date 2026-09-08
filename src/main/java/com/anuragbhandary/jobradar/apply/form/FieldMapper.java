@@ -35,10 +35,14 @@ import org.springframework.stereotype.Component;
 public class FieldMapper {
 
     private final ApplicantProfile profile;
+    private final com.anuragbhandary.jobradar.apply.AnswerStore answers;
 
-    public FieldMapper(ApplicantProfile profile) {
+    public FieldMapper(ApplicantProfile profile,
+            com.anuragbhandary.jobradar.apply.AnswerStore answers) {
         this.profile = profile;
+        this.answers = answers;
     }
+
 
     /**
      * The answer for one field, already matched against the field's own options
@@ -211,7 +215,7 @@ public class FieldMapper {
      */
     private Answer fromExtras(FormField field, String fallbackKey) {
         String label = FieldClassifier.normalise(field.label());
-        for (ApplicantProfile.ExtraAnswer entry : profile.extraAnswers()) {
+        for (ApplicantProfile.ExtraAnswer entry : answers.all()) {
             // Both sides normalised the same way. The configured match is written
             // as a person would quote the question - with slashes and question
             // marks - and the label has already had those flattened to spaces, so
@@ -221,7 +225,7 @@ public class FieldMapper {
             }
         }
         if (fallbackKey != null) {
-            for (ApplicantProfile.ExtraAnswer entry : profile.extraAnswers()) {
+            for (ApplicantProfile.ExtraAnswer entry : answers.all()) {
                 if (entry.match().toLowerCase(Locale.ROOT).contains(fallbackKey)) {
                     return Answer.profile(entry.answer());
                 }
