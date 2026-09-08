@@ -48,9 +48,10 @@ public class ChatController {
                         <code>~/.config/job-radar/secrets.yml</code> and restart.</p>
                       </div>
                     </section>
-                    """);
+                    """, Ui.Tab.CHAT);
         }
-        return Ui.page("Chat", "<span class=\"note-muted\">Google Gemini</span>", Ui.chat());
+        return Ui.page("Chat", "<span class=\"note-muted\">Google Gemini</span>", Ui.chat(),
+                Ui.Tab.CHAT);
     }
 
     public record Ask(String message) {

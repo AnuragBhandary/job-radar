@@ -20,7 +20,12 @@ public enum PipelineStage {
     APPLIED("Applied", false),
     SCREENING("Screening", false),
     INTERVIEW("Interview", false),
-    OFFER("Offer", true),
+    /**
+     * Not terminal. An offer is the one stage where the next move is yours, and
+     * it usually has a date on it - so it belongs in the live band, and a
+     * reminder set against it has to fire.
+     */
+    OFFER("Offer", false),
     REJECTED("Rejected", true),
     /** Withdrawn, or decided against. Ends the story without a rejection. */
     DROPPED("Dropped", true);
@@ -44,11 +49,11 @@ public enum PipelineStage {
 
     /** The columns the board shows, left to right. */
     public static List<PipelineStage> live() {
-        return List.of(SAVED, PREPARED, APPLIED, SCREENING, INTERVIEW);
+        return List.of(SAVED, PREPARED, APPLIED, SCREENING, INTERVIEW, OFFER);
     }
 
     public static List<PipelineStage> closed() {
-        return List.of(OFFER, REJECTED, DROPPED);
+        return List.of(REJECTED, DROPPED);
     }
 
     /**

@@ -55,10 +55,12 @@ class PipelineStageTest {
     void theBoardShowsLiveStagesAndClosesTheRest() {
         assertThat(PipelineStage.live())
                 .containsExactly(PipelineStage.SAVED, PipelineStage.PREPARED,
-                        PipelineStage.APPLIED, PipelineStage.SCREENING, PipelineStage.INTERVIEW)
+                        PipelineStage.APPLIED, PipelineStage.SCREENING,
+                        PipelineStage.INTERVIEW, PipelineStage.OFFER)
                 .allSatisfy(stage -> assertThat(stage.isTerminal()).isFalse());
 
         assertThat(PipelineStage.closed())
+                .containsExactly(PipelineStage.REJECTED, PipelineStage.DROPPED)
                 .allSatisfy(stage -> assertThat(stage.isTerminal()).isTrue());
     }
 }
