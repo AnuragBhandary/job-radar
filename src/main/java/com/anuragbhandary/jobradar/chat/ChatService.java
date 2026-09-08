@@ -1,5 +1,6 @@
 package com.anuragbhandary.jobradar.chat;
 
+import com.anuragbhandary.jobradar.apply.ApplicantProfile;
 import com.anuragbhandary.jobradar.apply.llm.ChatTurn;
 import com.anuragbhandary.jobradar.apply.llm.HumanTone;
 import com.anuragbhandary.jobradar.apply.llm.LlmClient;
@@ -29,10 +30,12 @@ public class ChatService {
 
     private final LlmClient llm;
     private final ChatTools tools;
+    private final ApplicantProfile profile;
 
-    public ChatService(LlmClient llm, ChatTools tools) {
+    public ChatService(LlmClient llm, ChatTools tools, ApplicantProfile profile) {
         this.llm = llm;
         this.tools = tools;
+        this.profile = profile;
     }
 
     public boolean isUsable() {
@@ -104,25 +107,33 @@ public class ChatService {
      * A model given a job database and no context will cheerfully recommend a
      * senior role in a country he cannot work in, quote a salary in the wrong
      * currency, and tell him his experience is stronger than it is.
+     *
+     * <p>The paragraph that supplies that context is not written here. It comes
+     * from {@code assistantBriefing} in the gitignored profile, because it is the
+     * most personal writing in the project - what a year of experience is really
+     * worth, what a salary has to clear - and this repository is public.
      */
     private String systemPrompt() {
+        List<String> briefing = profile.assistantBriefing();
+        String about = briefing.isEmpty()
+                ? "You have not been told anything about him beyond the profile, so "
+                        + "call profile_summary before any advice that depends on what "
+                        + "he can claim, and ask rather than assume.\n"
+                : "What you know about him comes from profile_summary. Call it before "
+                        + "any advice that depends on what he can claim. The short "
+                        + "version, and you should not contradict it:\n\n"
+                        + briefing.stream().map(line -> "                - " + line)
+                                .collect(java.util.stream.Collectors.joining("\n"))
+                        + "\n";
+
         return """
                 You are the assistant inside job-radar, a tool one person runs on
                 their own laptop to find and apply for backend engineering jobs.
                 You are talking to that person. Call the tools rather than guessing:
-                the database has 9,000 postings and you cannot see any of it until
-                you ask.
+                the database has thousands of postings and you cannot see any of it
+                until you ask.
 
-                What you know about him comes from profile_summary. Call it before
-                any advice that depends on what he can claim. The short version, and
-                you should not contradict it:
-
-                - Where he can work without a visa, and where he would need
-                  sponsorship arranging.
-                - How much experience he has, and what it will and will not survive
-                  being asked about.
-                - What a salary has to clear before a job is worth taking, and why.
-
+                %s
                 The match score is arithmetic, not judgement: skills 40, experience
                 25, geography 20, freshness 10, signals 5. Explain it when it comes
                 up rather than treating it as an oracle, and say when you disagree
@@ -138,6 +149,6 @@ public class ChatService {
                 Be brief. Answer the question asked. When you recommend jobs, give
                 the id, the company, the role and one specific reason, and say what
                 is wrong with them as well as what is right.
-                """.formatted(HumanTone.styleRules());
+                """.formatted(about, HumanTone.styleRules());
     }
 }

@@ -30,7 +30,24 @@ public record ApplicantProfile(
         Demographics demographics,
         Compensation compensation,
         Availability availability,
-        List<ExtraAnswer> extraAnswers) {
+        List<ExtraAnswer> extraAnswers,
+        List<String> assistantBriefing) {
+
+    /**
+     * What the assistant is told about the applicant before it says anything.
+     *
+     * <p>Here rather than in the assistant's own source for the reason this whole
+     * record exists: the repository is public and this file is not. The facts that
+     * make the advice worth having - what a year of experience is actually worth,
+     * what a salary has to clear - are exactly the facts nobody should be able to
+     * read on GitHub.
+     *
+     * <p>Empty is fine. The assistant still has {@code profile_summary}, and will
+     * simply know less.
+     */
+    public List<String> assistantBriefing() {
+        return assistantBriefing == null ? List.of() : assistantBriefing;
+    }
 
     public record Name(String first, String middle, String last, String preferred) {
 
