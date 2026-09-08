@@ -152,7 +152,7 @@ The service-account key must never enter the repository; `.gitignore` covers
 | `login --url=... \| --list` | Sign in to a board by hand, once per employer |
 | `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
 | `variants` | Which resume opening has actually produced replies |
-| `ui` | Feed, board, chat and review at http://localhost:8080 |
+| `ui` | Feed, board, chat, mail and review at http://localhost:8080 |
 | `board [--import]` | The pipeline in the terminal; `--import` seeds it from the sheet |
 
 ---
@@ -223,9 +223,9 @@ checked first.
 replies from five against one from six looks like a 140% improvement and is three
 coin flips.
 
-### The feed, the board and the chat
+### The feed, the board, the chat and the mailbox
 
-`ui` serves four pages.
+`ui` serves five pages.
 
 **The feed** ranks every candidate by a 0-100 match score rather than by date.
 Sorting by date was close to random: a posting is not more relevant for being
@@ -257,6 +257,24 @@ normal failure rather than an exceptional one. The client reads the delay out of
 the API's own error and waits it out once. And Gemini 2.5 thinks by default,
 charging those tokens against `max_tokens`, so a small cap returns HTTP 200 with
 an empty message and no error - hence `reasoning-effort: none`.
+
+**The mail page** is one button and a status line, and it exists because of a
+detail of how Google issues tokens. An OAuth app whose consent screen is still in
+**Testing** gets refresh tokens that **expire after seven days**. Re-approving is
+therefore not a setup step, it is a weekly chore, and a weekly chore that needs a
+terminal is a chore that gets skipped. So the page says whether replies are being
+read, how old the approval is, warns when it is near the seven-day edge, and has
+**Connect** / **Reconnect** / **Disconnect**.
+
+Publishing the consent screen removes the seven-day expiry, at the cost of an
+"unverified app" warning at consent. For a single-user local tool that warning is
+accurate and the trade is worth making; the page works either way.
+
+Consent blocks until a browser round-trip finishes, which can be a minute, so the
+button starts it on its own thread and the page reports on it rather than the
+request hanging. Disconnecting deliberately does not go through the OAuth client:
+it clears the token store directly, because a broken or missing client secret is
+one of the situations you would be disconnecting in.
 
 ### The assistant
 
