@@ -44,7 +44,7 @@ class GmailConnectionTest {
 
         assertThat(status.state()).isEqualTo(GmailConnection.State.UNCONFIGURED);
         assertThat(status.detail()).contains("gmail-oauth.json");
-        assertThat(status.busy()).isFalse();
+        assertThat(status.connected()).isFalse();
     }
 
     @Test
@@ -84,12 +84,54 @@ class GmailConnectionTest {
     }
 
     @Test
-    @DisplayName("connecting with no client secret refuses instead of opening a browser")
-    void connectNeedsAClient() {
+    @DisplayName("no client secret means no approval link to offer")
+    void noClientMeansNoLink() {
         GmailConnection connection = new GmailConnection(client("/nowhere/gmail-oauth.json"));
 
-        assertThat(connection.connect()).contains("no OAuth client");
+        assertThat(connection.approvalLink("http://localhost:8080/mail/callback")).isEmpty();
         assertThat(connection.status().state()).isEqualTo(GmailConnection.State.UNCONFIGURED);
+    }
+
+    @Test
+    @DisplayName("cancelling at Google is reported as cancelled, not as a failure")
+    void cancellingIsNotAFailure(@TempDir Path home) throws IOException {
+        GmailConnection connection = new GmailConnection(client(secret(home).toString()));
+
+        assertThat(connection.complete(null, "access_denied", "http://localhost:8080/x"))
+                .contains("cancelled");
+    }
+
+    @Test
+    @DisplayName("a callback with neither a code nor an error says so")
+    void emptyCallback(@TempDir Path home) throws IOException {
+        GmailConnection connection = new GmailConnection(client(secret(home).toString()));
+
+        assertThat(connection.complete(null, null, "http://localhost:8080/x"))
+                .contains("without an approval code");
+    }
+
+    @Test
+    @DisplayName("an approval older than six days is flagged before the next scan breaks")
+    void nearlyStale(@TempDir Path home) throws IOException {
+        GmailClient gmail = client(secret(home).toString());
+        store().set("user", new StoredCredential());
+        Path file = tokens.resolve("StoredCredential");
+        Files.setLastModifiedTime(file, java.nio.file.attribute.FileTime.from(
+                Instant.now().minus(java.time.Duration.ofDays(7))));
+
+        GmailConnection.Status status = new GmailConnection(gmail).status();
+
+        assertThat(status.connected()).isTrue();
+        assertThat(status.nearlyStale()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a fresh approval is not flagged")
+    void freshIsNotStale(@TempDir Path home) throws IOException {
+        store().set("user", new StoredCredential());
+
+        assertThat(new GmailConnection(client(secret(home).toString())).status().nearlyStale())
+                .isFalse();
     }
 
     @Test
