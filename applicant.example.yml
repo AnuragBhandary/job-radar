@@ -73,6 +73,26 @@ job-radar:
       - match: "are you at least 18"
         answer: "Yes"
 
+    # -------------------------------------------------------------------------
+    # What the chat assistant is told before it says anything. Free text, one
+    # line per fact, and the most useful thing in this file.
+    #
+    # A model handed a job database and nothing else recommends senior roles in
+    # countries you cannot work in and quotes salaries in the wrong currency.
+    # These lines are what stop that. Write the things a good friend who knew
+    # your situation would say first: where you can legally work, what your
+    # experience will and will not survive being asked about, what a salary
+    # actually has to clear.
+    #
+    # It lives in this file rather than in the assistant's source because it is
+    # personal, and the repository is public.
+    # -------------------------------------------------------------------------
+    assistant-briefing:
+      - "Where you live, and which countries you can work in without a visa."
+      - "How much experience you have, and anything about it that a background
+        check would complicate."
+      - "What a salary has to clear before a job is worth taking, and why."
+
   resume:
     headline: "Backend Software Engineer"
     max-projects: 2
@@ -119,15 +139,13 @@ job-radar:
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# The `ui` login and the model key live in ~/.config/job-radar/secrets.yml:
+# The model key lives in ~/.config/job-radar/secrets.yml:
 #
 #   job-radar:
-#     auth:
-#       username: me
-#       password-hash: "$2a$10$..."     # from the `passwd` command
 #     llm:
 #       enabled: true
 #       api-key: ...
 #
-# See the README. Neither belongs in this file, and neither belongs in the repo.
+# See the README. It does not belong in this file, and it does not belong in the
+# repository.
 # ---------------------------------------------------------------------------

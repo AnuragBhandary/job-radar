@@ -47,6 +47,8 @@ public final class TestProfiles {
                         // punctuation and all - the case the Map version dropped.
                         new ApplicantProfile.ExtraAnswer(
                                 "status that allows you to work",
-                                "I am a citizen / permanent resident")));
+                                "I am a citizen / permanent resident")),
+                List.of("She is in Nagpur and needs no permit to work in India.",
+                        "About one year of experience, none of it paid."));
     }
 }
