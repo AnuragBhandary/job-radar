@@ -108,7 +108,10 @@ job-radar:
     # Low, not zero. Zero produces the same three sentences for every posting,
     # which is worse than a template because it looks like it tried.
     temperature: 0.4
-    max-output-tokens: 900
+    # Raised from 900. That cap was set for a cover-letter paragraph; the chat
+    # reuses the same client and was being cut off mid-explanation, which read as
+    # the model having nothing more to say.
+    max-output-tokens: 2200
     timeout-seconds: 45
     # Gemini 2.5 thinks by default and charges those tokens against max_tokens,
     # so a small cap returns HTTP 200 with an empty message and no error at all.

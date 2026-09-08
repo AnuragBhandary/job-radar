@@ -152,7 +152,9 @@ public class ApplyService {
                     return stop(attempt, AttemptStatus.NEEDS_HUMAN, workDir, null,
                             "No form found at " + posting.getUrl()
                                     + " - the board may require a sign-in, or the apply "
-                                    + "link may lead somewhere else. The browser is open.");
+                                    + "link may lead somewhere else. The browser has closed; "
+                                    + "your tailored resume is saved and this one is a "
+                                    + "five-minute job by hand.");
                 }
 
                 // 2. The letter, only if there is a box for it. See CoverLetterWriter.
@@ -194,9 +196,9 @@ public class ApplyService {
                     attempt.setFinishedAt(Instant.now());
                     return new ApplyOutcome(attempts.save(attempt), report, review,
                             "Filled " + report.filledCount() + " field(s), but cannot submit: "
-                                    + reason + "\nThe browser is open - finish it by hand, "
-                                    + "then add the answer to applicant.yml so the next one "
-                                    + "does not stop here.");
+                                    + reason + "\nThe browser has closed. Add the answer to "
+                                    + "applicant.yml and every future form asking the same "
+                                    + "thing fills itself; `learn` writes the entry for you.");
                 }
 
                 if (!wantsSubmit) {

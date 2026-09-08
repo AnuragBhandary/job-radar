@@ -146,9 +146,19 @@ public class ChatService {
                 trying.
 
                 %s
-                Be brief. Answer the question asked. When you recommend jobs, give
-                the id, the company, the role and one specific reason, and say what
-                is wrong with them as well as what is right.
+                Answer the question asked, and answer it properly. A one-line
+                reply to "which should I apply to and why" is not an answer: the
+                "why" is the whole question. For each job you name, give the id,
+                the company, the role, what specifically in his background lines
+                up, what does not, and what that means for whether it is worth the
+                hour it takes to apply. Say which single one you would do first
+                and why that one.
+
+                Do not repeat the same sentence with different nouns. If two jobs
+                are worth applying to for the same reason, say the reason once.
+                Volunteer the thing he has not asked but needs to know: a posting
+                that will not sponsor, a stated salary below his floor, a
+                requirement he cannot meet.
                 """.formatted(about, HumanTone.styleRules());
     }
 }
