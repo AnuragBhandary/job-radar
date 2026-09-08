@@ -2,8 +2,10 @@ package com.anuragbhandary.jobradar.web;
 
 import com.anuragbhandary.jobradar.mail.GmailConnection;
 import com.anuragbhandary.jobradar.mail.InboxScanner;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,16 +15,17 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Gmail: whether it is connected, and a button to fix it when it is not.
+ * Gmail: whether it is connected, and a link to fix it when it is not.
  *
- * <p>Exists because re-consenting is a recurring chore rather than a one-off.
- * An OAuth app whose consent screen is still in Testing is issued refresh tokens
- * that expire after seven days, so roughly weekly the reply scanner goes deaf and
- * the only cure is to approve it again. Behind a CLI command that is a chore that
- * gets skipped, and a tracker nobody updates is worse than no tracker.
+ * <p>Consent is a link the user clicks and a callback that lands back here. The
+ * application is already a web server with a browser pointed at it, so there is
+ * nothing to open and no second port to collide with.
  */
 @Controller
 public class MailController {
+
+    /** Must match byte-for-byte between the approval link and the exchange. */
+    private static final String CALLBACK_PATH = "/mail/callback";
 
     private final GmailConnection connection;
     private final InboxScanner scanner;
@@ -34,13 +37,13 @@ public class MailController {
 
     @GetMapping(value = "/mail", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public String page(@RequestParam(required = false) String said) {
+    public String page(@RequestParam(required = false) String said, HttpServletRequest request) {
         GmailConnection.Status status = connection.status();
 
         StringBuilder body = new StringBuilder();
         if (said != null && !said.isBlank()) {
             body.append("<section class=\"card panel\"><div class=\"panel-body\">")
-                    .append("<p class=\"check-q\">").append(Ui.esc(said)).append("</p>")
+                    .append("<p class=\"check-a\">").append(Ui.esc(said)).append("</p>")
                     .append("</div></section>");
         }
 
@@ -48,22 +51,29 @@ public class MailController {
                 .append(Ui.panelHead("Gmail", badge(status)))
                 .append("<div class=\"panel-body\">")
                 .append(explain(status))
-                .append(buttons(status))
-                .append("</div></section>");
+                .append(actions(status, request))
+                .append("</div></section>")
+                .append(whatItIsFor());
 
-        body.append(whatItIsFor());
-
-        String stat = switch (status.state()) {
-            case CONNECTED -> "<strong>connected</strong>";
-            case WAITING -> "waiting for approval";
-            default -> "not connected";
-        };
+        String stat = status.connected() ? "<strong>connected</strong>" : "not connected";
         return Ui.page("Mail", stat, body.toString(), Ui.Tab.MAIL);
     }
 
-    @PostMapping("/mail/connect")
-    public String connect(RedirectAttributes flash) {
-        flash.addAttribute("said", connection.connect());
+    /**
+     * Where Google sends the browser back to.
+     *
+     * <p>A GET, because Google redirects here; there is no form to post. It is
+     * the one route that changes state on a GET, and the alternative is a page
+     * that asks the user to press a button to finish something they have already
+     * approved.
+     */
+    @GetMapping("/mail/callback")
+    public String callback(@RequestParam(required = false) String code,
+            @RequestParam(required = false) String error,
+            HttpServletRequest request,
+            RedirectAttributes flash) {
+
+        flash.addAttribute("said", connection.complete(code, error, redirectUri(request)));
         return "redirect:/mail";
     }
 
@@ -75,11 +85,25 @@ public class MailController {
 
     // ------------------------------------------------------------------
 
+    /**
+     * The callback address, rebuilt from the request that is asking.
+     *
+     * <p>Not a constant, because it has to agree with whatever host and port the
+     * browser actually reached: "localhost" and "127.0.0.1" are the same machine
+     * and different strings, and Google compares strings.
+     */
+    private static String redirectUri(HttpServletRequest request) {
+        String base = request.getScheme() + "://" + request.getServerName();
+        int port = request.getServerPort();
+        boolean standard = ("http".equals(request.getScheme()) && port == 80)
+                || ("https".equals(request.getScheme()) && port == 443);
+        return base + (standard ? "" : ":" + port) + CALLBACK_PATH;
+    }
+
     private static String badge(GmailConnection.Status status) {
         return switch (status.state()) {
             case CONNECTED -> Ui.badge("ok", "CONNECTED");
-            case WAITING -> Ui.badge("warn", "WAITING");
-            case FAILED -> Ui.badge("bad", "FAILED");
+            case FAILED -> Ui.badge("bad", "NOT CONNECTED");
             default -> Ui.badge("origin", "NOT CONNECTED");
         };
     }
@@ -87,62 +111,59 @@ public class MailController {
     private String explain(GmailConnection.Status status) {
         StringBuilder text = new StringBuilder();
 
-        if (status.state() == GmailConnection.State.CONNECTED) {
+        if (status.connected()) {
             text.append("<p class=\"check-a\">Reading replies is switched on.</p>");
             status.since().ifPresent(when -> text.append("<p class=\"check-why\">Approved ")
                     .append(Ui.esc(ago(when)))
-                    .append(". Access is read only: this cannot send, delete or label "
-                            + "anything.</p>"));
-            status.since()
-                    .filter(when -> Duration.between(when, Instant.now()).toDays() >= 6)
-                    .ifPresent(when -> text.append(
-                            "<p class=\"submit-note\" style=\"margin-top:10px\">"
-                                    + "That is close to seven days old. While the consent "
-                                    + "screen is in Testing, Google expires these weekly, so "
-                                    + "the next scan may ask for approval again. Reconnect "
-                                    + "now if you would rather not be interrupted.</p>"));
+                    .append(". Access is read only: this cannot send, delete or "
+                            + "label anything.</p>"));
+            if (status.nearlyStale()) {
+                text.append("<p class=\"submit-note\" style=\"margin-top:10px\">"
+                        + "That approval is close to seven days old. While the consent "
+                        + "screen is in Testing, Google expires these weekly, so the next "
+                        + "scan may stop working. Reconnect now if you would rather not "
+                        + "be interrupted.</p>");
+            }
+            if (!scanner.isConfigured()) {
+                text.append("<p class=\"check-why\">The spreadsheet is not configured, so "
+                        + "there is nothing for a reply to update yet.</p>");
+            }
         } else if (status.detail() != null) {
             text.append("<p class=\"check-q\">").append(Ui.esc(status.detail())).append("</p>");
         } else {
             text.append("<p class=\"check-q\">Not connected, so replies are not being read "
-                    + "and the tracker's status column is whatever you last typed into it.</p>");
-        }
-
-        if (!scanner.isConfigured() && status.state() == GmailConnection.State.CONNECTED) {
-            text.append("<p class=\"check-why\">The spreadsheet is not configured, so there "
-                    + "is nothing for a reply to update yet.</p>");
+                    + "and the tracker's status column is whatever you last typed into "
+                    + "it.</p>");
         }
         return text.toString();
     }
 
-    private static String buttons(GmailConnection.Status status) {
+    private String actions(GmailConnection.Status status, HttpServletRequest request) {
         if (status.state() == GmailConnection.State.UNCONFIGURED) {
             return "";
         }
-        String primary = switch (status.state()) {
-            case CONNECTED -> "Reconnect";
-            case WAITING -> "Open the window again";
-            default -> "Connect Gmail";
-        };
-        StringBuilder html = new StringBuilder("<div class=\"assist-actions\">")
-                .append("<form method=\"post\" action=\"/mail/connect\">")
-                .append("<button class=\"btn btn-primary\" type=\"submit\"")
-                .append(status.busy() ? " disabled" : "").append('>')
-                .append(primary).append("</button></form>");
+        Optional<String> link = connection.approvalLink(redirectUri(request));
+        if (link.isEmpty()) {
+            return "<p class=\"check-q\">Could not build the approval link. "
+                    + "Check the OAuth client JSON.</p>";
+        }
 
-        if (status.state() == GmailConnection.State.CONNECTED) {
+        StringBuilder html = new StringBuilder("<div class=\"assist-actions\">")
+                // A plain link, not a button that posts. The whole point of the
+                // rewrite is that nothing here tries to open a browser itself.
+                .append("<a class=\"btn btn-primary\" href=\"").append(Ui.esc(link.get()))
+                .append("\">")
+                .append(status.connected() ? "Reconnect with Google" : "Approve with Google")
+                .append("</a>");
+
+        if (status.connected()) {
             html.append("<form method=\"post\" action=\"/mail/disconnect\">")
                     .append("<button class=\"btn\" type=\"submit\">Disconnect</button></form>");
         }
-        if (status.busy()) {
-            html.append("<span class=\"note-muted\">waiting for Google</span>");
-        }
         html.append("</div>");
 
-        if (status.state() == GmailConnection.State.CONNECTED) {
-            html.append("<p class=\"caption\">Reconnect throws the current approval away and "
-                    + "asks for a new one. Use it when a scan starts failing.</p>");
-        }
+        html.append("<p class=\"caption\">Opens Google in this tab. Pick the mailbox you "
+                + "want read, which may not be the account Google offers first.</p>");
         return html.toString();
     }
 

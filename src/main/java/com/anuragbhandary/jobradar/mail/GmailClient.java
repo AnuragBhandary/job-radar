@@ -1,9 +1,8 @@
 package com.anuragbhandary.jobradar.mail;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.client.auth.oauth2.StoredCredential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -47,9 +46,6 @@ public class GmailClient {
 
     /** The datastore key. One mailbox, so one entry, and the name is arbitrary. */
     private static final String USER = "user";
-
-    /** Must match a redirect URI the OAuth client accepts. Desktop clients take any loopback port. */
-    private static final int RECEIVER_PORT = 8888;
 
     private final GmailProperties config;
     private GoogleAuthorizationCodeFlow flow;
@@ -155,13 +151,39 @@ public class GmailClient {
     }
 
     /**
-     * Runs the consent flow: opens a browser, waits for the redirect, stores the
-     * refresh token. Blocks until the user finishes or gives up, so callers that
-     * cannot block must run it on their own thread.
+     * The Google page to send the user to.
+     *
+     * <p>Handed back as a link rather than opened here. Spring Boot runs the JVM
+     * headless, so {@code java.awt.Desktop} is unavailable and the library that
+     * would "open a browser" silently prints the address to a log nobody reads.
+     * A link on the page cannot fail that way.
+     *
+     * <p>{@code prompt=consent} because Google issues a refresh token only on the
+     * first approval; without it a reconnect completes and stores nothing.
      */
-    public void authorise() throws IOException {
-        forget();
-        service();
+    public String authorisationUrl(String redirectUri) throws IOException {
+        return flow().newAuthorizationUrl()
+                .setRedirectUri(redirectUri)
+                .setApprovalPrompt("force")
+                .setAccessType("offline")
+                .build();
+    }
+
+    /**
+     * Exchanges the code Google redirected back with, and stores the token.
+     *
+     * <p>{@code redirectUri} has to be character-for-character the one used to
+     * build the authorisation URL. Google compares them, and a mismatch fails at
+     * this step rather than the previous one, which reads as "approval worked but
+     * connecting did not".
+     */
+    public void completeAuthorisation(String code, String redirectUri) throws IOException {
+        GoogleTokenResponse response = flow().newTokenRequest(code)
+                .setRedirectUri(redirectUri)
+                .execute();
+        flow().createAndStoreCredential(response, USER);
+        cached = null;
+        log.info("Gmail connected");
     }
 
     /**
@@ -236,11 +258,18 @@ public class GmailClient {
                             + ". Create an OAuth client (Desktop app) in the Cloud Console, "
                             + "download the JSON, and put it there.");
         }
+        Credential credential = flow().loadCredential(USER);
+        if (credential == null) {
+            // Deliberately does not start a consent flow. Consent needs a browser
+            // and a person, and there is exactly one place that has both: the
+            // mail page. A command that tries to do it itself either blocks on a
+            // socket nobody will connect to, or opens a second listener that
+            // collides with the first.
+            throw new IllegalStateException(
+                    "Gmail is not connected. Run `ui` and connect it at "
+                            + "http://localhost:8080/mail");
+        }
         try {
-            Credential credential = new AuthorizationCodeInstalledApp(
-                    flow(), new LocalServerReceiver.Builder().setPort(RECEIVER_PORT).build())
-                    .authorize(USER);
-
             cached = new Gmail.Builder(transport(), GsonFactory.getDefaultInstance(), credential)
                     .setApplicationName(APPLICATION_NAME)
                     .build();

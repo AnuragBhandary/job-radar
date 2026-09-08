@@ -1,5 +1,6 @@
 package com.anuragbhandary.jobradar.mail;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -8,48 +9,58 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Consent, driven from a button instead of a terminal.
+ * Consent, as an ordinary web round-trip.
  *
- * <p>The flow underneath opens a browser and blocks until Google redirects back,
- * which can be a minute if an account has to be chosen and a warning clicked
- * through. A web request cannot wait that long, so the button starts the flow on
- * its own thread and the page reports on it.
+ * <p>It used to run Google's installed-app helper, which starts a second web
+ * server on its own port, opens a browser, and blocks until the redirect lands.
+ * Every part of that was wrong here. Spring Boot runs the JVM headless so no
+ * browser ever opened; the helper quietly printed the address to a log instead.
+ * The blocking call had to be pushed onto a background thread, and when a user
+ * gave up, the listener stayed on the port, so the next attempt collided with
+ * the last one and reported "Address already in use" forever.
  *
- * <p>Why this exists at all: an OAuth consent screen still in Testing hands out
- * refresh tokens that expire after seven days. Re-consenting is not a one-off
- * setup step here, it is a recurring chore, and a chore that needs a terminal is
- * a chore that gets skipped.
+ * <p>None of that is needed. This application is already a web server with a
+ * browser pointed at it. So consent is a link the user clicks and a callback
+ * that lands back here: no second port, no thread, no window to fail to open,
+ * and nothing that can be left running.
  */
 @Service
 public class GmailConnection {
 
     private static final Logger log = LoggerFactory.getLogger(GmailConnection.class);
 
-    /** How long to leave a started flow looking live before calling it abandoned. */
-    private static final Duration PATIENCE = Duration.ofMinutes(5);
+    /** Past this age a token is close enough to Google's Testing-mode expiry to warn. */
+    private static final Duration NEARLY_STALE = Duration.ofDays(6);
 
     public enum State {
         /** No client secret on disk. Nothing to offer but instructions. */
         UNCONFIGURED,
-        /** Configured, no token. */
+        /** Configured, no token. There is a link to click. */
         DISCONNECTED,
-        /** A browser is open and Google has not redirected back yet. */
-        WAITING,
         CONNECTED,
+        /** An approval came back and could not be exchanged. */
         FAILED
     }
 
     public record Status(State state, String detail, Optional<Instant> since) {
 
-        public boolean busy() {
-            return state == State.WAITING;
+        public boolean connected() {
+            return state == State.CONNECTED;
+        }
+
+        /**
+         * True when the approval is old enough that Google may be about to expire
+         * it. An app whose consent screen is still in Testing gets refresh tokens
+         * lasting seven days, so the page warns on the sixth rather than letting
+         * the next scan be the thing that tells him.
+         */
+        public boolean nearlyStale() {
+            return since.filter(when -> Duration.between(when, Instant.now())
+                    .compareTo(NEARLY_STALE) > 0).isPresent();
         }
     }
 
     private final GmailClient gmail;
-
-    private volatile Thread worker;
-    private volatile Instant startedAt;
     private volatile String failure;
 
     public GmailConnection(GmailClient gmail) {
@@ -63,12 +74,6 @@ public class GmailConnection {
                             + "Console and save the JSON to ~/.config/job-radar/gmail-oauth.json.",
                     Optional.empty());
         }
-        if (waiting()) {
-            return new Status(State.WAITING,
-                    "A browser window is open. Approve it there, and pick the mailbox "
-                            + "you want read rather than whichever account Google offers first.",
-                    Optional.ofNullable(startedAt));
-        }
         if (gmail.hasToken()) {
             return new Status(State.CONNECTED, null, gmail.tokenWrittenAt());
         }
@@ -78,53 +83,58 @@ public class GmailConnection {
         return new Status(State.DISCONNECTED, null, Optional.empty());
     }
 
-    /**
-     * Starts the consent flow, unless one is already running.
-     *
-     * @return what to tell the user right now
-     */
-    public synchronized String connect() {
+    /** The Google page to link to, or empty when there is no client to link with. */
+    public Optional<String> approvalLink(String redirectUri) {
         if (!gmail.isConfigured()) {
-            return "There is no OAuth client to connect with yet.";
+            return Optional.empty();
         }
-        if (waiting()) {
-            return "A browser window is already open for this. Finish that one.";
+        try {
+            failure = null;
+            return Optional.of(gmail.authorisationUrl(redirectUri));
+        } catch (IOException | RuntimeException e) {
+            failure = describe(e);
+            log.warn("Could not build the Google approval link: {}", failure);
+            return Optional.empty();
         }
-        failure = null;
-        startedAt = Instant.now();
-        worker = Thread.ofVirtual().name("gmail-consent").start(() -> {
-            try {
-                gmail.authorise();
-                log.info("Gmail connected");
-            } catch (Exception e) {
-                // Includes the user simply closing the tab, which is not an error
-                // worth a stack trace, only a sentence on the page.
-                failure = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-                log.warn("Gmail consent did not complete: {}", failure);
-            }
-        });
-        return "Opening a browser. Approve it there, then come back to this page.";
     }
 
-    /** Throws the token away. The next scan will ask for consent again. */
-    public synchronized String disconnect() {
+    /** Called when Google redirects back. Returns what to tell the user. */
+    public String complete(String code, String error, String redirectUri) {
+        if (error != null && !error.isBlank()) {
+            // "access_denied" is the normal outcome of clicking Cancel, and
+            // saying so beats reporting a raw error code as a failure.
+            failure = "access_denied".equals(error)
+                    ? "Approval was cancelled, so nothing changed."
+                    : "Google refused the approval: " + error;
+            return failure;
+        }
+        if (code == null || code.isBlank()) {
+            failure = "Google came back without an approval code.";
+            return failure;
+        }
+        try {
+            gmail.completeAuthorisation(code, redirectUri);
+            failure = null;
+            return "Connected. Replies will be read from now on.";
+        } catch (IOException | RuntimeException e) {
+            failure = describe(e);
+            log.warn("Could not exchange the approval: {}", failure);
+            return "Could not finish connecting: " + failure;
+        }
+    }
+
+    /** Throws the token away. The next scan needs a fresh approval. */
+    public String disconnect() {
         try {
             gmail.forget();
             failure = null;
             return "Disconnected. The stored token is gone.";
-        } catch (Exception e) {
-            return "Could not remove the token: " + e.getMessage();
+        } catch (IOException | RuntimeException e) {
+            return "Could not remove the token: " + describe(e);
         }
     }
 
-    private boolean waiting() {
-        Thread current = worker;
-        if (current == null || !current.isAlive()) {
-            return false;
-        }
-        // A flow nobody is going to finish should not pin the page on "waiting"
-        // forever, so it stops being reported as live after a while. The thread
-        // itself is left alone; it is parked on a socket and harmless.
-        return startedAt != null && Duration.between(startedAt, Instant.now()).compareTo(PATIENCE) < 0;
+    private static String describe(Exception e) {
+        return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
     }
 }
