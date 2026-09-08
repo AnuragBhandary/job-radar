@@ -1,6 +1,7 @@
 package com.anuragbhandary.jobradar.mail;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
@@ -8,6 +9,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.DataStore;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.GmailScopes;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -42,7 +45,15 @@ public class GmailClient {
     private static final Logger log = LoggerFactory.getLogger(GmailClient.class);
     private static final String APPLICATION_NAME = "job-radar";
 
+    /** The datastore key. One mailbox, so one entry, and the name is arbitrary. */
+    private static final String USER = "user";
+
+    /** Must match a redirect URI the OAuth client accepts. Desktop clients take any loopback port. */
+    private static final int RECEIVER_PORT = 8888;
+
     private final GmailProperties config;
+    private GoogleAuthorizationCodeFlow flow;
+    private NetHttpTransport transport;
     private Gmail cached;
 
     public GmailClient(GmailProperties config) {
@@ -116,6 +127,105 @@ public class GmailClient {
                 from, subject, message.getSnippet(), received);
     }
 
+    /**
+     * True when consent has already been given and a refresh token is on disk.
+     *
+     * <p>Cheap, and does not touch the network - so a page can ask it on every
+     * render to decide whether to offer "connect" or "reconnect".
+     */
+    public boolean hasToken() {
+        try {
+            return tokenStore().containsKey(USER);
+        } catch (IOException | RuntimeException e) {
+            log.debug("Could not read the stored credential: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /** When the stored token was last written, for "connected since" on the page. */
+    public Optional<Instant> tokenWrittenAt() {
+        Path stored = Path.of(expand(config.tokensDir()), "StoredCredential");
+        try {
+            return Files.exists(stored)
+                    ? Optional.of(Files.getLastModifiedTime(stored).toInstant())
+                    : Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Runs the consent flow: opens a browser, waits for the redirect, stores the
+     * refresh token. Blocks until the user finishes or gives up, so callers that
+     * cannot block must run it on their own thread.
+     */
+    public void authorise() throws IOException {
+        forget();
+        service();
+    }
+
+    /**
+     * Deletes the stored token and drops the cached client.
+     *
+     * <p>Needed because an app whose consent screen is still in Testing is issued
+     * a refresh token that expires after seven days. When that happens the stored
+     * credential is present but dead, and refreshing it fails; the only fix is to
+     * throw it away and consent again.
+     */
+    public void forget() throws IOException {
+        cached = null;
+        flow = null;
+        tokenStore().clear();
+    }
+
+    /**
+     * The token store on its own, without the OAuth client.
+     *
+     * <p>Deliberately not routed through the flow. Disconnecting has to work when
+     * the client secret has been moved, replaced or corrupted, which is one of the
+     * situations you would be disconnecting in.
+     *
+     * <p>It also has to be {@code containsKey} rather than "does the file exist":
+     * the store writes its file the moment it is opened, so the file appears the
+     * instant a consent flow starts and long before anyone approves anything.
+     */
+    private DataStore<StoredCredential> tokenStore() throws IOException {
+        return new FileDataStoreFactory(new File(expand(config.tokensDir())))
+                .getDataStore(StoredCredential.DEFAULT_DATA_STORE_ID);
+    }
+
+    private GoogleAuthorizationCodeFlow flow() throws IOException {
+        if (flow != null) {
+            return flow;
+        }
+        try {
+            GsonFactory json = GsonFactory.getDefaultInstance();
+            GoogleClientSecrets secrets;
+            try (FileReader reader = new FileReader(expand(config.credentialsPath()))) {
+                secrets = GoogleClientSecrets.load(json, reader);
+            }
+            flow = new GoogleAuthorizationCodeFlow.Builder(
+                    transport(), json, secrets, List.of(GmailScopes.GMAIL_READONLY))
+                    .setDataStoreFactory(new FileDataStoreFactory(
+                            new File(expand(config.tokensDir()))))
+                    .setAccessType("offline")
+                    // Without this a second consent returns no refresh token,
+                    // because Google only issues one on the first approval.
+                    .setApprovalPrompt("force")
+                    .build();
+            return flow;
+        } catch (java.security.GeneralSecurityException e) {
+            throw new IOException("Could not set up the Gmail transport", e);
+        }
+    }
+
+    private NetHttpTransport transport() throws IOException, java.security.GeneralSecurityException {
+        if (transport == null) {
+            transport = GoogleNetHttpTransport.newTrustedTransport();
+        }
+        return transport;
+    }
+
     private Gmail service() throws IOException {
         if (cached != null) {
             return cached;
@@ -127,26 +237,11 @@ public class GmailClient {
                             + "download the JSON, and put it there.");
         }
         try {
-            NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-            GsonFactory json = GsonFactory.getDefaultInstance();
-
-            GoogleClientSecrets secrets;
-            try (FileReader reader = new FileReader(expand(config.credentialsPath()))) {
-                secrets = GoogleClientSecrets.load(json, reader);
-            }
-
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                    transport, json, secrets, List.of(GmailScopes.GMAIL_READONLY))
-                    .setDataStoreFactory(new FileDataStoreFactory(
-                            new File(expand(config.tokensDir()))))
-                    .setAccessType("offline")
-                    .build();
-
             Credential credential = new AuthorizationCodeInstalledApp(
-                    flow, new LocalServerReceiver.Builder().setPort(8888).build())
-                    .authorize("user");
+                    flow(), new LocalServerReceiver.Builder().setPort(RECEIVER_PORT).build())
+                    .authorize(USER);
 
-            cached = new Gmail.Builder(transport, json, credential)
+            cached = new Gmail.Builder(transport(), GsonFactory.getDefaultInstance(), credential)
                     .setApplicationName(APPLICATION_NAME)
                     .build();
             return cached;

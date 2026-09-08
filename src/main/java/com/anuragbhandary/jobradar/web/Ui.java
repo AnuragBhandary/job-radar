@@ -34,7 +34,7 @@ final class Ui {
      * this tool", not "which URL is this".
      */
     enum Tab {
-        FEED, BOARD, CHAT
+        FEED, BOARD, CHAT, MAIL
     }
 
     static String page(String title, String stat, String body) {
@@ -52,12 +52,14 @@ final class Ui {
                     <a class="%s" href="/">feed</a>
                     <a class="%s" href="/board">board</a>
                     <a class="%s" href="/chat">chat</a>
+                    <a class="%s" href="/mail">mail</a>
                   </span>
                   <div class="statstrip">%s</div>
                 </header>
                 <main class="page %s">%s</main></body></html>
                 """.formatted(esc(title), css(),
                         on(current, Tab.FEED), on(current, Tab.BOARD), on(current, Tab.CHAT),
+                        on(current, Tab.MAIL),
                         stat, current == Tab.BOARD ? "wide" : "", body);
     }
 
