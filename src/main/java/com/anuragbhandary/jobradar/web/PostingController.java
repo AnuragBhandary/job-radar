@@ -87,8 +87,8 @@ public class PostingController {
         return """
                 <section class="card attempt-head">
                   <div class="head-top">
-                    <h1>%s</h1>
                     %s
+                    <h1>%s</h1>
                   </div>
                   <span class="role">%s</span>
                   <div class="meta">
@@ -107,8 +107,8 @@ public class PostingController {
                   </div>
                 </section>
                 """.formatted(
+                        Ui.scoreCell(score),
                         Ui.esc(company),
-                        Ui.scoreCell(score).replace("class=\"score", "class=\"score\" style=\"width:auto\" data-x=\""),
                         Ui.esc(posting.getTitle()),
                         posting.getCountry() == null ? ""
                                 : Ui.badge("country", posting.getCountry().name()),
@@ -126,14 +126,15 @@ public class PostingController {
         StringBuilder bars = new StringBuilder("<div class=\"factors\">");
         for (MatchScore.Factor factor : score.factors()) {
             bars.append("""
-                    <div class="factor">
+                    <div class="factor score-%s">
                       <span class="name">%s</span>
                       <span class="bar"><i style="width:%d%%"></i></span>
                       <span class="pts">%d/%d</span>
                       <span class="detail">%s</span>
                     </div>
-                    """.formatted(Ui.esc(factor.label()), factor.percent(),
-                            factor.points(), factor.max(), Ui.esc(factor.detail())));
+                    """.formatted(factor.band().label(), Ui.esc(factor.label()),
+                            factor.percent(), factor.points(), factor.max(),
+                            Ui.esc(factor.detail())));
         }
         bars.append("</div>");
 

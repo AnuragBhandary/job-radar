@@ -26,6 +26,15 @@ public record MatchScore(int score, List<Factor> factors) {
         public int percent() {
             return max == 0 ? 0 : Math.round(points * 100f / max);
         }
+
+        /**
+         * This factor's own band, on the same thresholds as the total. It colours
+         * the bar, so a factor that is dragging the score down is visible without
+         * reading the numbers.
+         */
+        public Band band() {
+            return Band.of(percent());
+        }
     }
 
     /**
@@ -47,16 +56,21 @@ public record MatchScore(int score, List<Factor> factors) {
         public String label() {
             return label;
         }
+
+        /** The band for any 0-100 value, so the total and one factor agree. */
+        public static Band of(int outOfHundred) {
+            if (outOfHundred >= 75) {
+                return STRONG;
+            }
+            if (outOfHundred >= 55) {
+                return GOOD;
+            }
+            return outOfHundred >= 35 ? FAIR : WEAK;
+        }
     }
 
     public Band band() {
-        if (score >= 75) {
-            return Band.STRONG;
-        }
-        if (score >= 55) {
-            return Band.GOOD;
-        }
-        return score >= 35 ? Band.FAIR : Band.WEAK;
+        return Band.of(score);
     }
 
     /** The single most useful sentence about this match, for a list row. */

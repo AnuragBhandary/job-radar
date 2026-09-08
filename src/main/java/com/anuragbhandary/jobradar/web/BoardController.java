@@ -52,8 +52,8 @@ public class BoardController {
             body.append("</ul></section>");
         }
 
-        body.append("<h2 class=\"section-head\" style=\"margin-bottom:8px\">In progress</h2>");
-        body.append("<div class=\"board\">");
+        body.append("<h2 class=\"section-head\">In progress</h2>");
+        body.append("<div class=\"board board-6\">");
         columns.stream()
                 .filter(column -> PipelineStage.live().contains(column.stage()))
                 .forEach(column -> body.append(column(column, today)));
@@ -63,8 +63,8 @@ public class BoardController {
                 .filter(column -> column.stage().isTerminal() && column.size() > 0)
                 .toList();
         if (!closed.isEmpty()) {
-            body.append("<h2 class=\"section-head\" style=\"margin:22px 0 8px\">Closed</h2>")
-                    .append("<div class=\"board\">");
+            body.append("<h2 class=\"section-head\">Closed</h2>")
+                    .append("<div class=\"board board-2 band-closed\">");
             closed.forEach(column -> body.append(column(column, today)));
             body.append("</div>");
         }
@@ -81,23 +81,21 @@ public class BoardController {
                 + "<form method=\"post\" action=\"/board/import\">"
                 + "<button class=\"btn btn-sm\">import from sheet</button></form>";
 
-        return Ui.page("Board", stat, body.toString());
+        return Ui.page("Board", stat, body.toString(), Ui.Tab.BOARD);
     }
 
     private String column(PipelineService.Column column, LocalDate today) {
         StringBuilder cards = new StringBuilder();
-        if (column.size() == 0) {
-            cards.append("<p class=\"col-empty\">nothing here</p>");
-        }
         for (PipelineService.Entry entry : column.entries()) {
             cards.append(card(entry, today));
         }
+        String empty = column.size() == 0 ? "<p class=\"col-empty\">nothing here</p>" : "";
         return """
                 <div class="col">
                   <div class="col-head"><span>%s</span><span class="n">%d</span></div>
-                  <div class="col-body">%s</div>
+                  <div class="col-body">%s</div>%s
                 </div>
-                """.formatted(Ui.esc(column.stage().label()), column.size(), cards);
+                """.formatted(Ui.esc(column.stage().label()), column.size(), cards, empty);
     }
 
     private String card(PipelineService.Entry entry, LocalDate today) {
@@ -112,7 +110,7 @@ public class BoardController {
 
         String score = entry.score() == null ? ""
                 : "<span class=\"score score-" + entry.score().band().label()
-                        + "\" style=\"width:auto\">" + entry.score().score() + "</span>";
+                        + "\">" + entry.score().score() + "</span>";
 
         String link = interest.getUrl() == null || interest.getUrl().isBlank() ? ""
                 : "<a href=\"" + Ui.esc(interest.getUrl())

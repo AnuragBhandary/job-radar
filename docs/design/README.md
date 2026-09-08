@@ -5,8 +5,12 @@ were designed in **Lovable** (September 2026) and ported here by hand.
 
 - Project: `Job Scout UI`, workspace `Anurag's Lovable`
 - <https://lovable.dev/projects/359a46ba-6b64-4f3c-adad-5b0fc4d40080>
-- The prototype lives there as `public/job-radar/{index,attempt-19}.html` and
+- The first pass lives there as `public/job-radar/{index,attempt-19}.html` and
   `public/job-radar/app.css`
+- The second pass (September 2026, after the match score, the board and the
+  assistant were added) is `public/{feed,board,chat,posting-9039}.html` and
+  `public/job-radar.css`. That stylesheet is copied here as `job-radar.css` and
+  is the one carried in `Ui.css()`
 
 ## Why it was briefed as a static prototype
 
@@ -32,9 +36,16 @@ Change the prototype in Lovable, read the files back, and re-port. The CSS is
 carried verbatim in `Ui.css()`; the markup is rebuilt in `UiController` because
 it is generated from real rows rather than hard-coded.
 
-Two things to keep if you regenerate:
+Four things to keep if you regenerate:
 
 - **No webfonts and no CDN.** The tool is expected to work with the network off.
 - **The screenshot frame.** The captured form is 1440 by 4536 pixels. Boxed at
   420px it is a panel; unboxed it is three thousand pixels of page and everything
   below it is unreachable.
+- **A floor under the board columns.** Six columns inside the 1120px reading
+  width put "Amazon Development Centre Ireland" on six lines. The board opts into
+  `.page.wide` and its columns have a `186px` minimum.
+- **The score classes work in two sizes.** `.score-strong` and friends set custom
+  properties; `.row > .score` and `.head-top > .score` enlarge them into a plate,
+  and everywhere else they stay an inline chip. Styling the plate directly means
+  the board's inline scores lose their colour.
