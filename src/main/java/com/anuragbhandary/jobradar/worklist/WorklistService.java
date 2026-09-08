@@ -92,7 +92,10 @@ public class WorklistService {
                                     ? "The board never showed a form. Your tailored resume is "
                                             + "ready, so this is a five-minute job by hand."
                                     : reason(attempt),
-                            "/attempt/" + attempt.getId(),
+                            // A blocked question is fixed on the answers page, not
+                            // on the attempt: the answer is worth every future form
+                            // that asks it, and the attempt is only where it surfaced.
+                            noForm ? "/attempt/" + attempt.getId() : "/answers",
                             noForm ? "Open it" : "Answer it",
                             // An answerable question outranks a manual application:
                             // answering it also unblocks every future form that
