@@ -7,6 +7,7 @@ import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
 import com.anuragbhandary.jobradar.mail.GmailProperties;
+import com.anuragbhandary.jobradar.money.MoneyProperties;
 import com.anuragbhandary.jobradar.match.MatchProperties;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -35,7 +36,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         ApplyProperties.class,
         LlmProperties.class,
         GmailProperties.class,
-        MatchProperties.class})
+        MatchProperties.class,
+        MoneyProperties.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {

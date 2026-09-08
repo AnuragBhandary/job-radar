@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * The pipeline board.
@@ -32,11 +33,11 @@ public class BoardController {
 
     @GetMapping(value = "/board", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public String board() {
+    public String board(@RequestParam(required = false) String said) {
         LocalDate today = LocalDate.now();
         List<PipelineService.Column> columns = pipeline.board();
 
-        StringBuilder body = new StringBuilder();
+        StringBuilder body = new StringBuilder(Components.toast(said));
 
         List<PipelineService.Entry> due = pipeline.dueReminders(today);
         if (!due.isEmpty()) {
@@ -163,19 +164,27 @@ public class BoardController {
     // ------------------------------------------------------------------
 
     @PostMapping("/board/move")
-    public String move(@RequestParam Long interestId, @RequestParam String stage) {
-        pipeline.move(interestId, PipelineStage.valueOf(stage));
+    public String move(@RequestParam Long interestId, @RequestParam String stage,
+            RedirectAttributes flash) {
+        PipelineStage moved = PipelineStage.valueOf(stage);
+        var interest = pipeline.move(interestId, moved);
+        flash.addAttribute("said",
+                interest.getCompany() + " moved to " + moved.label()
+                        + (moved.isSent() && interest.getAppliedOn() != null
+                                ? ". Dated " + interest.getAppliedOn() + "." : "."));
         return "redirect:/board";
     }
 
     @PostMapping("/board/import")
-    public String importFromTracker() {
+    public String importFromTracker(RedirectAttributes flash) {
         try {
-            pipeline.importFromTracker();
+            flash.addAttribute("said", pipeline.importFromTracker().describe());
         } catch (IOException e) {
             // The board still renders; a failed import is not worth a stack trace
-            // in front of someone who clicked a button.
-            return "redirect:/board";
+            // in front of someone who clicked a button. It is worth a sentence,
+            // though - this used to redirect in silence whether it had imported
+            // seventeen rows or thrown.
+            flash.addAttribute("said", "Could not read the sheet: " + e.getMessage());
         }
         return "redirect:/board";
     }
@@ -203,6 +212,6 @@ public class BoardController {
     @PostMapping("/save")
     public String save(@RequestParam Long postingId) {
         pipeline.save(postingId, PipelineStage.SAVED);
-        return "redirect:/";
+        return "redirect:/jobs";
     }
 }

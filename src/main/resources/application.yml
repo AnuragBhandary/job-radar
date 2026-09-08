@@ -69,7 +69,10 @@ job-radar:
     # Years he can evidence without stretching. A posting asking for this or less
     # scores full marks; past it the score falls away fast, because two years over
     # is a stretch worth trying and five is a different job with the same title.
-    comfortable-years: 2
+    # One, not two. He has about a year, and screening already rejects anything
+    # asking for two or more - so a two set here had the scorer awarding full
+    # marks for a requirement the rest of the tool treats as disqualifying.
+    comfortable-years: 1
     fresh-days: 7
     stale-days: 45
 
@@ -112,6 +115,27 @@ job-radar:
     # "none" spends the whole budget on the answer. Blank it for a provider that
     # rejects the field.
     reasoning-effort: ${JOB_RADAR_LLM_REASONING:none}
+
+  # ---------------------------------------------------------------------------
+  # Rates for showing a foreign salary in rupees, so a euro figure can be read
+  # without opening a converter mid-application.
+  #
+  # Configured rather than fetched: this tool is expected to work with the
+  # network off, and a conversion that silently falls back to a stale cache is
+  # worse than one whose age is printed on screen. The UI shows both the rate and
+  # this date, so a figure that looks wrong can be checked rather than believed.
+  #
+  # Orientation only. The number that goes on a German form is euros.
+  # ---------------------------------------------------------------------------
+  money:
+    rates-as: "8 September 2026"
+    inr-per:
+      EUR: 100
+      USD: 88
+      GBP: 112
+      AED: 24
+      SGD: 66
+      CHF: 108
 
   # ---------------------------------------------------------------------------
   # Screening rules. In YAML rather than Java because they change often: the
@@ -214,6 +238,14 @@ job-radar:
        # is the first word of a job title. Same shape as the "distributed" bug.
        service engineer,
        forward deployed,
+       # Software and data science only. Security engineering is a different
+       # discipline with its own ladder, and it was taking the top three slots of
+       # the ranked feed because a security posting names two or three
+       # technologies and scores full marks on a thin list. "soc" and the rest are
+       # matched as whole words, so "As-soc-iate Software Engineer" is untouched.
+       security, itsec, infosec, cyber, cybersecurity, appsec, soc, penetration,
+       network engineer, system engineer, systems engineer,
+       automotive, mechatronics, vlsi, pcb,
        # Found by the first multi-ATS run: "Legal Counsel, EU Employment Law
        # (Platform Workers)" matched on the include token "platform".
        legal, counsel, attorney, paralegal, compliance officer,

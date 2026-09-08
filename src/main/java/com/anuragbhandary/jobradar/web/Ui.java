@@ -34,11 +34,11 @@ final class Ui {
      * this tool", not "which URL is this".
      */
     enum Tab {
-        FEED, BOARD, CHAT, MAIL
+        TODAY, JOBS, BOARD, ASSISTANT, SETUP
     }
 
     static String page(String title, String stat, String body) {
-        return page(title, stat, body, Tab.FEED);
+        return page(title, stat, body, Tab.JOBS);
     }
 
     static String page(String title, String stat, String body, Tab current) {
@@ -49,18 +49,20 @@ final class Ui {
                 <header class="topbar">
                   <span class="nav">
                     <a class="wordmark" href="/">job-radar</a>
-                    <a class="%s" href="/">feed</a>
+                    <a class="%s" href="/">today</a>
+                    <a class="%s" href="/jobs">jobs</a>
                     <a class="%s" href="/board">board</a>
-                    <a class="%s" href="/chat">chat</a>
-                    <a class="%s" href="/mail">mail</a>
+                    <a class="%s" href="/chat">assistant</a>
+                    <a class="%s" href="/setup">setup</a>
                   </span>
                   <div class="statstrip">%s</div>
                 </header>
-                <main class="page %s">%s</main></body></html>
+                <main class="page %s">%s</main>
+                <script>%s</script></body></html>
                 """.formatted(esc(title), css(),
-                        on(current, Tab.FEED), on(current, Tab.BOARD), on(current, Tab.CHAT),
-                        on(current, Tab.MAIL),
-                        stat, current == Tab.BOARD ? "wide" : "", body);
+                        on(current, Tab.TODAY), on(current, Tab.JOBS), on(current, Tab.BOARD),
+                        on(current, Tab.ASSISTANT), on(current, Tab.SETUP),
+                        stat, current == Tab.BOARD ? "wide" : "", body, behaviour());
     }
 
     private static String on(Tab current, Tab tab) {
@@ -335,6 +337,33 @@ final class Ui {
     private static String shorten(String question) {
         String flat = question.replaceAll("\\s+", " ").trim();
         return flat.length() <= 40 ? flat : flat.substring(0, 38) + "...";
+    }
+
+    /**
+     * The only client-side code in the application.
+     *
+     * <p>Two jobs, both about honesty rather than decoration. Preparing an
+     * application takes about forty seconds of browser automation, and a submit
+     * button that looks untouched for forty seconds reads as a page that has
+     * died - which is exactly how it was being read. And a toast that never
+     * leaves clutters every later glance at the page.
+     *
+     * <p>Progressive: with scripts off, forms still post and pages still work.
+     */
+    private static String behaviour() {
+        return """
+                document.addEventListener('submit', function (e) {
+                  var b = e.target.querySelector('button[data-busy]');
+                  if (b) { b.setAttribute('data-pending', '1'); }
+                }, true);
+                document.querySelectorAll('.toast').forEach(function (t) {
+                  setTimeout(function () {
+                    t.style.transition = 'opacity 400ms';
+                    t.style.opacity = '0';
+                    setTimeout(function () { t.remove(); }, 400);
+                  }, 6000);
+                });
+                """;
     }
 
     private static String css() {
@@ -1377,6 +1406,200 @@ final class Ui {
                 .confirm input { margin-top: 2px; accent-color: var(--accent); }
                 .row-side .note-muted { max-width: 90px; line-height: 1.25; }
 
+
+                /* ---------- worklist ---------- */
+
+                .tiles {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+                  gap: var(--sp-2);
+                  margin-bottom: var(--sp-3);
+                }
+                .tile {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 2px;
+                  padding: var(--sp-3) var(--sp-4);
+                  background: var(--bg-panel);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius);
+                  box-shadow: var(--shadow-sm);
+                }
+                .tile-quiet { background: transparent; box-shadow: none; border-style: dashed; }
+                .tile-n {
+                  font-family: var(--font-mono);
+                  font-variant-numeric: tabular-nums;
+                  font-size: var(--fs-xl);
+                  font-weight: 650;
+                  letter-spacing: -0.03em;
+                  line-height: 1.1;
+                  color: var(--fg);
+                }
+                .tile-quiet .tile-n { color: var(--fg-faint); font-weight: 500; }
+                .tile-l {
+                  font-size: var(--fs-xs);
+                  text-transform: uppercase;
+                  letter-spacing: 0.07em;
+                  color: var(--fg-muted);
+                  font-weight: 600;
+                }
+                .tile-note { font-size: var(--fs-xs); color: var(--fg-faint); }
+
+                .readout {
+                  margin: 0;
+                  padding: var(--sp-3) var(--sp-4);
+                  font-size: var(--fs-md);
+                  line-height: 1.5;
+                  color: var(--fg);
+                  background: var(--bg-panel);
+                  border: 1px solid var(--border);
+                  border-left: 3px solid var(--accent);
+                  border-radius: var(--radius);
+                  max-width: 76ch;
+                }
+
+                .task {
+                  display: flex;
+                  align-items: center;
+                  gap: var(--sp-4);
+                  padding: var(--sp-3) var(--sp-4);
+                  background: var(--bg-panel);
+                  border: 1px solid var(--border);
+                  border-left: 3px solid var(--neutral);
+                  border-radius: var(--radius);
+                  transition: border-color 90ms ease, box-shadow 90ms ease;
+                }
+                .task + .task { margin-top: var(--sp-2); }
+                .task:hover { box-shadow: var(--shadow); }
+                .task-bad { border-left-color: var(--bad); }
+                .task-warn { border-left-color: var(--warn); }
+                .task-soft { border-left-color: var(--accent); }
+                .task-kind {
+                  flex: 0 0 auto;
+                  width: 116px;
+                  font-size: var(--fs-xs);
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 0.06em;
+                  color: var(--fg-muted);
+                  line-height: 1.3;
+                }
+                .task-bad .task-kind { color: var(--bad); }
+                .task-warn .task-kind { color: var(--warn); }
+                .task-soft .task-kind { color: var(--accent); }
+                .task-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+                .task-title { font-weight: 650; font-size: var(--fs-md); letter-spacing: -0.01em; }
+                .task-detail { font-size: var(--fs-sm); color: var(--fg-muted); }
+                .task .btn { flex: 0 0 auto; }
+
+                /* ---------- empty states ---------- */
+
+                .blank {
+                  padding: var(--sp-6) var(--sp-5);
+                  text-align: center;
+                  background: var(--bg-panel);
+                }
+                .blank-head { margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--fg); }
+                .blank-why {
+                  margin: var(--sp-2) auto 0;
+                  max-width: 52ch;
+                  font-size: var(--fs-sm);
+                  color: var(--fg-muted);
+                  line-height: 1.5;
+                }
+                .empty-action { margin: var(--sp-4) 0 0; }
+
+                /* ---------- feedback ---------- */
+
+                .toast {
+                  margin-bottom: var(--sp-4);
+                  padding: var(--sp-3) var(--sp-4);
+                  font-size: var(--fs-sm);
+                  color: var(--ok);
+                  background: var(--ok-soft);
+                  border: 1px solid var(--ok-line);
+                  border-radius: var(--radius);
+                  animation: toast-in 200ms ease-out;
+                }
+                @keyframes toast-in {
+                  from { opacity: 0; transform: translateY(-4px); }
+                  to { opacity: 1; transform: none; }
+                }
+
+                /* A submit button that has been pressed and is waiting on the server. */
+                .btn[data-pending] {
+                  color: transparent !important;
+                  position: relative;
+                  pointer-events: none;
+                  opacity: 0.85;
+                }
+                .btn[data-pending]::after {
+                  content: attr(data-busy);
+                  position: absolute;
+                  inset: 0;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: var(--accent-fg);
+                  font-weight: 600;
+                }
+                .btn[data-pending]:not(.btn-primary)::after { color: var(--fg-muted); }
+
+                /* ---------- money ---------- */
+
+                .money {
+                  display: inline-flex;
+                  align-items: baseline;
+                  gap: 5px;
+                  padding: 1px 7px;
+                  border: 1px solid var(--border);
+                  border-radius: 999px;
+                  background: var(--bg-subtle);
+                  white-space: nowrap;
+                }
+                .money-main {
+                  font-family: var(--font-mono);
+                  font-variant-numeric: tabular-nums;
+                  font-size: var(--fs-xs);
+                  color: var(--fg);
+                }
+                .money-inr { font-size: var(--fs-xs); color: var(--fg-faint); }
+
+                .paypair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+                .paypair > div {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1px;
+                  padding: var(--sp-3);
+                  background: var(--bg-inset);
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius);
+                }
+                .pay-l {
+                  font-size: var(--fs-xs);
+                  text-transform: uppercase;
+                  letter-spacing: 0.07em;
+                  color: var(--fg-muted);
+                  font-weight: 600;
+                }
+                .pay-v {
+                  font-family: var(--font-mono);
+                  font-variant-numeric: tabular-nums;
+                  font-size: var(--fs-lg);
+                  font-weight: 650;
+                  letter-spacing: -0.02em;
+                }
+                .pay-inr { font-size: var(--fs-sm); color: var(--fg-muted); }
+
+                /* ---------- responsive ---------- */
+
+                @media (max-width: 700px) {
+                  .task { flex-wrap: wrap; gap: var(--sp-2); }
+                  .task-kind { width: 100%; }
+                  .task .btn { margin-left: auto; }
+                  .paypair { grid-template-columns: 1fr; }
+                  .money { margin-top: 2px; }
+                }
                 /* ---------- responsive ---------- */
 
                 @media (max-width: 900px) {
@@ -1389,6 +1612,28 @@ final class Ui {
                   .board-2 { grid-template-columns: 1fr; }
                   .row { flex-wrap: wrap; }
                   .row-side { width: 100%; justify-content: flex-end; }
+                }
+                @media (max-width: 560px) {
+                  /* The nav is five items and the wordmark; below this width it either scrolls
+                     or it wraps the wordmark onto two lines and pushes "setup" off the screen. */
+                  .topbar { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+                  .nav {
+                    overflow-x: auto;
+                    scrollbar-width: none;
+                    -webkit-overflow-scrolling: touch;
+                    max-width: 100%;
+                  }
+                  .nav::-webkit-scrollbar { display: none; }
+                  .nav a { flex: 0 0 auto; }
+                  .wordmark {
+                    white-space: nowrap;
+                    font-size: var(--fs-sm);
+                    padding-right: var(--sp-2);
+                    margin-right: var(--sp-2);
+                  }
+                  .statstrip { font-size: var(--fs-xs); }
+                  .page { padding: var(--sp-4) var(--sp-3) 64px; }
+                  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
                 }
                 """;
     }

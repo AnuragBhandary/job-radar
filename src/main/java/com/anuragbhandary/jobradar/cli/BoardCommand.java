@@ -25,8 +25,7 @@ public class BoardCommand {
     public void run(Map<String, String> options) {
         if ("true".equals(options.get("import"))) {
             try {
-                int imported = pipeline.importFromTracker();
-                System.out.printf("%nImported %d row(s) from the tracker.%n", imported);
+                System.out.printf("%n%s%n", pipeline.importFromTracker().describe());
             } catch (IOException e) {
                 System.out.println("Could not read the tracker: " + e.getMessage());
                 return;

@@ -43,6 +43,16 @@ public enum PipelineStage {
     }
 
     /** Nothing further will happen. Terminal stages leave the board's live columns. */
+    /**
+     * True once the application has actually gone out.
+     *
+     * <p>The line matters for dates and for chasing: everything from APPLIED on
+     * is waiting on somebody else, and is the only thing that can go quiet.
+     */
+    public boolean isSent() {
+        return ordinal() >= APPLIED.ordinal();
+    }
+
     public boolean isTerminal() {
         return terminal;
     }

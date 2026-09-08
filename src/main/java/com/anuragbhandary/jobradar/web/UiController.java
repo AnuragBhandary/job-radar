@@ -63,10 +63,12 @@ public class UiController {
     private final AssistantService assistant;
     private final MatchScorer scorer;
     private final JobInterestRepository interests;
+    private final CompanyNames companies;
 
     public UiController(PostingRepository postings, BoardTokenRepository boards,
             ApplicationAttemptRepository attempts, ApplyService applications,
-            AssistantService assistant, MatchScorer scorer, JobInterestRepository interests) {
+            AssistantService assistant, MatchScorer scorer, JobInterestRepository interests,
+            CompanyNames companies) {
         this.postings = postings;
         this.boards = boards;
         this.attempts = attempts;
@@ -74,13 +76,14 @@ public class UiController {
         this.assistant = assistant;
         this.scorer = scorer;
         this.interests = interests;
+        this.companies = companies;
     }
 
     // ------------------------------------------------------------------
     // The queue
     // ------------------------------------------------------------------
 
-    @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping(value = "/jobs", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public String queue(@RequestParam(required = false) String country) {
         List<ApplicationAttempt> recent = attempts.findTop30ByOrderByStartedAtDesc();
@@ -156,7 +159,7 @@ public class UiController {
                         .formatted(candidates.size())
                 + "<strong>%d</strong> attempts".formatted(attempts.count());
 
-        return Ui.page("Queue", stat, body.toString());
+        return Ui.page("Jobs", stat, body.toString(), Ui.Tab.JOBS);
     }
 
     /** One filter link per country that actually has candidates. */
@@ -180,7 +183,7 @@ public class UiController {
     private static String filterLink(String label, int count, String value, String active) {
         boolean on = value == null ? active == null : value.equalsIgnoreCase(active);
         return "<a href=\"%s\" class=\"%s\">%s <span class=\"n\">%d</span></a>".formatted(
-                value == null ? "/" : "/?country=" + value,
+                value == null ? "/jobs" : "/jobs?country=" + value,
                 on ? "is-active" : "", Ui.esc(label), count);
     }
 
@@ -245,11 +248,11 @@ public class UiController {
                     <a href="%s" target="_blank" rel="noreferrer">posting</a>
                     <form method="post" action="/save">
                       <input type="hidden" name="postingId" value="%d">
-                      <button class="btn btn-sm" type="submit">Save</button>
+                      <button class="btn btn-sm" type="submit" data-busy="saving">Save</button>
                     </form>
                     <form method="post" action="/prepare" class="prepare-form">
                       <input type="hidden" name="postingId" value="%d">
-                      <button class="btn" type="submit">Prepare</button>
+                      <button class="btn" type="submit" data-busy="filling the form">Prepare</button>
                     </form>
                   </div>
                 </article>
@@ -306,7 +309,7 @@ public class UiController {
     public String prepare(@RequestParam Long postingId) {
         Optional<Posting> posting = postings.findById(postingId);
         if (posting.isEmpty()) {
-            return "redirect:/";
+            return "redirect:/jobs";
         }
         ApplyOutcome outcome = applications.apply(posting.get(), false, () -> false);
         return "redirect:/attempt/" + outcome.attempt().getId();
@@ -627,9 +630,7 @@ public class UiController {
     }
 
     private String companyOf(Posting posting) {
-        return boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
-                .map(board -> board.getLabel() == null ? board.getToken() : board.getLabel())
-                .orElse(posting.getBoardToken());
+        return companies.of(posting);
     }
 
     private static String statusBadge(ApplicationAttempt attempt) {

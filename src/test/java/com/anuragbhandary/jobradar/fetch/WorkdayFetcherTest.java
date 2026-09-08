@@ -62,6 +62,11 @@ class WorkdayFetcherTest {
     void filtersBeforeFetchingDetails() throws Exception {
         // Four postings in, one survivor: a US location, a "Senior" title and an
         // "Internship" title are all rejected before costing a request.
+        //
+        // The survivor is a retitled capture. NXP's real posting was "Junior
+        // System Engineer for Automotive Innovations", which the title filter now
+        // rejects as hardware - NXP is a semiconductor company. The fixture keeps
+        // the response shape, which is what this test is about.
         FetchBatch batch = fetcher.fetch("nxp/wd3/careers");
 
         assertThat(batch.postings()).hasSize(1);
