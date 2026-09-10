@@ -24,7 +24,8 @@ class FieldMapperTest {
     // personal data on the machine running it.
     private final FieldMapper mapper = new FieldMapper(PROFILE,
             new com.anuragbhandary.jobradar.apply.AnswerStore(PROFILE,
-                    java.nio.file.Path.of("/nowhere/applicant.yml")));
+                    java.nio.file.Path.of("/nowhere/applicant.yml")),
+            new com.anuragbhandary.jobradar.knowledge.ProfileFacts(PROFILE));
 
     private static final ApplicationDocuments DOCS =
             new ApplicationDocuments(Path.of("/tmp/resume.pdf"), "A letter.", "note");

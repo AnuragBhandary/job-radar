@@ -27,7 +27,8 @@ class MatchScorerTest {
             Map.of(Country.REMOTE, 100, Country.INDIA, 70, Country.GERMANY, 55), 2, 7, 45);
 
     private final MatchScorer scorer = new MatchScorer(RESUME, CONFIG,
-            com.anuragbhandary.jobradar.apply.TestProfiles.indianApplicant());
+            com.anuragbhandary.jobradar.apply.TestProfiles.indianApplicant(),
+            com.anuragbhandary.jobradar.filter.RealConfigAccess.countryStrategy());
 
     private static Posting posting(String title, String description) {
         Posting posting = new Posting(Source.GREENHOUSE, "acme", "1", title);

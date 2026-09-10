@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>It binds localhost only. There is no login because there is no second user;
  * that assumption is written down in {@link
- * com.anuragbhandary.jobradar.web.UiController} because it is the thing that has
+ * com.anuragbhandary.jobradar.web.PreparationController} because it is the thing that has
  * to be revisited if the address ever changes.
  */
 @Component

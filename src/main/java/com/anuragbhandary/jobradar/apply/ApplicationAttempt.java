@@ -94,8 +94,13 @@ public class ApplicationAttempt {
     private String tailoringNote;
 
     /**
-     * The fill report, rendered. The audit trail: every field, its answer and
-     * where the answer came from.
+     * The fill report, rendered.
+     *
+     * <p><b>An archive, no longer the record.</b> {@link ApplicationField} is
+     * authoritative: one queryable row per field, with the state, the source and
+     * the evidence in columns rather than in a sentence. This is still written
+     * because it is the right thing to read in a terminal and in review.md, and
+     * because parsing it back was how the review page worked until now.
      */
     @Column(name = "field_log", columnDefinition = "text")
     private String fieldLog;
@@ -105,11 +110,26 @@ public class ApplicationAttempt {
     private String blockerReason;
 
     /**
+     * Which kind of manual intervention this needs, when it needs one.
+     *
+     * <p>Structured, alongside {@link #blockerReason} rather than replacing it:
+     * the prose is still the best thing to show a person, and the enum is what
+     * the worklist should have been switching on instead of testing whether that
+     * prose began with "No form found".
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "manual_reason", length = 32)
+    private ManualReason manualReason;
+
+    /**
      * Questions this form asked that the profile could not answer, tab-separated.
      *
-     * <p>The feedback loop. Read by {@code learn}, which turns them into ready-made
-     * {@code extra-answers} entries - so the profile improves by being used rather
-     * than by being imagined in advance.
+     * <p><b>An archive, no longer the record.</b> {@link QuestionSighting} is
+     * authoritative and carries the company, the board, the country and the
+     * concept - none of which fitted in a tab-separated column.
+     *
+     * <p>Still written, because {@code learn} reads it and because it is the
+     * shape the answers page was built on.
      */
     @Column(name = "open_questions", columnDefinition = "text")
     private String openQuestions;
@@ -121,6 +141,35 @@ public class ApplicationAttempt {
     /** Row number in the Google Sheet, once written. Null until SUBMITTED. */
     @Column(name = "tracker_row")
     private Integer trackerRow;
+
+    /**
+     * Which part of preparation is running.
+     *
+     * <p>Separate from {@link #status} rather than folded into it, because they
+     * answer different questions and only one of them is history. The status says
+     * why this attempt stopped and is still worth reading next year; the stage
+     * says what is happening now and is meaningless the moment the run ends.
+     *
+     * <p>Persisted rather than held in a map, so the progress endpoint is a row
+     * read and a restart mid-run leaves evidence rather than a page that polls
+     * forever.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private PreparationStage stage;
+
+    /**
+     * One line about this particular run: which board, how many fields.
+     *
+     * <p>Never a field value. It is rendered into a page and written to a log,
+     * and the values on these forms are addresses, salary expectations and visa
+     * status.
+     */
+    @Column(name = "stage_detail", length = 256)
+    private String stageDetail;
+
+    @Column(name = "stage_updated_at")
+    private Instant stageUpdatedAt;
 
     protected ApplicationAttempt() {
         // for JPA
@@ -210,6 +259,14 @@ public class ApplicationAttempt {
         this.fieldLog = fieldLog;
     }
 
+    public ManualReason getManualReason() {
+        return manualReason;
+    }
+
+    public void setManualReason(ManualReason manualReason) {
+        this.manualReason = manualReason;
+    }
+
     public String getBlockerReason() {
         return blockerReason;
     }
@@ -240,5 +297,36 @@ public class ApplicationAttempt {
 
     public void setTrackerRow(Integer trackerRow) {
         this.trackerRow = trackerRow;
+    }
+
+    public PreparationStage getStage() {
+        return stage;
+    }
+
+    /** Moves the stage and stamps the time, which is what makes progress visible. */
+    public void setStage(PreparationStage stage, String detail) {
+        this.stage = stage;
+        this.stageDetail = detail;
+        this.stageUpdatedAt = Instant.now();
+    }
+
+    public String getStageDetail() {
+        return stageDetail;
+    }
+
+    public Instant getStageUpdatedAt() {
+        return stageUpdatedAt;
+    }
+
+    /**
+     * True when this attempt could be picked up where it left off.
+     *
+     * <p>Not the same as "something is wrong with it". A submitted attempt is
+     * finished, a failed one is worth another go, and an attempt waiting on an
+     * answer is the ordinary case this whole phase is built around.
+     */
+    public boolean isResumable() {
+        return status != AttemptStatus.SUBMITTED && status != AttemptStatus.SKIPPED
+                && (stage == null || !stage.isRunning());
     }
 }

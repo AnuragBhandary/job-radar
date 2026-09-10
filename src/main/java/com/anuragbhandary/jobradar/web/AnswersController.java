@@ -70,7 +70,7 @@ public class AnswersController {
                 : "<strong>" + open.size() + "</strong> unanswered"
                         + (blocking > 0 ? "<span class=\"sep\">·</span><strong>" + blocking
                                 + "</strong> blocking" : "");
-        return Ui.page("Answers", stat, body.toString(), Ui.Tab.ANSWERS);
+        return Ui.page("Answers", stat, body.toString(), Ui.Tab.KNOWLEDGE);
     }
 
     @PostMapping("/answers/save")

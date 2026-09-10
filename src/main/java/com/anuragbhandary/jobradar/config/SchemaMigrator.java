@@ -77,6 +77,22 @@ public final class SchemaMigrator {
                         com.anuragbhandary.jobradar.domain.Source.class)),
                 new EnumColumn("application_attempt", "status", names(
                         com.anuragbhandary.jobradar.apply.AttemptStatus.class)),
+                new EnumColumn("application_attempt", "manual_reason", names(
+                        com.anuragbhandary.jobradar.apply.ManualReason.class)),
+                // Added in the preparation-workflow phase. Listed here on the day
+                // it was introduced rather than on the day a value is added to it,
+                // which is the day it would otherwise be noticed - by an insert
+                // failing against a table that looks correct.
+                new EnumColumn("application_attempt", "stage", names(
+                        com.anuragbhandary.jobradar.apply.PreparationStage.class)),
+                new EnumColumn("application_field", "state", names(
+                        com.anuragbhandary.jobradar.apply.FieldState.class)),
+                new EnumColumn("application_field", "automation_state", names(
+                        com.anuragbhandary.jobradar.apply.AutomationState.class)),
+                new EnumColumn("application_field", "source", names(
+                        com.anuragbhandary.jobradar.knowledge.KnowledgeSource.class)),
+                new EnumColumn("application_field", "original_source", names(
+                        com.anuragbhandary.jobradar.knowledge.KnowledgeSource.class)),
                 new EnumColumn("job_interest", "stage", names(
                         com.anuragbhandary.jobradar.pipeline.PipelineStage.class)));
 

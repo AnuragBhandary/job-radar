@@ -57,6 +57,22 @@ public class BoardToken {
     @Column(name = "last_error", length = 1024)
     private String lastError;
 
+    /**
+     * Where this employer is, ISO-3166 alpha-2, or null.
+     *
+     * <p>On the board rather than on each posting because it is a fact about the
+     * company, not about the vacancy - and because it is the only way to tell a
+     * US company hiring remotely from India apart from a US relocation, which is
+     * the distinction the whole strategic model turns on.
+     *
+     * <p>Normally inferred from where the board's own onsite postings are, which
+     * costs nothing and is right for almost every company here. Set it by hand
+     * for the ones it is wrong for: a value already present is never overwritten
+     * by the inference.
+     */
+    @Column(name = "employer_country_code", length = 2)
+    private String employerCountryCode;
+
     protected BoardToken() {
         // for JPA
     }
@@ -158,6 +174,14 @@ public class BoardToken {
     /** The reason without the marker, for showing next to a retired board. */
     public String retirementReason() {
         return isRetired() ? lastError.substring(RETIRED.length()).trim() : lastError;
+    }
+
+    public String getEmployerCountryCode() {
+        return employerCountryCode;
+    }
+
+    public void setEmployerCountryCode(String employerCountryCode) {
+        this.employerCountryCode = employerCountryCode;
     }
 
     public String getLastError() {

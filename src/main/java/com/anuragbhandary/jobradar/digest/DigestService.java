@@ -8,6 +8,7 @@ import com.anuragbhandary.jobradar.filter.ScreeningService;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.anuragbhandary.jobradar.sheets.SheetsClient;
+import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -83,7 +84,15 @@ public class DigestService {
 
         Predicate<Posting> fresh = p -> p.getStatus() == PostingStatus.NEW
                 || p.getStatus() == PostingStatus.UPDATED;
-        Predicate<Posting> candidate = p -> p.getVerdict() == Verdict.CANDIDATE;
+        // Eligible AND recommended. Screening now classifies and keeps every
+        // posting it can place instead of discarding whole countries, so a digest
+        // filtered on the verdict alone would open with American roles the
+        // strategy has been told not to recommend. A null outcome counts as
+        // recommended: that is what a row screened before this phase looks like,
+        // so an un-migrated database reads exactly as it always has.
+        Predicate<Posting> candidate = p -> p.getVerdict() == Verdict.CANDIDATE
+                && (p.getStrategyOutcome() == null
+                        || p.getStrategyOutcome() == StrategyOutcome.RECOMMENDED);
 
         // A candidate stating no years goes to review rather than to the
         // candidate list, so the two sections do not report the same posting

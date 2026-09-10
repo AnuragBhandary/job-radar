@@ -7,7 +7,10 @@ import com.anuragbhandary.jobradar.domain.BoardToken;
 import com.anuragbhandary.jobradar.domain.Country;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.Source;
+import com.anuragbhandary.jobradar.domain.StrategicClass;
 import com.anuragbhandary.jobradar.domain.Verdict;
+import com.anuragbhandary.jobradar.domain.WorkMode;
+import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
 import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -146,5 +149,43 @@ class PostingRepositoryTest {
         // The last known good count survives the failure, so the digest can say
         // "was 412, now erroring" rather than "0 postings".
         assertThat(boards.findByLastErrorIsNotNull().getFirst().getLastPostingCount()).isEqualTo(412);
+    }
+
+    @Test
+    @DisplayName("the default feed is eligible AND recommended, and tolerates un-migrated rows")
+    void recommendedFeedSeparatesTheTwoAxes() {
+        postings.save(candidate("rec", StrategyOutcome.RECOMMENDED));
+        postings.save(candidate("con", StrategyOutcome.CONSIDER));
+        postings.save(candidate("exc", StrategyOutcome.EXCLUDED));
+        // A row screened before the strategy columns existed. It must keep
+        // appearing: an un-migrated database has to behave exactly as it did
+        // before, not go empty until somebody runs `screen`.
+        postings.save(candidate("old", null));
+
+        Posting rejected = candidate("rej", StrategyOutcome.RECOMMENDED);
+        rejected.setVerdict(Verdict.REJECTED);
+        postings.save(rejected);
+
+        assertThat(postings.findRecommended())
+                .extracting(Posting::getExternalId)
+                .containsExactlyInAnyOrder("rec", "old");
+
+        // Everything eligible is still reachable - excluded is a decision about
+        // priority, never a deletion.
+        assertThat(postings.findByVerdict(Verdict.CANDIDATE))
+                .extracting(Posting::getExternalId)
+                .containsExactlyInAnyOrder("rec", "con", "exc", "old");
+    }
+
+    private static Posting candidate(String externalId, StrategyOutcome outcome) {
+        Posting p = new Posting(Source.LEVER, "feedtest", externalId, "Backend Engineer");
+        p.setFirstSeen(Instant.now());
+        p.setLastSeen(Instant.now());
+        p.setVerdict(Verdict.CANDIDATE);
+        p.setStrategyOutcome(outcome);
+        p.setWorkMode(WorkMode.ONSITE);
+        p.setStrategicClass(StrategicClass.INTERNATIONAL_RELOCATION);
+        p.setCountryCode("DE");
+        return p;
     }
 }

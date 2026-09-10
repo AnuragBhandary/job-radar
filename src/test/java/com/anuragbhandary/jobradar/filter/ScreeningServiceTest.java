@@ -6,7 +6,10 @@ import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Country;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.Source;
+import com.anuragbhandary.jobradar.domain.StrategicClass;
 import com.anuragbhandary.jobradar.domain.Verdict;
+import com.anuragbhandary.jobradar.domain.WorkMode;
+import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +19,10 @@ class ScreeningServiceTest {
     private final AppProperties properties = RealConfig.withScreening();
     private final ScreeningService screening = new ScreeningService(
             null,
-            new GeoFilter(properties),
+            null,
+            RealConfig.locations(),
+            new StrategicClassifier(RealConfig.countryStrategy()),
+            RealConfig.countryStrategy(),
             new TitleFilter(properties),
             new YearsExtractor(),
             new SignalExtractor(),
@@ -126,5 +132,91 @@ class ScreeningServiceTest {
         assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
         assertThat(p.getRejectReason()).isNull();
         assertThat(p.getMinYears()).isZero();
+    }
+
+    // ------------------------------------------------------------------
+    // Eligibility is not priority
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a US relocation role is kept, classified, and simply not recommended")
+    void excludedStrategyDoesNotDeleteThePosting() {
+        // The rule the whole phase turns on. Before it, this posting was
+        // "REJECTED - outside target geographies" with no country recorded, and
+        // the only way to get it back was to edit a list of place names.
+        Posting p = posting("Software Engineer", "New York, NY",
+                "0-2 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getRejectReason()).isNull();
+        assertThat(p.getCountryCode()).isEqualTo("US");
+        assertThat(p.getStrategicClass()).isEqualTo(StrategicClass.INTERNATIONAL_RELOCATION);
+        assertThat(p.getStrategyOutcome()).isEqualTo(StrategyOutcome.EXCLUDED);
+    }
+
+    @Test
+    @DisplayName("a newly admitted country is eligible and recommended")
+    void secondaryTierIsRecommended() {
+        // Sydney used to be rejected on the strength of appearing in
+        // excluded-locations. It is now a secondary-tier relocation.
+        Posting p = posting("Backend Engineer", "Sydney, Australia",
+                "0-2 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getCountryCode()).isEqualTo("AU");
+        assertThat(p.getStrategyOutcome()).isEqualTo(StrategyOutcome.RECOMMENDED);
+    }
+
+    @Test
+    @DisplayName("an opportunistic country is eligible but stays out of the default feed")
+    void opportunisticTierIsConsidered() {
+        Posting p = posting("Backend Engineer", "Toronto, Canada",
+                "0-2 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getStrategyOutcome()).isEqualTo(StrategyOutcome.CONSIDER);
+    }
+
+    @Test
+    @DisplayName("remote locked to a country he cannot be in is still a rejection")
+    void unreachableRemoteIsStillIneligible() {
+        // The one geography rule that still rejects, and the expensive mistake
+        // the original filter existed to prevent. This is eligibility, not
+        // preference: no amount of strategy makes the job holdable.
+        Posting p = posting("Software Engineer", "Remote - United States only",
+                "0-2 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getRejectReason()).contains("country-locked remote");
+        // Classified anyway: a rejection is a statement about eligibility, not a
+        // reason to know nothing about the row.
+        assertThat(p.getWorkMode()).isEqualTo(WorkMode.REMOTE_COUNTRY_LOCKED);
+        assertThat(p.getRemoteEligibleFrom()).isEqualTo("US");
+    }
+
+    @Test
+    @DisplayName("classification is written even when the title rejects the posting")
+    void classificationSurvivesRejection() {
+        Posting p = posting("Senior Software Engineer", "Berlin", "1-2 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getCountryCode()).isEqualTo("DE");
+        assertThat(p.getWorkMode()).isEqualTo(WorkMode.ONSITE);
+        assertThat(p.getStrategicClass()).isEqualTo(StrategicClass.INTERNATIONAL_RELOCATION);
+    }
+
+    @Test
+    @DisplayName("the legacy country column still says what the answer path expects")
+    void legacyCountryIsStillWritten() {
+        // FieldMapper's sponsorship and authorisation derivations read this. If
+        // it stops being populated correctly, the wrong answer reaches a form.
+        assertThat(posting("Backend Engineer", "Mumbai", "1 year.").getCountry())
+                .isEqualTo(Country.INDIA);
+        assertThat(posting("Backend Engineer", "Berlin", "1 year.").getCountry())
+                .isEqualTo(Country.GERMANY);
+        assertThat(posting("Backend Engineer", "Remote", "1 year.").getCountry())
+                .isEqualTo(Country.REMOTE);
+        assertThat(posting("Backend Engineer", "Toronto", "1 year.").getCountry())
+                .isEqualTo(Country.OTHER);
     }
 }

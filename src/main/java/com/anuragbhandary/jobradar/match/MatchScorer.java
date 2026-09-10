@@ -43,12 +43,15 @@ public class MatchScorer {
     private final ResumeModel resume;
     private final MatchProperties config;
     private final com.anuragbhandary.jobradar.apply.ApplicantProfile profile;
+    private final com.anuragbhandary.jobradar.strategy.CountryStrategy strategy;
 
     public MatchScorer(ResumeModel resume, MatchProperties config,
-            com.anuragbhandary.jobradar.apply.ApplicantProfile profile) {
+            com.anuragbhandary.jobradar.apply.ApplicantProfile profile,
+            com.anuragbhandary.jobradar.strategy.CountryStrategy strategy) {
         this.resume = resume;
         this.config = config;
         this.profile = profile;
+        this.strategy = strategy;
     }
 
     public MatchScore score(Posting posting) {
@@ -179,13 +182,35 @@ public class MatchScorer {
                     "says it will not sponsor, and you would need it here");
         }
 
-        int preference = config.preferenceFor(posting.getCountry());
+        // The strategic lane decides the weight where one has been worked out.
+        // Without this, every country admitted by the strategy phase - Australia,
+        // the UK, Canada - lands on Country.OTHER and scores 30, so the postings
+        // the widening was for would never reach the top of the feed. The
+        // nine-dimension model is a later phase; this is the smallest change that
+        // stops the new countries being invisible on the day they arrive.
+        int preference = posting.getStrategicClass() != null
+                ? strategy.preferenceFor(posting.getStrategicClass(), posting.getCountryCode())
+                : config.preferenceFor(posting.getCountry());
         int points = Math.round(GEOGRAPHY_MAX * preference / 100f);
         return new MatchScore.Factor("Location", points, GEOGRAPHY_MAX,
-                posting.getCountry() == null
-                        ? "no country worked out"
-                        : posting.getCountry().name().toLowerCase(Locale.ROOT)
-                                + ", weighted " + preference + " of 100");
+                locationDetail(posting, preference));
+    }
+
+    /** Where it is and which lane it is in, in words, beside the bar. */
+    private static String locationDetail(Posting posting, int preference) {
+        if (posting.getStrategicClass() != null) {
+            String where = posting.getCountryCode() == null
+                    ? posting.getStrategicClass().name().toLowerCase(Locale.ROOT).replace('_', ' ')
+                    : com.anuragbhandary.jobradar.domain.CountryCodes
+                            .displayName(posting.getCountryCode())
+                            + ", " + posting.getStrategicClass().name()
+                                    .toLowerCase(Locale.ROOT).replace('_', ' ');
+            return where + ", weighted " + preference + " of 100";
+        }
+        return posting.getCountry() == null
+                ? "no country worked out"
+                : posting.getCountry().name().toLowerCase(Locale.ROOT)
+                        + ", weighted " + preference + " of 100";
     }
 
     /**

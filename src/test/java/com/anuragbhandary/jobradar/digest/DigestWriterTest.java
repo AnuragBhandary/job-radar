@@ -31,6 +31,7 @@ class DigestWriterTest {
                     new AppProperties(null, null, null, null,
                             com.anuragbhandary.jobradar.filter.RealConfigAccess.screening(),
                             FLOORS),
+                    com.anuragbhandary.jobradar.filter.RealConfigAccess.countryStrategy(),
                     new com.anuragbhandary.jobradar.filter.GeoFilter(
                             new AppProperties(null, null, null, null,
                                     com.anuragbhandary.jobradar.filter.RealConfigAccess.screening(),
