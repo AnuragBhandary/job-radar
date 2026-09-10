@@ -58,11 +58,22 @@ public final class OptionMatcher {
         // 2. The option begins with the answer: "Yes" -> "Yes, I am authorized...".
         //    Anchored at the start so that "No" cannot reach "...I do not require",
         //    which is the same sentence with the opposite meaning.
+        //
+        //    And refused when two options do it. A form offering "Yes, now" and
+        //    "Yes, in the future" is asking something this cannot answer, and
+        //    taking whichever came first was a guess wearing a match's clothing.
+        String prefixMatch = null;
         for (String option : options) {
             String candidate = norm(option);
             if (candidate.startsWith(wanted + " ") || candidate.startsWith(wanted + ",")) {
-                return Optional.of(option);
+                if (prefixMatch != null) {
+                    return Optional.empty();
+                }
+                prefixMatch = option;
             }
+        }
+        if (prefixMatch != null) {
+            return Optional.of(prefixMatch);
         }
 
         // 3. Whole-word containment, with a polarity guard.

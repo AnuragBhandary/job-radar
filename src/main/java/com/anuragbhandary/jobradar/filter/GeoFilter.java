@@ -3,10 +3,6 @@ package com.anuragbhandary.jobradar.filter;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Country;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,7 +25,6 @@ public class GeoFilter {
     }
 
     private final AppProperties.Geo geo;
-    private final Map<String, Pattern> wordPatterns = new ConcurrentHashMap<>();
 
     public GeoFilter(AppProperties properties) {
         this.geo = properties.screening().geo();
@@ -41,8 +36,7 @@ public class GeoFilter {
      *                 in the title - "Junior Software Engineer (Mexico)"
      */
     public GeoResult classify(String location, String title) {
-        String haystack = ((location == null ? "" : location) + " " + (title == null ? "" : title))
-                .toLowerCase(Locale.ROOT);
+        String haystack = LocationText.haystack(location, title);
 
         if (haystack.isBlank()) {
             return new GeoResult(Country.OTHER, FilterVerdict.reject("no location given"));
@@ -53,7 +47,8 @@ public class GeoFilter {
         // matches ireland-cities on "dublin" and is accepted as Ireland; the
         // "dublin ohio" entry that used to sit in excluded-locations could never
         // fire, because acceptance had already happened one branch earlier.
-        String falseFriend = firstPhrase(flatten(haystack), geo.falseFriends());
+        String falseFriend = LocationText.firstPhrase(
+                LocationText.flatten(haystack), geo.falseFriends());
         if (falseFriend != null) {
             return new GeoResult(Country.OTHER, FilterVerdict.reject(
                     "reads as a target city but is not: '" + falseFriend + "'"));
@@ -106,68 +101,21 @@ public class GeoFilter {
     /** True when the location is in the Mumbai metropolitan area - the INR 7 lakh floor. */
     public boolean isMumbai(String location) {
         return location != null
-                && containsAny(location.toLowerCase(Locale.ROOT), geo.mumbaiCities());
+                && LocationText.containsAny(
+                        LocationText.haystack(location, null), geo.mumbaiCities());
     }
 
-    /**
-     * Punctuation to single spaces, so "Dublin, Ohio" reads as the contiguous
-     * phrase "dublin ohio".
-     *
-     * <p>Adjacency is the whole point. A posting open in "Dublin, Ireland;
-     * Columbus, Ohio" contains both words and is genuinely Irish, so a false
-     * friend has to be the city and the qualifier sitting next to each other -
-     * not merely present in the same string.
-     */
-    private static String flatten(String haystack) {
-        return haystack.replaceAll("[^a-z0-9]+", " ").trim();
-    }
-
-    /** First phrase occurring literally in the already-flattened haystack. */
-    private static String firstPhrase(String flattened, List<String> phrases) {
-        if (phrases == null) {
-            return null;
-        }
-        for (String phrase : phrases) {
-            if (flattened.contains(phrase)) {
-                return phrase;
-            }
-        }
-        return null;
+    /** The screening rules this filter was built from, shared with the classifier. */
+    AppProperties.Geo geo() {
+        return geo;
     }
 
     private boolean containsAny(String haystack, List<String> needles) {
-        return firstMatch(haystack, needles) != null;
+        return LocationText.containsAny(haystack, needles);
     }
 
-    /**
-     * Word-boundary matching, not substring. "us" must not fire inside
-     * "Columbus", and "uk" must not fire inside "Ukraine".
-     */
     private String firstMatch(String haystack, List<String> needles) {
-        if (needles == null) {
-            return null;
-        }
-        for (String needle : needles) {
-            if (wordPattern(needle).matcher(haystack).find()) {
-                return needle;
-            }
-        }
-        return null;
+        return LocationText.firstMatch(haystack, needles);
     }
 
-    private Pattern wordPattern(String needle) {
-        return wordPatterns.computeIfAbsent(needle, GeoFilter::compileWordPattern);
-    }
-
-    /**
-     * A word boundary is only added at an end that is actually a word character.
-     * "u.s." ends in a full stop, and {@code \b} after a non-word character would
-     * require a word character to follow it - so the token would never match at
-     * the end of a string.
-     */
-    private static Pattern compileWordPattern(String needle) {
-        String prefix = Character.isLetterOrDigit(needle.charAt(0)) ? "\\b" : "";
-        String suffix = Character.isLetterOrDigit(needle.charAt(needle.length() - 1)) ? "\\b" : "";
-        return Pattern.compile(prefix + Pattern.quote(needle) + suffix, Pattern.CASE_INSENSITIVE);
-    }
 }

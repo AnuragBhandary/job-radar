@@ -34,19 +34,66 @@ public class FormFiller {
     private static final Logger log = LoggerFactory.getLogger(FormFiller.class);
 
     private final FieldMapper mapper;
+    /** The knowledge system's answer, used when it is the authority. */
+    private final KnowledgeAnswers knowledge;
+    /**
+     * Whether the knowledge system decides real answers.
+     *
+     * <p>One flag, read once, and both implementations stay compiled in. Turning
+     * it off is a config edit and a restart, not a rollback commit - which is the
+     * only kind of rollback worth having on the path that fills an employer's
+     * form.
+     */
+    private final boolean knowledgeIsAuthoritative;
 
-    public FormFiller(FieldMapper mapper) {
+    public FormFiller(FieldMapper mapper, KnowledgeAnswers knowledge,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${job-radar.knowledge.resolver-authoritative:false}")
+            boolean knowledgeIsAuthoritative) {
         this.mapper = mapper;
+        this.knowledge = knowledge;
+        this.knowledgeIsAuthoritative = knowledgeIsAuthoritative;
+        log.info("Form answers come from {}", knowledgeIsAuthoritative
+                ? "the knowledge resolver" : "the legacy field mapper");
     }
 
     public FillReport fill(
             Page page, List<FormField> fields, Posting posting, ApplicationDocuments documents) {
+        return fill(page, fields, posting, documents,
+                com.anuragbhandary.jobradar.apply.PreparedAnswers.none(), null);
+    }
+
+    public FillReport fill(Page page, List<FormField> fields, Posting posting,
+            ApplicationDocuments documents,
+            com.anuragbhandary.jobradar.apply.PreparedAnswers settled) {
+        return fill(page, fields, posting, documents, settled, null);
+    }
+
+    /**
+     * Fills, preferring answers the applicant has already settled on.
+     *
+     * <p>The override layer is what makes an application resumable. A question
+     * answered on the preparation screen has to survive the browser closing, and
+     * on the next run it is the settled answer that goes in rather than the one
+     * the mapper would work out again from a profile that has not changed.
+     *
+     * <p>It is a layer above the mapper rather than a change to it, on purpose.
+     * The mapper is still what answers every field nobody has touched, and there
+     * is no path here by which the new knowledge resolver decides anything - see
+     * {@link com.anuragbhandary.jobradar.apply.PreparedAnswers}.
+     */
+    public FillReport fill(Page page, List<FormField> fields, Posting posting,
+            ApplicationDocuments documents,
+            com.anuragbhandary.jobradar.apply.PreparedAnswers settled,
+            com.anuragbhandary.jobradar.knowledge.ApplicationContext context) {
 
         List<FillReport.Entry> entries = new ArrayList<>(fields.size());
         List<FillReport.Entry> blockers = new ArrayList<>();
 
         for (FormField field : fields) {
-            Answer answer = mapper.answer(field, posting, documents);
+            Answer answer = settled.forField(field)
+                    .map(chosen -> reconcile(chosen, field))
+                    .orElseGet(() -> answerFor(field, posting, documents, context));
 
             if (!answer.hasValue()) {
                 FillReport.Entry entry = new FillReport.Entry(field, answer, false, null);
@@ -80,6 +127,48 @@ public class FormFiller {
                 entries.stream().filter(FillReport.Entry::filled).count(),
                 fields.size(), blockers.size());
         return new FillReport(List.copyOf(entries), List.copyOf(blockers));
+    }
+
+    /**
+     * Which system answers this field.
+     *
+     * <p>The knowledge resolver when it is the authority and there is a context to
+     * resolve against; the legacy mapper otherwise. The mapper is kept and is not
+     * going anywhere - it is the regression oracle the shadow compares against,
+     * the fallback when the flag is off, and the reference when the two disagree.
+     */
+    Answer answerFor(FormField field, Posting posting, ApplicationDocuments documents,
+            com.anuragbhandary.jobradar.knowledge.ApplicationContext context) {
+
+        // No context means nothing in the knowledge system can resolve, so a
+        // caller without one gets the path that does not need one rather than a
+        // form full of blanks.
+        if (knowledgeIsAuthoritative && context != null) {
+            return knowledge.answer(field, context, documents);
+        }
+        return mapper.answer(field, posting, documents);
+    }
+
+    /**
+     * Checks a settled answer against the options this reading of the form offers.
+     *
+     * <p>The option list can change between two readings of the same form, and a
+     * value a select does not have cannot be typed into it. Where it no longer
+     * fits, the field is left unanswered <em>with the reason</em> rather than
+     * handed back to the mapper: the applicant decided this one, and quietly
+     * replacing his decision with a computed answer is worse than stopping and
+     * saying the form has moved.
+     */
+    private static Answer reconcile(Answer settled, FormField field) {
+        if (!field.isChoice() || field.options() == null || field.options().isEmpty()) {
+            return settled;
+        }
+        return OptionMatcher.match(settled.value(), field.options())
+                .map(option -> new Answer(option, settled.origin(), settled.note()))
+                .orElseGet(() -> Answer.unanswered(
+                        "you answered this earlier, and this form no longer offers that "
+                                + "option - it wants one of: "
+                                + String.join(" | ", field.options())));
     }
 
     private void apply(Page page, FormField field, String value) {

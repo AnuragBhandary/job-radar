@@ -6,6 +6,8 @@ import com.anuragbhandary.jobradar.apply.llm.LlmProperties;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
+import com.anuragbhandary.jobradar.filter.GeoVocabulary;
+import com.anuragbhandary.jobradar.strategy.StrategyProperties;
 import com.anuragbhandary.jobradar.mail.GmailProperties;
 import com.anuragbhandary.jobradar.money.MoneyProperties;
 import com.anuragbhandary.jobradar.match.MatchProperties;
@@ -37,7 +39,13 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         LlmProperties.class,
         GmailProperties.class,
         MatchProperties.class,
-        MoneyProperties.class})
+        MoneyProperties.class,
+        // Country vocabulary and country strategy. Two roots rather than one
+        // because they are different kinds of thing: the vocabulary says where
+        // a place is, which is a fact, and the strategy says whether he wants to
+        // go there, which is not.
+        GeoVocabulary.class,
+        StrategyProperties.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -160,6 +161,80 @@ public class Posting {
     /** The pay figure the posting states, with enough clause to read it by. */
     @Column(name = "salary_text", length = 256)
     private String salaryText;
+
+    // ------------------------------------------------------------------
+    // Location, as of the country/work-mode phase.
+    //
+    // Every column here is nullable, and not out of laziness: SQLite cannot
+    // ADD COLUMN NOT NULL without a default, which is the trap already
+    // documented on graduateSignal and sponsorshipSignal above. It is also
+    // honest - a posting fetched before this phase, or one whose location text
+    // names nowhere the vocabulary knows, genuinely has no country, and "needs
+    // classifying" has to be storable as something other than a guess.
+    // ------------------------------------------------------------------
+
+    /**
+     * ISO-3166 alpha-2, e.g. {@code DE}.
+     *
+     * <p>A string rather than another enum. {@link Country} is mapped to a SQLite
+     * CHECK constraint listing its values, and SQLite cannot alter one - so
+     * adding Australia to the enum is a table rebuild, which has already had to
+     * be written once (see SchemaMigrator). A varchar takes "AU" for free.
+     *
+     * <p>{@code country} above is still written and still correct. It is what
+     * FieldMapper's sponsorship derivation, the compensation bands, the salary
+     * floors and the jobs-page filter all read, and this phase does not touch the
+     * answer path.
+     */
+    @Column(name = "country_code", length = 2)
+    private String countryCode;
+
+    /**
+     * Where the company is, as opposed to where the job is.
+     *
+     * <p>The field that makes "US employer, remote from India" expressible. Kept
+     * separate from {@link #countryCode} because collapsing them is precisely the
+     * mistake that filed such a role as a US relocation and then excluded it.
+     *
+     * <p>Inferred per board rather than per posting - see
+     * {@code ScreeningService.inferEmployerCountries} - and overridable by hand
+     * on {@link BoardToken}.
+     */
+    @Column(name = "employer_country_code", length = 2)
+    private String employerCountryCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "work_mode", length = 32)
+    private WorkMode workMode;
+
+    /**
+     * ISO codes a remote employee may sit in, comma-separated, or null.
+     *
+     * <p><strong>Null means the posting did not say</strong> - not "anywhere".
+     * A CSV rather than a join table because it is read whole, never queried by
+     * element, and holds one or two values; a table would be a migration and a
+     * join for a list that is usually of length one.
+     */
+    @Column(name = "remote_eligible_from", length = 128)
+    private String remoteEligibleFrom;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "strategic_class", length = 32)
+    private StrategicClass strategicClass;
+
+    /**
+     * Whether the current strategy recommends this, which is not whether it is
+     * eligible.
+     *
+     * <p>{@link #verdict} answers "could this be pursued at all" and rejects on
+     * facts. This answers "should it be on today's list" and changes the moment
+     * the configuration does. Before they were separated, widening the search to
+     * Canada meant editing a list of place names and re-screening nine thousand
+     * postings to get back rows that had been thrown away.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "strategy_outcome", length = 32)
+    private StrategyOutcome strategyOutcome;
 
     protected Posting() {
         // for JPA
@@ -326,6 +401,72 @@ public class Posting {
 
     public void setGraduateSignal(boolean graduateSignal) {
         this.graduateSignal = graduateSignal;
+    }
+
+    public String getCountryCode() {
+        return countryCode;
+    }
+
+    public void setCountryCode(String countryCode) {
+        this.countryCode = countryCode;
+    }
+
+    public String getEmployerCountryCode() {
+        return employerCountryCode;
+    }
+
+    public void setEmployerCountryCode(String employerCountryCode) {
+        this.employerCountryCode = employerCountryCode;
+    }
+
+    public WorkMode getWorkMode() {
+        return workMode;
+    }
+
+    public void setWorkMode(WorkMode workMode) {
+        this.workMode = workMode;
+    }
+
+    public String getRemoteEligibleFrom() {
+        return remoteEligibleFrom;
+    }
+
+    public void setRemoteEligibleFrom(String remoteEligibleFrom) {
+        this.remoteEligibleFrom = remoteEligibleFrom;
+    }
+
+    /** The codes as a list. Empty means the posting did not say. */
+    public java.util.List<String> remoteEligibleFromCodes() {
+        if (remoteEligibleFrom == null || remoteEligibleFrom.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.List.of(remoteEligibleFrom.split(","));
+    }
+
+    /**
+     * True only when the posting explicitly said an employee may sit in India.
+     *
+     * <p>Deliberately false for a posting that merely says "Remote": that is the
+     * inference this model exists to stop making.
+     */
+    public boolean allowsRemoteFromIndia() {
+        return remoteEligibleFromCodes().contains(CountryCodes.INDIA);
+    }
+
+    public StrategicClass getStrategicClass() {
+        return strategicClass;
+    }
+
+    public void setStrategicClass(StrategicClass strategicClass) {
+        this.strategicClass = strategicClass;
+    }
+
+    public StrategyOutcome getStrategyOutcome() {
+        return strategyOutcome;
+    }
+
+    public void setStrategyOutcome(StrategyOutcome strategyOutcome) {
+        this.strategyOutcome = strategyOutcome;
     }
 
     /** Equality is the natural key, not the surrogate id. */

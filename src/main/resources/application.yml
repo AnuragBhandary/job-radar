@@ -1,4 +1,22 @@
 job-radar:
+
+  knowledge:
+    # Whether the knowledge resolver decides what goes into a real form, or the
+    # legacy FieldMapper does.
+    #
+    # Both are compiled in and both stay. Turning this off is a config edit and a
+    # restart - the only kind of rollback worth having on the path that fills an
+    # employer's form, because the alternative is reverting a commit while an
+    # application is half-filled.
+    #
+    # The gate for turning it on was `knowledge --shadow` reporting zero
+    # unexplained regressions across the corpus, not a percentage. Switched on
+    # 2026-09-10 against 3,321 comparisons: 3,133 agreement, 10 improvement,
+    # 97 legitimate, 81 presentation, 0 regression, 0 unclassified.
+    #
+    # To roll back: JOB_RADAR_KNOWLEDGE_AUTHORITATIVE=false, then restart. The
+    # legacy mapper is still there and is still the shadow's oracle.
+    resolver-authoritative: ${JOB_RADAR_KNOWLEDGE_AUTHORITATIVE:true}
   google:
     # Service-account key. Never committed; see .gitignore. The account already
     # holds Editor on the target spreadsheet.
@@ -141,6 +159,237 @@ job-radar:
       CHF: 108
 
   # ---------------------------------------------------------------------------
+  # Country strategy.
+  #
+  # Where the applicant is willing to move, and how badly. Preferences, not
+  # immigration facts: they are expected to change, and nothing here is a legal
+  # claim about a visa. The figures that ARE claims about the world - salary
+  # floors - carry the sentence they came from and a date to re-check them.
+  #
+  # A tier is NOT eligibility. EXCLUDED means "do not recommend moving there",
+  # not "throw the posting away": the United States is excluded for relocation
+  # and remote-enabled at the same time, which is the single most valuable lane
+  # in the whole strategy and was previously unreachable.
+  #
+  # A country absent from this list is not rejected either. It resolves to tier
+  # UNKNOWN, is classified and stored, and sits outside the default feed until
+  # somebody decides about it.
+  # ---------------------------------------------------------------------------
+  strategy:
+    home-country: IN
+
+    countries:
+      # --- home -------------------------------------------------------------
+      - country-code: IN
+        relocation-tier: PRIMARY
+        salary-floor: 700000
+        currency: INR
+        # Living at home covers housing, so nearly all of take-home can service
+        # the loan. That is what makes 7L in Mumbai better than 10L elsewhere.
+        salary-floor-basis: "home metro, living at home - no rent"
+
+      # --- primary relocation ------------------------------------------------
+      - country-code: DE
+        relocation-tier: PRIMARY
+        salary-floor: 45934.20
+        currency: EUR
+        salary-floor-basis: "Blue Card shortage-occupation threshold"
+        verify-by: 2027-01-01
+      - country-code: IE
+        relocation-tier: PRIMARY
+        salary-floor: 40904
+        currency: EUR
+        salary-floor-basis: "Critical Skills Employment Permit, basic salary only;
+          below EUR 48,000 Dublin rent leaves about what Mumbai 10L would"
+        verify-by: 2027-01-01
+      - country-code: NL
+        relocation-tier: PRIMARY
+        salary-floor: 52284
+        currency: EUR
+        salary-floor-basis: "under-30 kennismigrant rate, excl. 8% holiday allowance"
+        verify-by: 2027-01-01
+
+      # --- secondary ---------------------------------------------------------
+      # No floor recorded for any of these. Unknown is stored as unknown: a
+      # fabricated threshold would be quoted back later as though it had been
+      # checked, which is the failure the verify-by dates above exist for.
+      - country-code: AU
+        relocation-tier: SECONDARY
+      - country-code: GB
+        relocation-tier: SECONDARY
+      - country-code: FI
+        relocation-tier: SECONDARY
+
+      # --- opportunistic -----------------------------------------------------
+      - country-code: AT
+        relocation-tier: OPPORTUNISTIC
+      - country-code: CA
+        relocation-tier: OPPORTUNISTIC
+      - country-code: NZ
+        relocation-tier: OPPORTUNISTIC
+      - country-code: SG
+        relocation-tier: OPPORTUNISTIC
+      - country-code: SE
+        relocation-tier: OPPORTUNISTIC
+      - country-code: FR
+        relocation-tier: OPPORTUNISTIC
+
+      # --- low ---------------------------------------------------------------
+      - country-code: CH
+        relocation-tier: LOW
+
+      # --- excluded for relocation, and only for relocation ------------------
+      # remote-enabled stays true, and that is the point of the row. A US company
+      # hiring from Mumbai is international remote: no visa, no rent, no move, and
+      # nothing the relocation strategy has an opinion about.
+      - country-code: US
+        relocation-tier: EXCLUDED
+        relocation-enabled: false
+        remote-enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Country vocabulary.
+  #
+  # This is screening.geo.excluded-locations, turned inside out. The same
+  # hundred and fifty place names that used to mean only "reject this" now say
+  # which country a posting is in; whether that country is worth pursuing is the
+  # strategy block above, and the two are no longer the same decision.
+  #
+  # The four original target countries are NOT repeated here. LocationClassifier
+  # reads them from screening.geo.*-cities, so there is one list per country and
+  # the classifier cannot disagree with GeoFilter about where Munich is.
+  #
+  # Matched as whole words: "us" must not fire inside "Columbus", and "uk" must
+  # not fire inside "Ukraine".
+  # ---------------------------------------------------------------------------
+  geo:
+    countries:
+      US: [united states, usa, "u.s.", us, new york, san francisco, seattle,
+           austin, boston, chicago, denver, atlanta, los angeles, miami,
+           palo alto, mountain view, san jose, san diego, portland, pittsburgh,
+           ohio, california, texas, washington, massachusetts, new jersey,
+           illinois, florida, colorado, north carolina, virginia, pennsylvania,
+           arizona, oregon, utah, minnesota, michigan, tennessee, maryland,
+           connecticut, wisconsin, new hampshire]
+      CA: [canada, toronto, vancouver, montreal, ottawa, calgary, waterloo]
+      GB: [united kingdom, uk, england, scotland, wales, london, manchester,
+           edinburgh, cambridge, bristol, glasgow, leeds, belfast]
+      AU: [australia, sydney, melbourne, brisbane, perth, canberra]
+      NZ: [new zealand, auckland, wellington, christchurch]
+      SG: [singapore]
+      FR: [france, paris, lyon, toulouse, bordeaux, lille, nantes]
+      SE: [sweden, stockholm, gothenburg, malmo, "malmö", lund]
+      FI: [finland, helsinki, espoo, tampere, oulu]
+      AT: [austria, vienna, wien, graz, linz]
+      CH: [switzerland, zurich, "zürich", geneva, lausanne, basel, bern, zug]
+      DK: [denmark, copenhagen, aarhus]
+      NO: [norway, oslo, bergen, trondheim]
+      BE: [belgium, brussels, antwerp, ghent, leuven]
+      ES: [spain, madrid, barcelona, valencia, seville, malaga, bilbao]
+      PT: [portugal, lisbon, lisboa, porto, braga]
+      IT: [italy, milan, milano, rome, roma, turin, bologna]
+      PL: [poland, warsaw, warszawa, krakow, "kraków", wroclaw, gdansk, poznan]
+      CZ: [czech, czechia, prague, praha, brno]
+      HU: [hungary, budapest, debrecen]
+      RO: [romania, bucharest, cluj, timisoara, iasi]
+      BG: [bulgaria, sofia, plovdiv, varna]
+      HR: [croatia, zagreb, split, rijeka]
+      RS: [serbia, belgrade, novi sad]
+      UA: [ukraine, kyiv, kiev, lviv, kharkiv]
+      GR: [greece, athens, thessaloniki]
+      TR: [turkey, "türkiye", istanbul, ankara, izmir]
+      IL: [israel, tel aviv, jerusalem, haifa]
+      AE: [uae, united arab emirates, dubai, abu dhabi]
+      SA: [saudi, saudi arabia, riyadh, jeddah]
+      QA: [qatar, doha]
+      EG: [egypt, cairo, alexandria]
+      NG: [nigeria, lagos, abuja]
+      KE: [kenya, nairobi, mombasa]
+      GH: [ghana, accra]
+      ZA: [south africa, cape town, johannesburg, pretoria, durban]
+      JP: [japan, tokyo, osaka, kyoto, yokohama]
+      KR: [korea, south korea, seoul, busan]
+      CN: [china, shanghai, beijing, shenzhen, guangzhou, hangzhou]
+      TW: [taiwan, taipei, hsinchu]
+      PH: [philippines, manila, cebu, makati]
+      ID: [indonesia, jakarta, bandung, surabaya]
+      VN: [vietnam, ho chi minh, hanoi, da nang]
+      MY: [malaysia, kuala lumpur, penang, johor]
+      TH: [thailand, bangkok, chiang mai, phuket]
+      MX: [mexico, mexico city, guadalajara, monterrey]
+      BR: [brazil, brasil, sao paulo, "são paulo", rio de janeiro, belo horizonte]
+      AR: [argentina, buenos aires, cordoba, rosario]
+      CO: [colombia, bogota, "bogotá", medellin, "medellín", cali]
+      CL: [chile, santiago, valparaiso]
+      PE: [peru, lima, arequipa]
+      UY: [uruguay, montevideo]
+      CR: [costa rica, san jose costa rica, heredia]
+
+    # Hiring regions. Not countries, and they must not be stored as one. The only
+    # question asked of a region is whether India is inside it, because that is
+    # what separates "Remote, APAC" from "Remote, EMEA" - one is reachable from
+    # Mumbai and the other is not, and the old filter rejected both.
+    #
+    # Order matters: the first marker to match wins, so the specific regions come
+    # before "europe", which appears inside several of their descriptions.
+    regions:
+      - name: EMEA
+        markers: [emea]
+        includes-india: false
+      - name: LATAM
+        markers: [latam, latin america]
+        includes-india: false
+      - name: ANZ
+        markers: [anz, australia and new zealand]
+        includes-india: false
+      - name: APAC
+        markers: [apac, asia pacific, asia-pacific, asia]
+        includes-india: true
+      - name: AMERICAS
+        markers: [americas, north america, south america]
+        includes-india: false
+      - name: NORDICS
+        markers: [nordics, nordic, scandinavia]
+        includes-india: false
+      - name: MENA
+        markers: [mena, middle east]
+        includes-india: false
+      - name: EUROPE
+        markers: [europe, european union, eea, eu]
+        includes-india: false
+
+    # "Remote from anywhere". Matched against the LOCATION only, never the title:
+    # "Global Platform" in a job title names a team, and matching it there would
+    # turn every such role into a worldwide hire.
+    global-markers:
+      [worldwide, world wide, globally, global, anywhere, work from anywhere,
+       fully distributed, any location]
+
+    # Where a false friend actually is. screening.geo.false-friends catches these
+    # before the target lists claim them; this says what to file them under
+    # instead of the old answer, which was nothing at all.
+    #
+    # Bracket notation, and it is load-bearing. Spring's relaxed binding
+    # canonicalises map keys, so a key containing a space arrives mangled or not
+    # at all - the map binds, it is simply empty of the entries that matter. The
+    # same trap is documented on ApplicantProfile.extraAnswers, where it silently
+    # emptied the escape hatch it was written for.
+    false-friend-countries:
+      "[dublin ohio]": US
+      "[dublin oh]": US
+      "[dublin california]": US
+      "[dublin ca]": US
+      "[dublin georgia]": US
+      "[berlin connecticut]": US
+      "[berlin ct]": US
+      "[berlin new hampshire]": US
+      "[berlin maryland]": US
+      "[berlin wisconsin]": US
+      "[hamburg new york]": US
+      "[hamburg pennsylvania]": US
+      "[hamburg new jersey]": US
+
+  # ---------------------------------------------------------------------------
   # Screening rules. In YAML rather than Java because they change often: the
   # exclusion list grows every time a board invents a new senior-sounding title.
   # Matching is case-insensitive substring matching on the lowercased field.
@@ -164,6 +413,13 @@ job-radar:
       # also happens to be core software vocabulary.
       remote-markers: [remote, work from home, work from anywhere, distributed team]
 
+      # LEGACY as of the country/work-mode phase, and still live. GeoFilter reads
+      # this list and behaves exactly as it always has; screening no longer calls
+      # it. The same place names now appear in job-radar.geo.countries mapped to
+      # ISO codes, where they classify a posting instead of discarding it. Kept
+      # rather than deleted because GeoFilter's tests are the record of a dozen
+      # real misses, and because isMumbai() is still read by the salary floors.
+      #
       # The expensive trap, and the reason this list is long. A posting reading
       # "Remote (Argentina)" is remote WITHIN Argentina - the country is a hiring
       # restriction, not a perk - and "Remote, London" is no more reachable from

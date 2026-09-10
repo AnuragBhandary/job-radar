@@ -95,7 +95,7 @@ public class ApplyCommand {
 
         int limit = Integer.parseInt(options.getOrDefault("limit", "5"));
         List<Posting> candidates = new ArrayList<>(
-                postings.findByVerdict(Verdict.CANDIDATE));
+                postings.findRecommended());
         return candidates.size() > limit ? candidates.subList(0, limit) : candidates;
     }
 

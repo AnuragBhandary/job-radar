@@ -147,7 +147,7 @@ public class ChatTools {
         int minScore = args.path("minScore").asInt(0);
         int limit = Math.min(30, Math.max(1, args.path("limit").asInt(10)));
 
-        List<Map<String, Object>> hits = postings.findByVerdict(Verdict.CANDIDATE).stream()
+        List<Map<String, Object>> hits = postings.findRecommended().stream()
                 .filter(posting -> country.isBlank()
                         || country.equalsIgnoreCase(String.valueOf(posting.getCountry())))
                 .filter(posting -> query.isBlank()

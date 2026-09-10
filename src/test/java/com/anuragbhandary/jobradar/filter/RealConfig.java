@@ -1,6 +1,8 @@
 package com.anuragbhandary.jobradar.filter;
 
 import com.anuragbhandary.jobradar.config.AppProperties;
+import com.anuragbhandary.jobradar.strategy.CountryStrategy;
+import com.anuragbhandary.jobradar.strategy.StrategyProperties;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -34,6 +36,24 @@ final class RealConfig {
 
     static AppProperties withScreening() {
         return new AppProperties(null, null, null, null, screening(), null);
+    }
+
+    static GeoVocabulary geo() {
+        return bind("job-radar.geo", GeoVocabulary.class);
+    }
+
+    static StrategyProperties strategy() {
+        return bind("job-radar.strategy", StrategyProperties.class);
+    }
+
+    static CountryStrategy countryStrategy() {
+        return new CountryStrategy(strategy());
+    }
+
+    /** The classifier, wired the way Spring wires it, against the shipped rules. */
+    static LocationClassifier locations() {
+        return new LocationClassifier(
+                new GeoFilter(withScreening()), geo(), countryStrategy());
     }
 
     private static <T> T bind(String path, Class<T> type) {

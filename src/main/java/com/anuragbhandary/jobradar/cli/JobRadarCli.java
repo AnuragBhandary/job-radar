@@ -36,13 +36,15 @@ public class JobRadarCli implements ApplicationRunner {
     private final PrepCommand prep;
     private final VariantsCommand variants;
     private final BoardCommand board;
+    private final KnowledgeCommand knowledge;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList,
             ProbeCommand probe, ServeCommand serve,
             ApplyCommand apply, ApplicationsCommand applications,
-            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, BoardCommand board) {
+            FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, BoardCommand board,
+            KnowledgeCommand knowledge) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -61,6 +63,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.prep = prep;
         this.variants = variants;
         this.board = board;
+        this.knowledge = knowledge;
     }
 
     @Override
@@ -95,6 +98,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "prep" -> prep.run(options);
             case "variants" -> variants.run(options);
             case "board" -> board.run(options);
+            case "knowledge" -> knowledge.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -149,6 +153,14 @@ public class JobRadarCli implements ApplicationRunner {
                   prep --posting-id=123 [--print]         interview prep: gaps, questions, answers
                   variants                                which resume opening gets replies
                   board [--import]                        the pipeline; --import seeds it from the sheet
+
+                Knowledge (the resolver is not authoritative yet - see --shadow):
+                  knowledge                               concepts and stored assertions
+                  knowledge --migrate                     import applicant.yml's extra-answers
+                  knowledge --review                      answers migrated without a scope
+                  knowledge --shadow [--verbose]          diff the resolver across the whole corpus
+                  knowledge --shadow --attempts           diff it over the recorded applications only
+                  knowledge --explain="..." [--posting-id=N]   answer one question, with reasoning
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

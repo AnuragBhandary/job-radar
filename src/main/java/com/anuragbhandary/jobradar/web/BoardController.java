@@ -38,6 +38,13 @@ public class BoardController {
         List<PipelineService.Column> columns = pipeline.board();
 
         StringBuilder body = new StringBuilder(Components.toast(said));
+        body.append(Parts.pageHead("Applications",
+                "Everything you have applied to, and where each one has got to. Move a "
+                        + "card with its dropdown - it works from the keyboard, which is "
+                        + "why this is not a drag-and-drop board.",
+                "<form method=\"post\" action=\"/board/import\" class=\"inline-form\">"
+                        + "<button class=\"btn btn-sm\" type=\"submit\" "
+                        + "data-busy=\"importing\">Import from sheet</button></form>"));
 
         List<PipelineService.Entry> due = pipeline.dueReminders(today);
         if (!due.isEmpty()) {
@@ -53,7 +60,10 @@ public class BoardController {
             body.append("</ul></section>");
         }
 
-        body.append("<h2 class=\"section-head\">In progress</h2>");
+        body.append("<div class=\"block-head\"><h2>In progress</h2>"
+                + "<span class=\"count\">" + columns.stream()
+                        .filter(column -> PipelineStage.live().contains(column.stage()))
+                        .mapToInt(PipelineService.Column::size).sum() + "</span></div>");
         body.append("<div class=\"board board-6\">");
         columns.stream()
                 .filter(column -> PipelineStage.live().contains(column.stage()))
@@ -64,7 +74,9 @@ public class BoardController {
                 .filter(column -> column.stage().isTerminal() && column.size() > 0)
                 .toList();
         if (!closed.isEmpty()) {
-            body.append("<h2 class=\"section-head\">Closed</h2>")
+            body.append("<div class=\"block-head\"><h2>Closed</h2><span class=\"count\">"
+                            + closed.stream().mapToInt(PipelineService.Column::size).sum()
+                            + "</span></div>")
                     .append("<div class=\"board board-2 band-closed\">");
             closed.forEach(column -> body.append(column(column, today)));
             body.append("</div>");
@@ -77,12 +89,9 @@ public class BoardController {
 
         String stat = "<strong>%d</strong> tracked<span class=\"sep\">·</span>"
                 .formatted(total)
-                + "<strong>%d</strong> live".formatted(live)
-                + "<span class=\"sep\">·</span>"
-                + "<form method=\"post\" action=\"/board/import\">"
-                + "<button class=\"btn btn-sm\">import from sheet</button></form>";
+                + "<strong>%d</strong> live".formatted(live);
 
-        return Ui.page("Board", stat, body.toString(), Ui.Tab.BOARD);
+        return Ui.page("Applications", stat, body.toString(), Ui.Tab.BOARD);
     }
 
     private String column(PipelineService.Column column, LocalDate today) {
@@ -123,13 +132,38 @@ public class BoardController {
         String due = entry.isDue(today)
                 ? "<div class=\"due\">follow up · " + interest.getRemindOn() + "</div>" : "";
 
+        // The lane and how long this has been sitting where it is. Both were
+        // already in the database and on no card, so the board could show
+        // fifteen applications and not which of them had gone stale.
+        StringBuilder facts = new StringBuilder("<div class=\"bc-facts\">");
+        if (entry.posting() != null && entry.posting().getStrategicClass() != null) {
+            facts.append(Parts.tag(
+                    HomeController.laneTone(entry.posting().getStrategicClass()),
+                    HomeController.laneName(entry.posting().getStrategicClass())));
+        }
+        // Days since it was sent, where it has been sent. Not Entry.drift(),
+        // which is how far the *score* has moved since it was saved - a useful
+        // number that is not a duration, and reading it as one put "-4 days here"
+        // on a card that had been open for a fortnight.
+        interest.daysSinceApplied(today).ifPresent(days ->
+                facts.append("<span class=\"bc-age\">").append(days)
+                        .append(days == 1 ? " day since applying" : " days since applying")
+                        .append("</span>"));
+        Integer drift = entry.drift();
+        if (drift != null && drift <= -5) {
+            // Only a fall worth noticing. A point or two either way is noise, and
+            // a badge on every card for noise is a badge nobody reads.
+            facts.append(Parts.tag(Parts.Tone.WARN, "score down " + Math.abs(drift)));
+        }
+        facts.append("</div>");
+
         // The note form is collapsed behind a <details>. Fifteen open textareas on
         // a board is not a board, and a note is written once and read often.
         return """
                 <div class="jobcard">
                   <div class="c">%s</div>
                   <div class="r">%s</div>
-                  %s%s
+                  %s%s%s
                   <div class="foot">
                     <form method="post" action="/board/move">
                       <input type="hidden" name="interestId" value="%d">
@@ -151,7 +185,7 @@ public class BoardController {
                   </details>
                 </div>
                 """.formatted(Ui.esc(interest.getCompany()), Ui.esc(interest.getRole()),
-                        note, due, interest.getId(), options, score, link,
+                        facts, note, due, interest.getId(), options, score, link,
                         interest.getNotes() == null || interest.getNotes().isBlank()
                                 ? "" : "•",
                         interest.getId(),

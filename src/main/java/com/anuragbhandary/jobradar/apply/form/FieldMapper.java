@@ -36,11 +36,14 @@ public class FieldMapper {
 
     private final ApplicantProfile profile;
     private final com.anuragbhandary.jobradar.apply.AnswerStore answers;
+    private final com.anuragbhandary.jobradar.knowledge.ProfileFacts profileFacts;
 
     public FieldMapper(ApplicantProfile profile,
-            com.anuragbhandary.jobradar.apply.AnswerStore answers) {
+            com.anuragbhandary.jobradar.apply.AnswerStore answers,
+            com.anuragbhandary.jobradar.knowledge.ProfileFacts profileFacts) {
         this.profile = profile;
         this.answers = answers;
+        this.profileFacts = profileFacts;
     }
 
 
@@ -70,8 +73,36 @@ public class FieldMapper {
         return resolved;
     }
 
+    /**
+     * Widget-dependent kinds, which the profile alone cannot answer.
+     *
+     * <p>Everything else is looked up in {@link ProfileFacts} first, so there is
+     * one definition of what the profile says. These three genuinely depend on
+     * the field as well as the profile: a phone box that already has a country
+     * selector rejects "+91...", a bare link box may duplicate the portfolio, and
+     * a salary field's shape decides how the band is written.
+     */
+    private static final java.util.Set<FieldKind> WIDGET_DEPENDENT = java.util.Set.of(
+            FieldKind.PHONE, FieldKind.OTHER_LINK, FieldKind.SALARY_EXPECTATION);
+
     /** The answer as text, before it is reconciled with a dropdown's wording. */
     private Answer rawAnswer(FormField field, Posting posting, ApplicationDocuments documents) {
+        // One authoritative reading of the profile, shared with the knowledge
+        // resolver. The switch below still handles everything ProfileFacts does
+        // not know about, and still answers when a profile field is blank.
+        if (!WIDGET_DEPENDENT.contains(field.kind())) {
+            Answer fromProfile = com.anuragbhandary.jobradar.knowledge.Concepts
+                    .forKind(field.kind())
+                    .flatMap(profileFacts::valueFor)
+                    .map(fact -> fact.voluntaryDecline()
+                            ? Answer.declined(
+                                    "not set in the profile - declining is the intended answer")
+                            : Answer.profile(fact.value()))
+                    .orElse(null);
+            if (fromProfile != null) {
+                return fromProfile;
+            }
+        }
         ApplicantProfile.Name name = profile.name();
         ApplicantProfile.Contact contact = profile.contact();
         ApplicantProfile.Address address = profile.address();
@@ -186,17 +217,13 @@ public class FieldMapper {
         if (band == null) {
             return Answer.unanswered("no salary band configured for " + posting.getCountry());
         }
-
-        boolean numericOnly = field.control() == FormField.ControlType.TEXT
-                && looksNumeric(field.label());
-        if (numericOnly || comp.alwaysStateNumber()) {
-            return Answer.derived(band.numericAnswer(),
-                    "numeric field; " + band.currency() + " band for " + posting.getCountry());
-        }
-        if (field.isFreeText() && comp.preferNotToSay() != null && !field.required()) {
-            return Answer.derived(comp.preferNotToSay(), "optional free-text salary field");
-        }
-        return Answer.derived(band.textAnswer(), "band for " + posting.getCountry());
+        // Which band applies is knowledge; how this particular box wants it
+        // written is a fact about a web form. See SalaryPresenter for why the two
+        // stopped being decided in the same method.
+        String value = SalaryPresenter.render(comp, band, field);
+        return value == null
+                ? Answer.unanswered("no salary band configured for " + posting.getCountry())
+                : Answer.derived(value, "band for " + posting.getCountry());
     }
 
     /** A voluntary field: the configured value, or an explicit decline. */
@@ -282,14 +309,6 @@ public class FieldMapper {
         return wantsInternational
                 ? profile.contact().phoneE164()
                 : profile.contact().phoneNumber();
-    }
-
-    private static boolean looksNumeric(String label) {
-        String normalised = FieldClassifier.normalise(label);
-        return normalised.contains("amount") || normalised.contains("number")
-                || normalised.contains("in inr") || normalised.contains("in usd")
-                || normalised.contains("in eur") || normalised.contains("annual ctc")
-                || normalised.contains("lpa");
     }
 
     private static String yesNo(boolean value) {
