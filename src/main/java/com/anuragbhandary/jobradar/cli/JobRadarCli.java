@@ -37,6 +37,9 @@ public class JobRadarCli implements ApplicationRunner {
     private final VariantsCommand variants;
     private final BoardCommand board;
     private final KnowledgeCommand knowledge;
+    private final BenchLlmCommand benchLlm;
+    private final LedgerCommand ledger;
+    private final BenchRewriteCommand benchRewrite;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
@@ -44,7 +47,8 @@ public class JobRadarCli implements ApplicationRunner {
             ProbeCommand probe, ServeCommand serve,
             ApplyCommand apply, ApplicationsCommand applications,
             FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, BoardCommand board,
-            KnowledgeCommand knowledge) {
+            KnowledgeCommand knowledge, BenchLlmCommand benchLlm, LedgerCommand ledger,
+            BenchRewriteCommand benchRewrite) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -64,6 +68,9 @@ public class JobRadarCli implements ApplicationRunner {
         this.variants = variants;
         this.board = board;
         this.knowledge = knowledge;
+        this.benchLlm = benchLlm;
+        this.ledger = ledger;
+        this.benchRewrite = benchRewrite;
     }
 
     @Override
@@ -99,6 +106,9 @@ public class JobRadarCli implements ApplicationRunner {
             case "variants" -> variants.run(options);
             case "board" -> board.run(options);
             case "knowledge" -> knowledge.run(options);
+            case "bench-llm" -> benchLlm.run(options);
+            case "ledger" -> ledger.run(options);
+            case "bench-rewrite" -> benchRewrite.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -161,6 +171,16 @@ public class JobRadarCli implements ApplicationRunner {
                   knowledge --shadow [--verbose]          diff the resolver across the whole corpus
                   knowledge --shadow --attempts           diff it over the recorded applications only
                   knowledge --explain="..." [--posting-id=N]   answer one question, with reasoning
+
+                Resume analysis (experiments - nothing here changes a resume or an application):
+                  ledger --posting-id=123 [--verbose]     each requirement, its evidence level, its source ids
+                  ledger --bench [--model=NAME[@N]]       the same over the benchmark set; --model reads the
+                                                          requirements with a local model (grounded ones only)
+                  ledger --sources                        every resume source id a ledger can cite
+                  bench-llm [--models=a,b] [--limit=N]    compare local Ollama models on requirement extraction;
+                                                          name@N caps a model at N GPU layers (qwen3.6:27b@45)
+                  bench-rewrite [--posting-ids=a,b]       shadow benchmark: local-model bullet and summary rewrites,
+                                                          validated in Java, beside the deterministic resume
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

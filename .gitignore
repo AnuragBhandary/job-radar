@@ -1,5 +1,7 @@
 # Build
 target/
+# Benchmark and ledger reports. They quote real postings and cite resume ids.
+/build/
 *.class
 
 # Local database - regenerated on every run, never shared

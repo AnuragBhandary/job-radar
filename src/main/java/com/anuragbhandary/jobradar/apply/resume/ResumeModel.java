@@ -3,6 +3,7 @@ package com.anuragbhandary.jobradar.apply.resume;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
  * The resume as data rather than as a PDF.
@@ -49,7 +50,27 @@ public record ResumeModel(
     public record SkillGroup(String group, List<String> items) {
     }
 
-    public record Bullet(String text, List<String> tags) {
+    /**
+     * @param id optional, and only ever read by the resume analysis. A stable name
+     *           for this bullet that survives rewording, for when a rewrite has to
+     *           say which bullet it came from. Left out, one is derived from the
+     *           bullet's parent and text - see
+     *           {@link com.anuragbhandary.jobradar.apply.resume.analysis.ResumeSources}.
+     *           Nothing rendered depends on it.
+     */
+    public record Bullet(String text, List<String> tags, String id) {
+
+        /**
+         * The binding constructor, named because the two-argument one below would
+         * otherwise leave Spring guessing which to bind applicant.yml through.
+         */
+        @ConstructorBinding
+        public Bullet {
+        }
+
+        public Bullet(String text, List<String> tags) {
+            this(text, tags, null);
+        }
 
         public List<String> tags() {
             return tags == null ? List.of() : tags;
