@@ -37,6 +37,9 @@ import java.util.regex.Pattern;
  *       percentage is not a multiplier). Years separately.</li>
  *   <li><b>Responsibility</b> - led, owned, architected, managed, expert... only
  *       where the source already says so.</li>
+ *   <li><b>Qualifiers</b> - self-built, a year, production-style, helped, "rather
+ *       than..." and the hedge on a number survive; see {@link QualifierGuard}.</li>
+ *   <li><b>Stuffing</b> - no technology names tacked onto the end of the sentence.</li>
  *   <li><b>Meaning</b> - enough of the source's own content words survive that it
  *       is still recognisably the same accomplishment.</li>
  * </ol>
@@ -60,6 +63,10 @@ public final class ResumeClaimValidator {
         INVENTED_NUMBER,
         INVENTED_YEARS,
         INFLATED_RESPONSIBILITY,
+        /** A word limiting the claim - self-built, a year, roughly - was removed. */
+        QUALIFIER_LOST,
+        /** Technology names tacked onto the end of the source sentence. */
+        KEYWORD_STUFFING,
         MEANING_DRIFT
     }
 
@@ -84,7 +91,17 @@ public final class ResumeClaimValidator {
     }
 
     static final double MIN_RETENTION_BULLET = 0.4;
-    static final double MIN_RETENTION_SUMMARY = 0.3;
+
+    /**
+     * Products outside {@link TechVocabulary} that a rewrite might reach for, checked
+     * in any case. The capitalised-name check catches "Aurora"; this catches
+     * "aurora", which a model writing in sentence case also produces.
+     */
+    private static final List<String> EXTRA_PRODUCTS = List.of(
+            "aurora", "kafka streams", "ksqldb", "cloudwatch", "bigtable", "spanner",
+            "firestore", "cosmos db", "supabase", "vercel", "heroku", "netlify", "splunk",
+            "new relic", "pagerduty", "camunda", "bazel", "gradle", "circleci", "looker",
+            "tableau", "power bi", "bedrock", "vertex ai", "openshift", "nomad", "rancher");
 
     private static final int CI = Pattern.CASE_INSENSITIVE;
 
@@ -153,7 +170,13 @@ public final class ResumeClaimValidator {
             claim("on-call", "\\bon[- ]call\\b", Set.of(), "on[- ]call", true),
             claim("cross-functional", "\\bcross[- ]functional", Set.of(),
                     "cross[- ]functional|collaborat", true),
-            claim("production", "\\bproduction\\b", Set.of(), "\\bproduction\\b", true),
+            // "production-style" is a qualifier, not a production claim, and must
+            // not license one.
+            claim("production", "\\bproduction\\b(?![- ](style|like))", Set.of(),
+                    "\\bproduction\\b(?![- ](style|like))", true),
+            claim("employment", "\\bprofessional(ly)?\\b|\\bcommercial(ly)?\\b|\\bfor clients?\\b"
+                    + "|\\bclient[- ]facing\\b|\\bin industry\\b", Set.of(),
+                    "professional|commercial|client|industry", true),
             claim("deployment", "\\bdeploy(ed|ing|ment|ments|s)?\\b", Set.of(), "\\bdeploy", true),
             claim("scale", "\\bscal(e|able|ability|ed|ing)\\b|\\bat scale\\b", Set.of(), "\\bscal", true),
             claim("throughput", "\\bhigh[- ](throughput|volume|traffic|availability|performance)\\b"
@@ -217,10 +240,16 @@ public final class ResumeClaimValidator {
         int[] metrics = numbers(rewrite, scope, issues, warnings);
         years(rewrite, scope, issues);
         inflation(rewrite, scope, issues);
+        QualifierGuard.lost(scope.sourceText(), rewrite)
+                .forEach(detail -> issues.add(new Issue(IssueType.QUALIFIER_LOST, detail)));
+        RewriteQuality.appendedSuffix(scope.sourceText(), rewrite)
+                .ifPresent(suffix -> issues.add(new Issue(IssueType.KEYWORD_STUFFING,
+                        "'" + suffix + "' is tacked onto the end of the sentence")));
+        RewriteQuality.lowercaseNames(scope.sourceText(), rewrite)
+                .forEach(name -> warnings.add("technology name in lower case: '" + name + "'"));
 
         double retention = RewriteMetrics.retention(scope.sourceText(), rewrite);
-        double minimum = request.summary() ? MIN_RETENTION_SUMMARY : MIN_RETENTION_BULLET;
-        if (retention < minimum) {
+        if (retention < MIN_RETENTION_BULLET) {
             issues.add(new Issue(IssueType.MEANING_DRIFT, String.format(
                     "only %.0f%% of the source's content words survive; it may describe a "
                             + "different accomplishment", retention * 100)));
@@ -251,6 +280,14 @@ public final class ResumeClaimValidator {
             if (flagged.add(canonical)) {
                 issues.add(new Issue(IssueType.UNSUPPORTED_TECHNOLOGY,
                         term + " is not in this item's evidence"));
+            }
+        }
+        for (String product : EXTRA_PRODUCTS) {
+            if (RewriteMetrics.wholeWord(rewrite, product)
+                    && !RewriteMetrics.wholeWord(scope.supportText(), product)
+                    && flagged.add(product)) {
+                issues.add(new Issue(IssueType.UNSUPPORTED_PRODUCT,
+                        product + " is not in this item's evidence"));
             }
         }
     }
@@ -436,8 +473,10 @@ public final class ResumeClaimValidator {
             } else {
                 kept++;
                 if (figure.hedged() && !match.get().hedged()) {
-                    warnings.add("hedge dropped: the source says '" + figure.raw()
-                            + "' approximately, the rewrite states it exactly");
+                    // "roughly fourfold" as "fourfold" claims a precision he
+                    // never measured. A failure, not a warning.
+                    issues.add(new Issue(IssueType.QUALIFIER_LOST, "the source gives '"
+                            + figure.raw() + "' as an approximation; the rewrite states it exactly"));
                 }
             }
         }

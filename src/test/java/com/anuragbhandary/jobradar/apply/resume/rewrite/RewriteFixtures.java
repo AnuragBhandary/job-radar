@@ -9,7 +9,9 @@ import java.util.Set;
 /**
  * A small resume built to be rewritten badly: Docker without Kubernetes, a
  * hedged metric, Kafka without Kafka Streams, PostgreSQL on AWS without Aurora or
- * Terraform, a bullet that already says "Architected" and one that does not.
+ * Terraform, a bullet that already says "Architected" and one that does not - and
+ * two projects, one written in Java alone and one in Java and Python, for the
+ * evidence-scope rules.
  */
 final class RewriteFixtures {
 
@@ -44,32 +46,38 @@ final class RewriteFixtures {
                             new ResumeModel.Bullet(
                                     "Architected Kafka-based event processing for document ingestion.",
                                     List.of("kafka"), "arch-kafka")))),
-            List.of(new ResumeModel.Project("Doc Service", "Python · FastAPI · PostgreSQL · Docker",
-                    List.of("python", "fastapi"),
-                    List.of(new ResumeModel.Bullet(
-                            "Developed REST endpoints for document upload and status queries.",
-                            List.of("fastapi", "rest"), "doc-endpoints")))),
-            List.of(), List.of(), 2, 6, 3);
+            List.of(
+                    new ResumeModel.Project("Doc Service", "Python · FastAPI · PostgreSQL · Docker",
+                            List.of("python", "fastapi"),
+                            List.of(new ResumeModel.Bullet(
+                                    "Developed REST endpoints for document upload and status queries.",
+                                    List.of("fastapi", "rest"), "doc-endpoints"))),
+                    new ResumeModel.Project("Scheduler",
+                            "Java · Spring Boot · Kafka · PostgreSQL · Redis · Docker",
+                            List.of("java"),
+                            List.of(
+                                    new ResumeModel.Bullet("Coordinated scheduler workers with Redis leases.",
+                                            List.of("redis"), "sched-redis"),
+                                    new ResumeModel.Bullet("Packaged the scheduler services in containers.",
+                                            List.of(), "sched-containers"))),
+                    new ResumeModel.Project("Risk Platform",
+                            "Java · Spring Boot · Python · FastAPI · PostgreSQL",
+                            List.of(),
+                            List.of(new ResumeModel.Bullet("Stored risk scores for later review.",
+                                    List.of(), "risk-store")))),
+            List.of(), List.of(), 3, 6, 3);
 
     static final ResumeSources SOURCES = new ResumeSources(RESUME);
 
     static Set<String> known() {
         Set<String> ids = new HashSet<>();
         SOURCES.all().forEach(item -> ids.add(item.id()));
-        ids.add(EvidenceScope.summaryIdOf("default"));
         return ids;
     }
 
     static RewriteRequest request(String sourceId, String... prohibited) {
         EvidenceScope scope = EvidenceScope.forBullet(SOURCES, sourceId).orElseThrow();
         return new RewriteRequest(sourceId, scope.sourceText(), scope, List.of(), List.of(),
-                List.of(prohibited), scope.sourceText().length() * 2, false);
-    }
-
-    static RewriteRequest summaryRequest() {
-        String text = RESUME.summaries().getFirst().text();
-        EvidenceScope scope = EvidenceScope.forSummary(SOURCES, "default", text);
-        return new RewriteRequest(scope.sourceId(), text, scope, List.of(), List.of(), List.of(),
-                text.length() * 2, true);
+                List.of(prohibited), scope.sourceText().length() * 2);
     }
 }

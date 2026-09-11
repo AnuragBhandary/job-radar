@@ -8,13 +8,14 @@ import java.util.Map;
 
 /**
  * Builds the candidate resume from the deterministic one and a set of accepted
- * rewrites. Shadow only: nothing in the application flow calls this.
+ * bullet rewrites. Shadow only: nothing in the application flow calls this.
  *
  * <p>Every structural decision stays the deterministic tailor's - which jobs,
- * which projects, which bullets, in what order. Only the wording of bullets whose
- * rewrite passed validation changes, matched by source id. Employer, title,
- * dates, project names, education and contact details are copied from the
- * deterministic resume untouched, because no rewrite was ever given them.
+ * which projects, which bullets, in what order, and which approved summary. Only
+ * the wording of bullets whose rewrite passed validation changes, matched by
+ * source id. The summary is always the deterministic one: there is no parameter
+ * that could replace it. Employer, title, dates, project names, education and
+ * contact details are copied untouched, because no rewrite was ever given them.
  */
 public final class GenerativeTailor {
 
@@ -22,13 +23,12 @@ public final class GenerativeTailor {
     }
 
     /**
-     * @param accepted    source id to accepted rewrite; anything absent keeps its
-     *                    source wording
-     * @param summaryText the accepted summary, or null to keep the deterministic one
-     * @param skills      the skills in their new order, same items
+     * @param accepted source id to accepted rewrite; anything absent keeps its
+     *                 source wording
+     * @param skills   the skills in their new order, same items
      */
     public static TailoredResume assemble(TailoredResume base, ResumeSources sources,
-            Map<String, String> accepted, String summaryText, List<ResumeModel.SkillGroup> skills) {
+            Map<String, String> accepted, List<ResumeModel.SkillGroup> skills) {
 
         List<ResumeModel.Job> jobs = base.experience().stream().map(job -> new ResumeModel.Job(
                 job.company(), job.title(), job.location(), job.period(), job.note(),
@@ -38,11 +38,7 @@ public final class GenerativeTailor {
                 new ResumeModel.Project(project.name(), project.stack(), project.tags(),
                         rewrite(project.bullets(), sources, accepted))).toList();
 
-        ResumeModel.Summary summary = summaryText == null || summaryText.isBlank()
-                ? base.summary()
-                : new ResumeModel.Summary(base.summary().id(), base.summary().tags(), summaryText);
-
-        return new TailoredResume(summary, skills, jobs, projects, base.education(),
+        return new TailoredResume(base.summary(), skills, jobs, projects, base.education(),
                 base.extras(), base.matchedTags(), base.droppedProjects());
     }
 

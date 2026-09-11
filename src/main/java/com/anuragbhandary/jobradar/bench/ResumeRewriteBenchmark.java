@@ -16,6 +16,7 @@ import com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteMetrics;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteParser;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.RewritePlanner;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.RewritePrompt;
+import com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteQuality;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteRequest;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.SkillOrdering;
 import com.anuragbhandary.jobradar.domain.Posting;
@@ -32,14 +33,22 @@ import java.util.function.Consumer;
 
 /**
  * The shadow comparison: the deterministic resume for a posting, and the same
- * resume with its selected bullets and summary rewritten by a local model and
- * validated in Java.
+ * resume with its selected bullets rewritten by a local model and validated in
+ * Java.
  *
  * <p>An experiment. Its only output is a report; nothing it produces reaches an
  * application. Requests go one at a time, and the model is unloaded when the batch
  * ends.
+ *
+ * <p>Bullets only. The summary is the approved one the deterministic tailor chose,
+ * in both versions - see {@link RewritePlanner} for why summaries are not written.
  */
 public class ResumeRewriteBenchmark {
+
+    /** The summary policy, printed in every report so nobody wonders. */
+    public static final String SUMMARY_POLICY =
+            "deterministic: the approved summary the tailor selects, in both versions; "
+                    + "AI summary rewriting is disabled";
 
     public enum Outcome {
         /** Passed validation and differs from the source. */
@@ -56,10 +65,10 @@ public class ResumeRewriteBenchmark {
      * @param generated     what the model wrote, or null when it wrote nothing usable
      * @param finalText     what the candidate resume uses: the rewrite if accepted,
      *                      otherwise the source
+     * @param quality       a mechanical label; see {@link RewriteQuality.Label}
      * @param moreJobSpecific the generated text names more of this item's target
      *                      requirements than the source, or shares at least two more
-     *                      of the posting's own content words - measured on the
-     *                      generated text whether or not it passed
+     *                      of the posting's own content words
      */
     public record ItemResult(
             String sourceId,
@@ -69,6 +78,7 @@ public class ResumeRewriteBenchmark {
             String generated,
             String finalText,
             Outcome outcome,
+            RewriteQuality.Label quality,
             List<ResumeClaimValidator.Issue> issues,
             List<String> warnings,
             List<String> targets,
@@ -112,7 +122,7 @@ public class ResumeRewriteBenchmark {
             TailoredResume deterministic,
             TailoredResume generative,
             List<ItemResult> bullets,
-            ItemResult summary,
+            String summaryPolicy,
             Coverage deterministicCoverage,
             Coverage generativeCoverage,
             long extractMillis,
@@ -191,7 +201,6 @@ public class ResumeRewriteBenchmark {
 
         Set<String> known = new HashSet<>();
         sources.all().forEach(item -> known.add(item.id()));
-        known.add(EvidenceScope.summaryIdOf(deterministic.summary().id()));
 
         long rewriteStarted = System.nanoTime();
         List<ItemResult> bullets = new ArrayList<>();
@@ -204,40 +213,29 @@ public class ResumeRewriteBenchmark {
                 continue;
             }
             RewriteRequest request = RewritePlanner.forBullet(scope.get(), ledger);
-            ItemResult result = rewrite(request, posting.getTitle(), known,
+            ModelCall call = writer.chat(model, RewritePrompt.system(),
+                    RewritePrompt.user(request, posting.getTitle()),
+                    RewritePrompt.schema(request.sourceId()));
+            ItemResult result = evaluate(request, call, known,
                     sources.find(id.get()).map(i -> i.kind().name()).orElse("?"),
                     sources.find(id.get()).map(ResumeSources.SourceItem::parent).orElse(""));
             bullets.add(result);
             if (result.outcome() == Outcome.ACCEPTED) {
                 accepted.put(request.sourceId(), result.finalText());
             }
-            progress.accept(String.format("posting %d: %s %s (%.1fs)", posting.getId(),
-                    request.sourceId(), result.outcome(), result.latencyMillis() / 1000.0));
+            progress.accept(String.format("posting %d: %s %s/%s (%.1fs)", posting.getId(),
+                    request.sourceId(), result.outcome(), result.quality(),
+                    result.latencyMillis() / 1000.0));
         }
-
-        EvidenceScope summaryScope = EvidenceScope.forSummary(sources,
-                deterministic.summary().id(), deterministic.summary().text());
-        ItemResult summary = rewrite(RewritePlanner.forSummary(summaryScope, ledger),
-                posting.getTitle(), known, "SUMMARY", deterministic.summary().id());
-        progress.accept(String.format("posting %d: summary %s (%.1fs)", posting.getId(),
-                summary.outcome(), summary.latencyMillis() / 1000.0));
         long rewriteMillis = millisSince(rewriteStarted);
 
         TailoredResume generative = GenerativeTailor.assemble(deterministic, sources, accepted,
-                summary.outcome() == Outcome.ACCEPTED ? summary.finalText() : null,
                 SkillOrdering.reorder(deterministic.skills(), ledger));
 
         return new PostingRun(posting.getId(), posting.getTitle(), c.why(), requirementSource,
-                ledger, deterministic, generative, List.copyOf(bullets), summary,
+                ledger, deterministic, generative, List.copyOf(bullets), SUMMARY_POLICY,
                 coverage(deterministic, ledger), coverage(generative, ledger),
                 extractMillis, rewriteMillis);
-    }
-
-    private ItemResult rewrite(RewriteRequest request, String title, Set<String> known,
-            String kind, String where) {
-        ModelCall call = writer.chat(model, RewritePrompt.system(request.summary()),
-                RewritePrompt.user(request, title), RewritePrompt.schema());
-        return evaluate(request, call, known, kind, where);
     }
 
     /** Parse, validate, classify. Public for the tests; no model involved. */
@@ -252,7 +250,7 @@ public class ResumeRewriteBenchmark {
 
         if (!call.ok()) {
             return new ItemResult(request.sourceId(), kind, where, request.originalText(), null,
-                    request.originalText(), Outcome.MODEL_FAILED,
+                    request.originalText(), Outcome.MODEL_FAILED, RewriteQuality.Label.MODEL_FAILED,
                     List.of(new ResumeClaimValidator.Issue(
                             ResumeClaimValidator.IssueType.INVALID_RESPONSE, call.error())),
                     List.of(), targets, related, request.prohibited(), before, before,
@@ -264,7 +262,7 @@ public class ResumeRewriteBenchmark {
                     ? ResumeClaimValidator.IssueType.UNKNOWN_SOURCE
                     : ResumeClaimValidator.IssueType.INVALID_RESPONSE;
             return new ItemResult(request.sourceId(), kind, where, request.originalText(), null,
-                    request.originalText(), Outcome.REJECTED,
+                    request.originalText(), Outcome.REJECTED, RewriteQuality.Label.REJECTED,
                     List.of(new ResumeClaimValidator.Issue(type, parsed.error())), List.of(),
                     targets, related, request.prohibited(), before, before, wordsBefore,
                     wordsBefore, false, 1.0, 0, 0, call.wallMillis(), call.outputTokens());
@@ -278,9 +276,11 @@ public class ResumeRewriteBenchmark {
         int after = RewriteMetrics.targetsCovered(text, request.targets());
         int wordsAfter = RewriteMetrics.postingOverlap(text, request.targets());
         boolean moreSpecific = !unchanged && (after > before || wordsAfter >= wordsBefore + 2);
+        RewriteQuality.Label quality = RewriteQuality.classify(outcome.name(),
+                request.originalText(), text, before, after, wordsBefore, wordsAfter);
 
         return new ItemResult(request.sourceId(), kind, where, request.originalText(), text,
-                outcome == Outcome.ACCEPTED ? text : request.originalText(), outcome,
+                outcome == Outcome.ACCEPTED ? text : request.originalText(), outcome, quality,
                 verdict.issues(), verdict.warnings(), targets, related, request.prohibited(),
                 before, after, wordsBefore, wordsAfter, moreSpecific, verdict.retention(),
                 verdict.sourceMetrics(), verdict.sourceMetricsKept(), call.wallMillis(),
@@ -360,6 +360,7 @@ public class ResumeRewriteBenchmark {
 
     private static ItemResult notFound(ResumeModel.Bullet bullet) {
         return new ItemResult(null, "?", "", bullet.text(), null, bullet.text(), Outcome.REJECTED,
+                RewriteQuality.Label.REJECTED,
                 List.of(new ResumeClaimValidator.Issue(ResumeClaimValidator.IssueType.UNKNOWN_SOURCE,
                         "bullet has no source id")), List.of(), List.of(), List.of(), List.of(),
                 0, 0, 0, 0, false, 1.0, 0, 0, 0, null);

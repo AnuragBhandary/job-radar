@@ -2,12 +2,12 @@ package com.anuragbhandary.jobradar.apply.resume.rewrite;
 
 import static com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteFixtures.known;
 import static com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteFixtures.request;
-import static com.anuragbhandary.jobradar.apply.resume.rewrite.RewriteFixtures.summaryRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.anuragbhandary.jobradar.apply.resume.rewrite.ResumeClaimValidator.IssueType;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.ResumeClaimValidator.Verdict;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,7 +76,7 @@ class ResumeClaimValidatorTest {
     }
 
     @Test
-    @DisplayName("roughly 3x said as roughly threefold is the same metric")
+    @DisplayName("roughly 3x said as roughly threefold, or ~3x, is the same metric")
     void metricRephrased() {
         Verdict threefold = check("Reduced report generation time roughly threefold by caching "
                 + "results in Redis.", request("report-cache"));
@@ -85,12 +85,11 @@ class ResumeClaimValidatorTest {
 
         assertThat(threefold.pass()).isTrue();
         assertThat(threefold.sourceMetricsKept()).isEqualTo(1);
-        assertThat(tilde.pass()).isTrue();
-        assertThat(tilde.warnings()).noneMatch(w -> w.startsWith("hedge dropped"));
+        assertThat(tilde.pass()).as(tilde.issues().toString()).isTrue();
     }
 
     @Test
-    @DisplayName("dropping a metric passes, with a warning, and dropping the hedge is flagged")
+    @DisplayName("dropping a metric passes with a warning; dropping only its hedge fails")
     void metricDroppedOrUnhedged() {
         Verdict dropped = check("Cached report results in Redis to speed up generation.",
                 request("report-cache"));
@@ -99,8 +98,17 @@ class ResumeClaimValidatorTest {
 
         assertThat(dropped.pass()).isTrue();
         assertThat(dropped.warnings()).anyMatch(w -> w.startsWith("metric dropped"));
-        assertThat(unhedged.pass()).isTrue();
-        assertThat(unhedged.warnings()).anyMatch(w -> w.startsWith("hedge dropped"));
+        assertThat(unhedged.pass()).isFalse();
+        assertThat(unhedged.count(IssueType.QUALIFIER_LOST)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("years that are not in the source are invented")
+    void inventedYears() {
+        Verdict verdict = check("Implemented request validation and retry handling for the "
+                + "ingestion API over three years.", request("ingest-validation"));
+
+        assertThat(verdict.count(IssueType.INVENTED_YEARS)).isEqualTo(1);
     }
 
     // ---- Responsibility -------------------------------------------------
@@ -113,6 +121,15 @@ class ResumeClaimValidatorTest {
 
         assertThat(verdict.pass()).isFalse();
         assertThat(verdict.count(IssueType.INFLATED_RESPONSIBILITY)).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("seniority and expertise need the source to claim them")
+    void inflatedSeniority() {
+        Verdict verdict = check("Implemented expert-level request validation and retry handling "
+                + "for the ingestion API.", request("ingest-validation"));
+
+        assertThat(verdict.count(IssueType.INFLATED_RESPONSIBILITY)).isEqualTo(1);
     }
 
     @Test
@@ -136,14 +153,15 @@ class ResumeClaimValidatorTest {
                 + "with deduplication.", request("kafka-events"));
 
         assertThat(verdict.pass()).isFalse();
-        assertThat(verdict.issues()).anyMatch(i -> i.type() == IssueType.UNSUPPORTED_PRODUCT
-                && i.detail().startsWith("Streams"));
+        assertThat(verdict.issues()).anyMatch(i -> i.type() == IssueType.UNSUPPORTED_PRODUCT);
     }
 
     @Test
-    @DisplayName("PostgreSQL on AWS is not Aurora, and not Terraform")
+    @DisplayName("PostgreSQL on AWS is not Aurora, in any case, and not Terraform")
     void auroraAndTerraform() {
         assertThat(check("Stored upload metadata in Aurora PostgreSQL on AWS.",
+                request("pg-aws")).count(IssueType.UNSUPPORTED_PRODUCT)).isGreaterThanOrEqualTo(1);
+        assertThat(check("Stored upload metadata in aurora postgresql on AWS.",
                 request("pg-aws")).count(IssueType.UNSUPPORTED_PRODUCT)).isEqualTo(1);
         assertThat(check("Provisioned PostgreSQL on AWS with Terraform for upload metadata.",
                 request("pg-aws", "Terraform")).count(IssueType.UNSUPPORTED_TECHNOLOGY))
@@ -170,14 +188,27 @@ class ResumeClaimValidatorTest {
                 request("doc-endpoints")).count(IssueType.UNSUPPORTED_CLAIM)).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("a technology tacked onto the end is stuffing, even when it is true")
+    void keywordStuffing() {
+        // Python is true of this project - it is written in Python alone - and it
+        // is still not what this sentence is about.
+        Verdict verdict = check("Developed REST endpoints for document upload and status "
+                + "queries using Python.", request("doc-endpoints"));
+
+        assertThat(verdict.pass()).isFalse();
+        assertThat(verdict.issues()).extracting(ResumeClaimValidator.Issue::type)
+                .containsExactly(IssueType.KEYWORD_STUFFING);
+    }
+
     // ---- Identity, emptiness, meaning ------------------------------------
 
     @Test
     @DisplayName("an unknown sourceId fails before anything else is read")
     void unknownSource() {
-        EvidenceScope scope = new EvidenceScope("invented-1", "x", "x", Set.of());
-        RewriteRequest request = new RewriteRequest("invented-1", "x", scope, List.of(), List.of(),
-                List.of(), 100, false);
+        EvidenceScope scope = new EvidenceScope("invented-1", "x", "x", Set.of(), Map.of());
+        RewriteRequest request = new RewriteRequest("invented-1", "x", scope, List.of(),
+                List.of(), List.of(), 100);
 
         Verdict verdict = ResumeClaimValidator.check("Built things.", request, known());
 
@@ -199,30 +230,5 @@ class ResumeClaimValidatorTest {
 
         assertThat(verdict.pass()).isFalse();
         assertThat(verdict.count(IssueType.MEANING_DRIFT)).isEqualTo(1);
-    }
-
-    // ---- Summary ----------------------------------------------------------
-
-    @Test
-    @DisplayName("a summary may not grow a year into three")
-    void summaryYears() {
-        Verdict invented = ResumeClaimValidator.check("Backend engineer with three years of "
-                + "experience building Python services and event-driven systems.",
-                summaryRequest(), known());
-        Verdict kept = ResumeClaimValidator.check("Backend engineer with a year of experience "
-                + "building event-driven Python services on Kafka and PostgreSQL.",
-                summaryRequest(), known());
-
-        assertThat(invented.count(IssueType.INVENTED_YEARS)).isEqualTo(1);
-        assertThat(kept.pass()).as(kept.issues().toString()).isTrue();
-    }
-
-    @Test
-    @DisplayName("a summary may not claim seniority the source never did")
-    void summarySeniority() {
-        Verdict verdict = ResumeClaimValidator.check("Senior backend engineer with deep expertise "
-                + "in Python services and event-driven systems.", summaryRequest(), known());
-
-        assertThat(verdict.count(IssueType.INFLATED_RESPONSIBILITY)).isGreaterThanOrEqualTo(1);
     }
 }

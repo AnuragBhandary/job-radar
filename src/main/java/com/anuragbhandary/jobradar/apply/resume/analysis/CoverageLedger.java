@@ -121,19 +121,46 @@ public record CoverageLedger(
         int requiredDirect = 0;
         int requiredTotal = 0;
         Map<String, Double> priority = new LinkedHashMap<>();
+        // A set of alternatives - "C, C++, or Rust" - is one requirement met by its
+        // best option, so it is counted once: its strongest importance, its best
+        // evidence. Counting each option would score a candidate with Rust as
+        // missing two thirds of something the posting says any one of satisfies.
+        Map<String, double[]> alternatives = new LinkedHashMap<>();
         for (Entry entry : sorted) {
             double w = entry.requirement().importance().weight();
             double earned = w * credit(entry.level());
-            weight += w;
-            covered += earned;
-            if (entry.requirement().importance() == RequirementImportance.REQUIRED) {
-                requiredTotal++;
+            String group = entry.requirement().alternativeOf();
+            if (group == null) {
+                weight += w;
+                covered += earned;
+                if (entry.requirement().importance() == RequirementImportance.REQUIRED) {
+                    requiredTotal++;
+                    if (entry.level() == ExperienceLevel.DIRECT) {
+                        requiredDirect++;
+                    }
+                }
+            } else {
+                double[] best = alternatives.computeIfAbsent(group,
+                        k -> new double[] {0, 0, RequirementImportance.SIGNAL.ordinal(), 0});
+                best[0] = Math.max(best[0], w);
+                best[1] = Math.max(best[1], credit(entry.level()));
+                best[2] = Math.min(best[2], entry.requirement().importance().ordinal());
                 if (entry.level() == ExperienceLevel.DIRECT) {
-                    requiredDirect++;
+                    best[3] = 1;
                 }
             }
             for (EvidenceRef ref : entry.evidence()) {
                 priority.merge(ref.sourceId(), earned, Double::sum);
+            }
+        }
+        for (double[] best : alternatives.values()) {
+            weight += best[0];
+            covered += best[0] * best[1];
+            if ((int) best[2] == RequirementImportance.REQUIRED.ordinal()) {
+                requiredTotal++;
+                if (best[3] == 1) {
+                    requiredDirect++;
+                }
             }
         }
 

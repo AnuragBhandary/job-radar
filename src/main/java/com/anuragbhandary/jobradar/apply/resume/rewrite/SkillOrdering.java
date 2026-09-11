@@ -17,13 +17,23 @@ import java.util.Set;
 /**
  * Puts the skills a posting asks for first, and adds nothing.
  *
- * <p>Deterministic. Only DIRECT requirements count - Kubernetes being ADJACENT to
- * Docker moves nothing, because the skills list is a claim of use. Groups and the
- * items inside them are reordered by the importance of what they answer; ties
- * keep the order he wrote.
+ * <p>Deterministic, and never the model's doing. The skills list is a claim of
+ * use, so it only ever holds what he wrote; this changes the order and nothing
+ * else.
  *
- * <p>"AWS (EC2, S3)" arrives from the YAML split into "AWS (EC2" and "S3)", so
- * items inside an open bracket travel together.
+ * <h2>What moves a skill</h2>
+ * <ul>
+ *   <li>A DIRECT requirement: the skill carrying it, at the requirement's full
+ *       weight.</li>
+ *   <li>An ADJACENT, CONCEPTUAL or TRANSFERABLE requirement: the skills behind the
+ *       verdict - Docker for Kubernetes, AWS for Terraform - at the weight times
+ *       the level's credit, so emphasis follows the honest evidence. Kubernetes
+ *       itself is never added: he has not used it.</li>
+ *   <li>NONE: nothing.</li>
+ * </ul>
+ * Groups and the items inside them are ordered by that weight; ties keep the
+ * order he wrote. "AWS (EC2, S3)" arrives from the YAML split into "AWS (EC2" and
+ * "S3)", so items inside an open bracket travel together.
  */
 public final class SkillOrdering {
 
@@ -35,14 +45,7 @@ public final class SkillOrdering {
         if (skills == null) {
             return List.of();
         }
-        Map<String, Double> weights = new HashMap<>();
-        for (CoverageLedger.Entry entry : ledger.entries()) {
-            if (entry.level() == ExperienceLevel.DIRECT) {
-                String key = PostingRequirements.canonicalSubject(entry.requirement().term())
-                        .toLowerCase(Locale.ROOT);
-                weights.merge(key, entry.requirement().importance().weight(), Math::max);
-            }
-        }
+        Map<String, Double> weights = weights(ledger);
 
         record Scored<T>(T value, double score) {
         }
@@ -60,6 +63,24 @@ public final class SkillOrdering {
         }
         groups.sort(Comparator.comparingDouble((Scored<ResumeModel.SkillGroup> s) -> s.score()).reversed());
         return groups.stream().map(Scored::value).toList();
+    }
+
+    static Map<String, Double> weights(CoverageLedger ledger) {
+        Map<String, Double> weights = new HashMap<>();
+        for (CoverageLedger.Entry entry : ledger.entries()) {
+            double weight = entry.requirement().importance().weight();
+            if (entry.level() == ExperienceLevel.DIRECT) {
+                String key = PostingRequirements.canonicalSubject(entry.requirement().term())
+                        .toLowerCase(Locale.ROOT);
+                weights.merge(key, weight, Math::max);
+            } else if (entry.level() != ExperienceLevel.NONE) {
+                double emphasis = weight * CoverageLedger.credit(entry.level());
+                for (String via : entry.via()) {
+                    weights.merge(via.toLowerCase(Locale.ROOT), emphasis, Math::max);
+                }
+            }
+        }
+        return weights;
     }
 
     static double score(String text, Map<String, Double> weights) {
