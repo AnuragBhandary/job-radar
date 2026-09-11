@@ -1,0 +1,104 @@
+# ---------------------------------------------------------------------------
+# Template for ~/.config/job-radar/evidence.yml - the evidence bank.
+#
+# The one place that says what you did. Resumes are planned from it: the
+# planner chooses which of these items to print and in which approved wording,
+# and it has no way to write a sentence of its own. Later, cover letters and
+# application answers are meant to draw on the same items.
+#
+# Keep the real file OUT of the repository - it is your work history with its
+# numbers, and this repository is public. application.yml reads it from
+# ~/.config/job-radar/evidence.yml (JOB_RADAR_EVIDENCE to move it).
+#
+#   cp evidence.example.yml ~/.config/job-radar/evidence.yml
+#   ... edit it, then:
+#   evidence --check
+#
+# This example matches applicant.example.yml, so the two work together as they
+# are.
+#
+# RULES, and what happens when one is broken
+#   - Every bullet on the resume (job-radar.resume in applicant.yml) must be the
+#     claim, or an approved variant, of an item below, under the source with the
+#     same name. If not, the bank is not used and resumes are tailored as before.
+#   - An item with an error is left out; a variant with an error is left out.
+#     `evidence --check` lists every one, with the reason.
+#   - An unknown field refuses the whole file. A misspelt "qualifers:" would
+#     otherwise drop the qualifier it holds without a word.
+# ---------------------------------------------------------------------------
+version: 1
+
+sources:
+  # One per job or project. `name` must be exactly the company or project name
+  # the resume uses - that is how the planner finds the header to print.
+  # `stack`: technologies true of the whole source. An item may list one of
+  # these without naming it in its claim. Each entry must be named or tagged
+  # under that job or project on the resume.
+  - id: example
+    kind: employment
+    name: "Example Inc."
+    stack: [Python, Kafka]
+    note: "Anything worth remembering about the arrangement. Never printed."
+  - id: platform
+    kind: project
+    name: "A Backend Platform"
+    stack: [Java, Spring Boot, Kafka]
+
+items:
+  # The minimum: an id that never changes, a source, and the claim - the
+  # sentence exactly as the resume prints it.
+  - id: example-what-you-built
+    source: example
+    claim: "What you built, and what changed because of it."
+    technologies: [Kafka, Python]
+
+  # Every field, on one item that is not on the example resume. The bank may
+  # hold more than the resume; the resume may hold nothing the bank does not.
+  - id: example-order-replay
+    source: example
+    # The sentence you approved. Everything below is checked against it.
+    claim: >-
+      Built the consumer side of a Kafka-based order replay service handling
+      approximately 2,000 messages a day with deduplication.
+    # What the work used. Each must be named in the claim or in the source's
+    # stack. A variant may name these and nothing else.
+    technologies: [Kafka, Python]
+    # Ideas it shows. Each must be visible in the claim's own words, or be an
+    # idea one of the technologies implements (Kafka: event-driven,
+    # streaming...). Product names belong in technologies, not here.
+    concepts: [replay, deduplication, event-driven]
+    # Figures exactly as the claim writes them, hedge included. Every figure in
+    # the claim must be declared, and every variant must keep every metric.
+    metrics: ["approximately 2,000 messages a day"]
+    # Words that limit the claim. Every variant must keep them.
+    qualifiers: ["the consumer side of"]
+    # individual (the default) or shared. Shared needs a qualifier saying which
+    # part was yours.
+    attribution: shared
+    # Kinds of role this speaks to. Ranking only.
+    categories: [backend, distributed-systems]
+    # high, medium (the default) or low. Ranking only. A useful convention:
+    # high when the claim states a measured result.
+    strength: high
+    # Technologies the claim names that you did not use - "React clients" on a
+    # bullet about the server. Printed as written, never counted as evidence.
+    context-only: []
+    # Other wordings of the SAME claim. Each is held to the rules the rewrite
+    # benchmark applied to model output: no new technology, product, number or
+    # responsibility; no lost qualifier or hedge; nothing tacked onto the end.
+    # `emphasis` says what it puts first; the planner prints it when the
+    # posting asks for that, and the claim otherwise.
+    # `approved: true` is required. Without it a variant is checked and shown
+    # by `evidence`, and never printed.
+    variants:
+      - id: events-first
+        text: >-
+          Built the consumer side of an event-driven order replay service on
+          Kafka, handling approximately 2,000 messages a day with deduplication.
+        emphasis: [event-driven]
+        approved: true
+
+  - id: platform-what-it-does
+    source: platform
+    claim: "What it does."
+    technologies: [Java]

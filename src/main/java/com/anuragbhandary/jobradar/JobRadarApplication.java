@@ -6,6 +6,7 @@ import com.anuragbhandary.jobradar.apply.llm.LlmProperties;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
+import com.anuragbhandary.jobradar.evidence.EvidenceProperties;
 import com.anuragbhandary.jobradar.filter.GeoVocabulary;
 import com.anuragbhandary.jobradar.strategy.StrategyProperties;
 import com.anuragbhandary.jobradar.mail.GmailProperties;
@@ -45,7 +46,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         // a place is, which is a fact, and the strategy says whether he wants to
         // go there, which is not.
         GeoVocabulary.class,
-        StrategyProperties.class})
+        StrategyProperties.class,
+        // Where the evidence bank is, and whether resumes are planned from it.
+        EvidenceProperties.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {

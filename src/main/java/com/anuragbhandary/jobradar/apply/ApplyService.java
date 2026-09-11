@@ -11,7 +11,8 @@ import com.anuragbhandary.jobradar.apply.form.Submitter;
 import com.anuragbhandary.jobradar.apply.letter.CoverLetterWriter;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.apply.resume.ResumeRenderer;
-import com.anuragbhandary.jobradar.apply.resume.ResumeTailor;
+import com.anuragbhandary.jobradar.apply.resume.plan.ResumePipeline;
+import com.anuragbhandary.jobradar.apply.resume.plan.TailoringPlan;
 import com.anuragbhandary.jobradar.apply.resume.TailoredResume;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
@@ -58,7 +59,12 @@ public class ApplyService {
     /** Month, not day: a recruiter seeing "2026-09-07" knows exactly when it was generated. */
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    private final ResumeTailor tailor;
+    /**
+     * The resume for a posting: selected from the evidence bank, or tailored as
+     * before when there is no bank, it does not match the resume, or it is
+     * switched off. Either way, selection only - nothing here writes a sentence.
+     */
+    private final ResumePipeline resumes;
     private final ResumeRenderer renderer;
     private final ResumeModel resume;
     private final PdfWriter pdf;
@@ -84,7 +90,7 @@ public class ApplyService {
     private final String applicantSlug;
 
     public ApplyService(
-            ResumeTailor tailor, ResumeRenderer renderer, ResumeModel resume, PdfWriter pdf,
+            ResumePipeline resumes, ResumeRenderer renderer, ResumeModel resume, PdfWriter pdf,
             CoverLetterWriter letters, FormReader reader, FormFiller filler, Submitter submitter,
             SheetsClient sheets, BoardTokenRepository boards,
             ApplicationAttemptRepository attempts, ApplyProperties config,
@@ -92,7 +98,7 @@ public class ApplyService {
             com.anuragbhandary.jobradar.knowledge.ShadowComparator shadow,
             FieldRecorder recorder, ProposalService proposals,
             com.anuragbhandary.jobradar.knowledge.ApplicationContextFactory contexts) {
-        this.tailor = tailor;
+        this.resumes = resumes;
         this.renderer = renderer;
         this.resume = resume;
         this.pdf = pdf;
@@ -218,7 +224,8 @@ public class ApplyService {
             stage(attempt, reporter, PreparationStage.TAILORING, null);
             Path resumePdf = reusableResume(attempt);
             if (resumePdf == null) {
-                TailoredResume tailored = tailor.tailor(posting);
+                TailoringPlan plan = resumes.tailor(posting);
+                TailoredResume tailored = plan.resume();
                 // Absolute, not "./applications/...". Playwright's setInputFiles rejects
                 // a relative path with "Cannot get absolute file path", and the failure
                 // arrives on whatever field the file input's label resolved to - which
@@ -227,9 +234,9 @@ public class ApplyService {
                         .toAbsolutePath().normalize();
                 pdf.write(renderer.toHtml(tailored, resume.headline()), resumePdf);
                 attempt.setResumePath(resumePdf.toString());
-                attempt.setTailoringNote(tailored.note());
+                attempt.setTailoringNote(plan.note());
                 attempt.setSummaryId(tailored.summary().id());
-                log.info("Resume: {}", tailored.note());
+                log.info("Resume: {}", plan.note());
             } else {
                 log.info("Reusing the resume already rendered for attempt {}", attempt.getId());
             }
@@ -274,7 +281,7 @@ public class ApplyService {
                                 // not have one for. The writer needs the resume
                                 // model, not the note on the row.
                                 .flatMap(box -> letters.write(posting, company,
-                                        tailor.tailor(posting), 0))
+                                        resumes.tailor(posting).resume(), 0))
                                 .orElse(null);
                 if (letterBox.isEmpty() && letter == null) {
                     log.info("No cover letter text box on this form - none written");
@@ -455,20 +462,21 @@ public class ApplyService {
                 new ApplicationAttempt(posting.getId(), company, posting.getTitle());
         Path workDir = workDirFor(company, posting);
 
-        TailoredResume tailored = tailor.tailor(posting);
+        TailoringPlan plan = resumes.tailor(posting);
+        TailoredResume tailored = plan.resume();
         Path resumePdf = workDir.resolve(resumeFileName(company));
         pdf.write(renderer.toHtml(tailored, resume.headline()), resumePdf);
 
         attempt.setStatus(AttemptStatus.SKIPPED);
         attempt.setResumePath(resumePdf.toString());
-        attempt.setTailoringNote(tailored.note());
+        attempt.setTailoringNote(plan.note());
         attempt.setSummaryId(tailored.summary().id());
         attempt.setBlockerReason("resume-only run - no form was opened");
         attempt.setStage(PreparationStage.FINISHED, "resume rendered, no form opened");
         attempt.setFinishedAt(Instant.now());
 
         return new ApplyOutcome(attempts.save(attempt), null, resumePdf,
-                tailored.note() + "\n" + resumePdf);
+                plan.note() + "\n" + resumePdf);
     }
 
     /**

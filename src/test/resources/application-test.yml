@@ -25,3 +25,6 @@ job-radar:
     dir: ./target/test-fixtures
   http:
     delay-between-requests-ms: 0
+  evidence:
+    # Tests never read the developer's real evidence file.
+    path: ./target/test-evidence/none.yml

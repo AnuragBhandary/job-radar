@@ -37,6 +37,12 @@ applicant.yml
 **/applicant.yml
 !applicant.example.yml
 
+# The evidence bank: the applicant's real work history, claim by claim, with its
+# metrics. Same reason as applicant.yml; evidence.example.yml is the skeleton.
+evidence.yml
+**/evidence.yml
+!evidence.example.yml
+
 # Prepared applications: tailored resumes, cover letters, screenshots of filled
 # forms. Every one contains personal data and the contents of a real application.
 /applications/

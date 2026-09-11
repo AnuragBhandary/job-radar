@@ -17,6 +17,21 @@ job-radar:
     # To roll back: JOB_RADAR_KNOWLEDGE_AUTHORITATIVE=false, then restart. The
     # legacy mapper is still there and is still the shadow's oracle.
     resolver-authoritative: ${JOB_RADAR_KNOWLEDGE_AUTHORITATIVE:true}
+
+  # ---------------------------------------------------------------------------
+  # Evidence bank: the approved facts of his career, claim by claim, that every
+  # resume is planned from.
+  #
+  # The file is personal data, like applicant.yml, so it lives outside this
+  # repository; evidence.example.yml is the committed skeleton. Missing, broken,
+  # or out of step with the resume, and every resume is tailored exactly as it
+  # was before the bank existed - `evidence --check` says which, and why.
+  #
+  # To roll back: JOB_RADAR_EVIDENCE_TAILORING=false, then restart.
+  # ---------------------------------------------------------------------------
+  evidence:
+    path: ${JOB_RADAR_EVIDENCE:~/.config/job-radar/evidence.yml}
+    tailoring: ${JOB_RADAR_EVIDENCE_TAILORING:true}
   google:
     # Service-account key. Never committed; see .gitignore. The account already
     # holds Editor on the target spreadsheet.

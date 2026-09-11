@@ -1,777 +1,814 @@
 # job-radar
 
 A job search for one person, run from their own laptop. It reads public ATS job
-boards, screens the results against a fixed eligibility and salary profile,
-scores what survives, fills in application forms in a real browser and stops
+boards, screens and ranks what it finds, tailors a resume from an evidence bank
+of approved career facts, fills application forms in a real browser and stops
 before the submit button, then tracks what happens next.
 
-It began as a batch job that wrote a markdown digest, and that half still works
-and still runs on a schedule. The other half is a local web application at
-`localhost:8080`, added once it became clear the interesting question was not
-"which jobs exist" but "what should I do today".
+It is a Spring Boot application with two faces: a command-line tool (every
+command below) and a local web application at `localhost:8080`. Both read one
+SQLite database.
 
 ```
-117 boards · 9,032 postings · 56 candidates · 8,976 rejection reasons you can argue with
+Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite · Maven
+Playwright · Google Sheets API · Gmail API (read-only) · server-rendered HTML
+1,160 tests · no test touches the network or opens a browser
 ```
 
-Nothing leaves the machine except calls to the job boards themselves and, if you
-connect them, your own Google Sheet and mailbox.
+The repository is public and holds no personal data. The applicant's profile,
+resume and evidence bank live in `~/.config/job-radar/`, outside the repository;
+the committed `*.example.yml` files are skeletons.
 
 ---
 
-## The problem
+## Contents
 
-Job boards are built for browsing, not for a daily delta. Checking forty company
-boards by hand means re-reading the same postings every morning to find the two
-that are new — and the interesting signal, a posting whose *description* quietly
-changed, is invisible entirely.
+- [Product vision](#product-vision)
+- [What exists today](#what-exists-today)
+- [Architecture](#architecture)
+- [Finding jobs](#finding-jobs)
+- [Understanding and ranking](#understanding-and-ranking)
+- [Resume intelligence](#resume-intelligence)
+  - [Requirement extraction](#requirement-extraction)
+  - [Coverage ledger](#coverage-ledger)
+  - [Evidence bank](#evidence-bank)
+  - [Deterministic tailoring](#deterministic-tailoring)
+  - [Variants, rendering and validation](#variants-rendering-and-validation)
+- [Where language models are used](#where-language-models-are-used)
+- [The rewrite benchmark and its safety layer](#the-rewrite-benchmark-and-its-safety-layer)
+- [Preparing applications](#preparing-applications)
+- [Knowledge: answering form questions](#knowledge-answering-form-questions)
+- [Tracking](#tracking)
+- [The web application](#the-web-application)
+- [Commands](#commands)
+- [Configuration](#configuration)
+- [Setup](#setup)
+- [Scheduling](#scheduling)
+- [Testing](#testing)
+- [Project structure](#project-structure)
+- [Known limitations](#known-limitations)
+- [Future architecture](#future-architecture)
+- [Design notes](#design-notes)
 
-Worse, the postings that look most promising are often the ones that waste the
-most time. "Remote (Argentina)" is remote *within Argentina*: the country is a
-hiring restriction, not a perk. A "New Grad" title can still require five years.
-An "Associate" ladder can turn out not to be an engineering ladder at all.
+---
 
-job-radar reads the boards through their public APIs, keeps a local history, and
-each morning reports only what is new, what changed, and what needs a human
-decision — with the exact phrase that disqualified everything else.
+## Product vision
+
+```
+FIND ─▶ UNDERSTAND ─▶ RANK ─▶ TAILOR ─▶ GENERATE ─▶ AUTOFILL ─▶ TRACK ─▶ LEARN
+```
+
+The goal is a personal job-search and application system: find postings, read
+what they ask for, rank them, tailor application material from facts the
+applicant has approved, fill forms, and learn from what happens. A person
+decides what gets sent.
+
+Out of scope by decision: networking and referrals, interview preparation, and a
+general career-assistant chatbot. Two earlier features touch the last two - an
+interview-prep pack (`prep`) and a chat assistant (`/chat`). They still work and
+are documented below; they are not being extended.
+
+## What exists today
+
+Each line is one of three things: **implemented** (works now), **foundation**
+(the architecture a later feature will build on is in place, the feature is not),
+or **planned** (not started).
+
+| Area | Feature | Status |
+|---|---|---|
+| Discovery | Job aggregation from 7 ATS platforms | Implemented |
+| | Fresh-job detection (new, updated, closed) | Implemented |
+| | Job quality filtering (titles, years, country-locked remote, excluded boards) | Implemented |
+| | Visa / work-authorisation strategy by country, relocation and remote kept apart | Implemented |
+| | Advanced filters on the job list | Implemented |
+| | Match scores (0-100, five factors) | Implemented |
+| | Requirement analysis | Implemented |
+| | Match explanation / gap analysis | Implemented in the CLI (`ledger`, `evidence --plan`) and as score bars on the posting page; not yet a gap view in the UI |
+| | Salary intelligence | Partial: visa salary floors, stated-pay extraction, an asking price per country, INR conversion. No market data |
+| | Personalised recommendations | Partial: the ranked, strategy-filtered feed and the daily worklist |
+| | Job alerts | Partial: a daily markdown digest. No notification delivery |
+| | External job import | Partial: applications made elsewhere import from the Google Sheet. No import of arbitrary job URLs |
+| | AI job matching | Foundation: the coverage ledger and evidence bank; matching today is deterministic |
+| Resume | Evidence bank | Implemented |
+| | Deterministic tailoring from approved evidence | Implemented |
+| | Coverage analysis | Implemented |
+| | Resume variants (approved summaries, approved bullet wordings) | Implemented |
+| | Resume rendering to one-page PDF | Implemented |
+| | Resume match score | Foundation: the ledger computes weighted coverage; not shown as a score |
+| | ATS optimisation | Foundation: skills ordered by what the posting requires, evidence ranked by it; no ATS-specific scoring |
+| | AI constrained editing | Foundation: the rewrite validators and benchmark exist; no editor |
+| | Cover letters | Implemented (optional model, validated, template fallback); not yet drawn from the evidence bank |
+| | Application answers | Implemented through the knowledge resolver; open-ended answers are drafted for approval |
+| Automation | Form autofill in a real browser | Implemented |
+| | Tailored resume attached to the form | Implemented |
+| | Review before submission | Implemented |
+| | Submission | Implemented behind a human confirmation; batch mode never submits |
+| Tracking | Application tracker (board + Google Sheet mirror) | Implemented |
+| | Job history | Implemented |
+| | Follow-ups and reminders | Implemented |
+| | Outcome tracking from the inbox | Implemented (Gmail, read-only) |
+| | Application analytics | Partial: the home-page funnel and `variants` |
 
 ---
 
 ## Architecture
 
 ```
-                    ┌──────────────────────────────────────────┐
-  Greenhouse  ──┐   │  fetch/                                  │
-  Ashby       ──┤   │    AtsFetcher ── HttpFetchClient         │
-  Lever       ──┼──▶│      (throttled, retrying, one UA)       │
-  SmartRecr.  ──┤   │    PostingMapper ── one RawPosting→Posting│
-  Workday     ──┤   │    SmartRecruiters and Workday filter    │
-  Recruitee   ──┤   │      before fetching descriptions        │
-  amazon.jobs ──┘   │                                          │
-                    └────────────────┬─────────────────────────┘
-                                     │
-                                     ▼
-                    ┌──────────────────────────────────────────┐
-                    │  diff/ChangeDetector                     │
-                    │    NEW · UPDATED · SEEN · CLOSED         │
-                    │    diffs SHA-256 of the description,     │
-                    │    never the board's own timestamp       │
-                    └────────────────┬─────────────────────────┘
-                                     ▼
-                    ┌──────────────────────────────────────────┐
-                    │  filter/ScreeningService                 │
-                    │    GeoFilter → TitleFilter → YearsExtractor
-                    │    first rejection wins, reason recorded │
-                    │    SignalExtractor adds visa and pay,    │
-                    │      reported but never decisive         │
-                    └────────────────┬─────────────────────────┘
-                                     ▼
-      ┌──────────────┐  SQLite  ┌────┴──────────┐   Google Sheets
-      │ repo/  JPA   │◀────────▶│ digest/       │◀───── tracker read
-      │ Posting      │          │ DigestService │       (suppresses
-      │ BoardToken   │          │ DigestWriter  │        companies
-      │ Attempt      │          └────┬──────────┘        applied to)
-      │ JobInterest  │               ▼
-      └──────┬───────┘     digests/YYYY-MM-DD.md
-             │
-             ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │  match/MatchScorer      arithmetic 0-100, five factors       │
-  │  worklist/Worklist      what needs a decision today          │
-  │  money/SalaryGuide      what to ask for, and in rupees       │
-  │  apply/  ApplyService ── Playwright ── stops before submit   │
-  │            AnswerStore   answers learned from blocked forms  │
-  │  pipeline/PipelineService  the board; mirrors to the sheet   │
-  │  mail/InboxScanner      replies → proposed status changes    │
-  │  chat/ChatService       Gemini, six read tools, cannot send  │
-  └───────────────────────────────┬──────────────────────────────┘
-                                  ▼
-                    web/  server-rendered HTML, no build step
-                    today · jobs · board · answers · assistant · setup
+  Greenhouse  Ashby  Lever  SmartRecruiters  Workday  Recruitee  amazon.jobs
+      └────────┴──────┴─────────┬──────┴────────┴─────────┴──────────┘
+                                ▼
+   fetch/     AtsFetcher per platform ─ HttpFetchClient (throttled, retrying)
+              PostingMapper: one RawPosting → Posting, in one place
+   diff/      ChangeDetector: NEW · UPDATED · SEEN · CLOSED, on a description hash
+   filter/    ScreeningService: title, years, location → CANDIDATE or REJECTED + reason
+              LocationClassifier: ISO country, work mode, hiring region
+   strategy/  CountryStrategy: which eligible postings belong on today's list
+   match/     MatchScorer: 0-100, orders what survived
+                                │
+                   SQLite (repo/, JPA) ◀──────────────┐
+                                │                      │
+   ┌────────────────────────────┴───────────────┐      │
+   │ resume intelligence (apply/resume/)        │      │
+   │  PostingRequirements ─▶ CoverageAnalyzer   │      │
+   │    ─▶ CoverageLedger ─▶ EvidenceBank       │      │
+   │    ─▶ TailoringPlanner ─▶ ResumeVerifier   │      │
+   │    ─▶ ResumeRenderer ─▶ PdfWriter          │      │
+   └────────────────────────────┬───────────────┘      │
+                                ▼                      │
+   apply/     ApplyService: read form ─▶ knowledge resolver ─▶ fill ─▶ STOP
+              Submitter: the only class that submits, after a human confirms
+   knowledge/ Concept · Assertion · Scope · KnowledgeResolver · positioning
+   pipeline/  the board: saved → prepared → applied → … ; mirrored to Sheets
+   mail/      read-only inbox scan → proposed status changes
+   worklist/  what needs a decision today
+   digest/    daily markdown digest
+   web/       server-rendered pages and a small JSON API, localhost only
 ```
 
-Six fetchers behind one interface; mapping to the domain happens in exactly one
-place. The JPA layer is database-agnostic — moving to PostgreSQL is a datasource
-URL and a dialect in `application.yml`.
+The web layer is opt-in per run: `main()` starts a servlet container for `ui`
+only, so `fetch` and `digest` never bind a port.
+
+Network traffic leaves the machine for the job boards, and - only when
+configured - for the Google Sheet, the Gmail API, an OpenAI-compatible model
+endpoint, and a local Ollama server used by the benchmark commands.
 
 ---
 
-## Stack
+## Finding jobs
 
-Java 25 · Spring Boot 3.5 · Spring Data JPA / Hibernate 6.6 · SQLite ·
-Maven · JUnit 5 + Mockito (**419 tests**) · `java.net.http.HttpClient` · Jackson ·
-Google Sheets API · Gmail API · Playwright · Spring MVC · Docker
+**Seven platforms, one interface.** `fetch/` has a fetcher each for Greenhouse,
+Ashby, Lever, SmartRecruiters, Workday, Recruitee and amazon.jobs. Each reads the
+board's public API; `PostingMapper` is the single place raw responses become a
+`Posting`. Workable, Personio and Teamtailor were investigated and are not
+viable - the reasons are recorded on the `Source` enum.
 
-The web layer is opt-in per run: `main()` picks `WebApplicationType.NONE` for
-every command except `ui`, so `fetch` does not start a servlet container to make
-HTTP requests and `digest` does not hold a port while writing a markdown file.
+**Boards** are rows in `board_token`, seeded by `BoardTokenSeeder` (about 110
+company boards in code) and extended with `probe --tokens=a,b --add`, which
+tests candidate tokens across platforms. At the time of writing the local
+database held 117 boards, 109 active, and 9,032 postings. A board retired on
+purpose is recorded with a `retired:` reason and is not reported as broken.
 
-No test contacts a live endpoint and none opens a browser. Every fixture is a
-trimmed copy of a real response captured during a live run, and the form logic —
-which label means what, which answer follows from the posting's country, which
-dropdown option matches — is pure functions tested on the wording real boards use.
+**Change detection** compares a SHA-256 of the description, never the board's own
+timestamp. A board that fails to fetch never closes its postings.
+
+**Captured responses.** With `job-radar.fixtures.enabled`, every raw response is
+written to `./fixtures/` (gitignored), which is where test fixtures come from.
+
+## Understanding and ranking
+
+**Screening** (`filter/ScreeningService`) gives each posting a verdict -
+`CANDIDATE` or `REJECTED` - and the reason for a rejection, first rule wins:
+
+- `TitleFilter`: include and exclude lists in `application.yml` (seniority,
+  non-software disciplines, sales titles), whole-word where a token is also a
+  word fragment.
+- `YearsExtractor`: the required years, anchored on the requirements section;
+  `max-min-years` is the cut-off. "No number stated" is its own outcome, not a pass.
+- Location: `LocationClassifier` assigns an ISO country, a `WorkMode` (onsite,
+  hybrid, remote country-locked / regional / global) and a hiring region.
+- `SignalExtractor`: visa-sponsorship and stated-pay sentences, reported and never
+  decisive.
+- Whole boards can be excluded with a stated reason.
+
+**Eligibility is not priority.** The verdict answers "could this be pursued at
+all" and rejects only on facts. `strategy/CountryStrategy` answers "should it be
+on today's list" from `job-radar.strategy`: each country has a relocation tier
+(primary, secondary, opportunistic, low, excluded) with relocation and remote as
+separate switches, plus a salary floor with its basis and a re-verify date. A
+posting's strategic class is one of home, other-in-country, international
+relocation, international remote, unclassified.
+
+**Scoring** (`match/MatchScorer`) orders what survived, 0-100: skills 40,
+experience 25, location 20, freshness 10, signals 5. Every point traces to a
+rule, and the posting page shows the five factors with their reasoning. It is
+not a filter.
+
+**Salary.** `money/` shows a foreign figure in rupees at rates configured in
+`application.yml` with the date they were set, and gives an asking price per
+country from the profile's bands. A band borrowed from another country is never
+auto-filled into a form.
+
+**The digest** (`digest`, or `run` = fetch + screen + digest) writes
+`digests/YYYY-MM-DD.md`: new candidates, postings stating no years, rejection
+counts by reason, companies already applied to, and board health.
 
 ---
+
+## Resume intelligence
+
+### Requirement extraction
+
+`apply/resume/analysis/PostingRequirements` reads a posting without a model. It
+finds the technologies `prep/TechVocabulary` knows and a short hand-written list
+of non-technology requirements (REST APIs, testing, on-call, real-time systems,
+backend engineering...), and decides how strongly each is asked for from the
+section it appears in: `REQUIRED`, `PREFERRED` or `SIGNAL`. The title counts as
+required. Every requirement carries a quote that is a substring of the posting.
+
+`CompoundRequirements` splits "Python / Go" and "Kafka, Redis and PostgreSQL"
+into separate requirements - alternatives counted once, at the best option -
+only when every part is recognised, so "CI/CD" and "TCP/IP" stay whole. Versions
+are stripped and aliases merged ("Postgres" is PostgreSQL, "K8s" is Kubernetes).
+
+A local model can also propose requirements (`ledger --model`); only those whose
+quote is found in the posting are kept. This path is an experiment and is not
+used when applying.
+
+### Coverage ledger
+
+`CoverageAnalyzer` builds a `CoverageLedger`: for each requirement, the evidence
+level the resume supports and the resume items that carry it. The level comes
+from `knowledge/experience/ExperiencePositioner`, which walks the resume's
+technologies (`ExperienceIndex`) and a hand-written `SkillGraph`:
+
+| Level | Meaning | What it allows on a resume |
+|---|---|---|
+| DIRECT | the resume names it | claim it |
+| ADJACENT | a neighbouring technology he has (Kubernetes → Docker) | show the neighbour, never name the requirement |
+| CONCEPTUAL | a technology implementing the same idea | show it, never name the requirement |
+| TRANSFERABLE | only general engineering foundations | nothing specific |
+| NONE | nothing | leave it out |
+
+Every resume item has a stable id (`ResumeSources`): written on the bullet in the
+profile, or derived from its parent and a hash of its text.
+
+### Evidence bank
+
+The architectural rule this project now rests on: **the candidate's factual
+career history has one source of truth.** Resume content is selected from it;
+cover letters and application answers are meant to draw on it next. A consumer
+asks the bank for evidence instead of reading resume prose and guessing:
+
+```java
+bank.strongestFor("event-driven backend systems")   // ranked items, each with a reason
+bank.evidenceFor(ledgerEntry)                       // the same, respecting the ledger's level
+```
+
+When nothing supports a requirement the answer is an empty list, never a nearest
+guess.
+
+**Where it lives.** `~/.config/job-radar/evidence.yml` (`JOB_RADAR_EVIDENCE`),
+outside the repository. `evidence.example.yml` is the committed skeleton, with
+every field explained. It is plain YAML, read directly rather than through
+Spring's relaxed binding: an unknown or misspelt field refuses the whole file,
+because a misspelt `qualifers:` would otherwise silently drop the qualifier it
+holds.
+
+**Shape.** Sources are jobs and projects; items are claims.
+
+```yaml
+version: 1
+sources:
+  - id: example
+    kind: employment            # or project
+    name: "Example Inc."        # exactly as the resume writes it
+    stack: [Python, Kafka]      # true of the whole source
+items:
+  - id: example-order-replay
+    source: example
+    claim: >-
+      Built the consumer side of a Kafka-based order replay service handling
+      approximately 2,000 messages a day with deduplication.
+    technologies: [Kafka, Python]
+    concepts: [replay, deduplication, event-driven]
+    metrics: ["approximately 2,000 messages a day"]
+    qualifiers: ["the consumer side of"]
+    attribution: shared
+    categories: [backend, distributed-systems]
+    strength: high
+    variants:
+      - id: events-first
+        text: >-
+          Built the consumer side of an event-driven order replay service on
+          Kafka, handling approximately 2,000 messages a day with deduplication.
+        emphasis: [event-driven]
+        approved: true
+```
+
+| Field | Meaning | Checked by `EvidenceValidator` |
+|---|---|---|
+| `id` | stable name, never positional | letters, digits, `.`, `_`, `-`; unique |
+| `source` | the job or project | must be a valid source |
+| `claim` | the approved sentence; the default wording | taken as true; everything else is checked against it |
+| `technologies` | what the work used | named in the claim, or in the source's stack |
+| `concepts` | ideas it shows | visible in the claim's words, or an idea one of its technologies implements; product names refused |
+| `metrics` | figures as the claim writes them | present in the claim; every figure in the claim must be declared |
+| `qualifiers` | words that limit the claim | present in the claim |
+| `attribution` | `individual` (default) or `shared` | shared needs a qualifier saying which part was his |
+| `categories` | kinds of role it speaks to | lower-case words joined by hyphens; ranking only |
+| `strength` | `high`, `medium` (default), `low` | ranking only |
+| `context-only` | technologies named but not used ("React clients") | in the claim; never counted as evidence |
+| `variants` | other wordings of the same claim | see below |
+
+A **variant** must keep every metric and qualifier, may emphasise only what the
+item lists, must differ from the claim, and must pass `ResumeClaimValidator`
+against the claim - the validator built for the rewrite benchmark: no new
+technology, product, number or responsibility; no lost qualifier or hedge ("roughly
+fourfold" cannot become "fourfold", "production-style" cannot become
+"production"); nothing tacked onto the end; still recognisably the same
+accomplishment. A variant is printed only with `approved: true`.
+
+An item with an error is left out of the bank; a variant with an error is left out
+of its item. Nothing is repaired.
+
+**Matching** (`EvidenceMatcher`) is deterministic and explainable in one line.
+Kinds of match, strongest first: the item lists the technology; the item's own
+words show the idea; one of its technologies implements the idea (`SkillGraph`:
+Kafka implements event-driven); the requirement names its technology inside a
+longer term ("Kafka Streams" - never a claim); only a general idea matches
+("backend engineering"); only the role category matches. The kind always decides
+first; within a kind, strength, work over projects, and a stated measured result.
+A requirement naming a product can only be answered by an item that lists that
+product - "shows streaming" is not evidence of Kafka.
+
+Through the ledger, the bank respects the positioner: a Kubernetes requirement
+puts the Docker item forward, marked as not supporting a claim; a product the
+ledger places at NONE gets nothing, whatever the bank's concepts say; an idea the
+ledger cannot place ("deduplication") is found in the bank's own words.
+
+**Consistency with the resume.** For as long as the profile still carries resume
+bullets, each one must be the claim or an approved variant of an item from the
+matching source (`ResumeConsistency`). If not, the bank is not used and resumes
+are tailored as before, with the reason. `evidence --check` shows every problem.
+
+### Deterministic tailoring
+
+```
+posting ─▶ PostingRequirements ─▶ CoverageAnalyzer ─▶ CoverageLedger
+        ─▶ EvidenceBank.evidenceFor(each requirement)
+        ─▶ TailoringPlanner
+             bullets   the most relevant items per job and project, up to the
+                       caps, printed in the order the file lists them
+             wording   the claim, or the approved variant whose emphasis answers
+                       what this posting asks of that item
+             projects  by total relevance, the resume's order breaking ties
+             skills    SkillOrdering: what the ledger found first; nothing added
+             summary   the approved paragraph ResumeTailor chooses
+        ─▶ ResumeVerifier ─▶ ResumeRenderer ─▶ PdfWriter
+```
+
+`apply/resume/plan/ResumePipeline` is what applications call. Relevance is the
+sum, over the ledger's requirements, of the requirement's weight (required 3,
+preferred 1, signal 0.5) times the match score. No model is consulted anywhere on
+this path, and a test fails the build if a class on it gains a dependency on one.
+
+`ResumeVerifier` checks the result independently of how it was produced: every
+bullet is an approved wording of evidence from the source it is printed under;
+headers, education and extras are the resume's own; the skills list is a
+reordering of the resume's.
+
+It steps aside - the resume is tailored by `ResumeTailor` exactly as it was
+before the bank existed - when there is no bank, when the bank and resume
+disagree, when verification fails, when the planner throws, or when
+`JOB_RADAR_EVIDENCE_TAILORING=false`. A posting that asks for nothing the resume
+has renders byte-for-byte the same resume either way.
+
+`evidence --plan --posting-id=N` prints the whole plan - each requirement with
+the evidence chosen for it or the reason there is none, each item considered
+with its relevance and wording - and `--html=FILE` renders it without a browser.
+
+`ResumeTailor` itself is unchanged: selection and ordering by tag match, used as
+the fallback and by `prep`.
+
+### Variants, rendering and validation
+
+**Variants** are of two kinds, both written and approved by the applicant: several
+summary paragraphs in the profile (chosen by tag match; `variants` reports which
+opening produced replies, and refuses to conclude on a small sample), and
+approved wordings of evidence items.
+
+**Rendering.** `ResumeRenderer` produces print-ready HTML for A4 (every value
+escaped); `PdfWriter` prints it with the Playwright Chromium the tool already
+uses. The caps on projects and bullets per section keep it to one page.
+
+**Every layer that checks a claim:**
+
+| Check | Guards |
+|---|---|
+| `EvidenceValidator` | the bank: grounding of technologies, concepts, metrics, qualifiers; every variant |
+| `ResumeClaimValidator`, `QualifierGuard`, `RewriteQuality` | a wording against its claim (used for variants) |
+| `ResumeConsistency` | the resume says nothing the bank does not approve |
+| `ResumeVerifier` | the planned resume, before it is rendered |
+| `knowledge/experience/ClaimValidator` | answers to "have you used X?" against the positioning |
+| `apply/llm/HumanTone` | generated prose: dash punctuation, machine phrasing, structure |
+| `CoverLetterWriter` | discards a letter claiming years of experience or with an unfilled placeholder |
+
+---
+
+## Where language models are used
+
+| Where | Model | What it does | Limits |
+|---|---|---|---|
+| Cover letters (`apply/letter/CoverLetterWriter`) | OpenAI-compatible endpoint, off by default | a letter, only when the form has a text box for one | validated; a template when the model is off or the draft fails |
+| Open-ended form questions (`knowledge/ai/AnswerProposer`) | same | drafts an answer only after every deterministic path has failed | checked against the experience positioning; needs approval |
+| Assistant panel on the preparation screen (`web/AssistantService`) | same | draft an answer, rewrite the letter, ask about the posting | nothing reaches a form without approval |
+| Chat (`chat/ChatService`, `/chat`) | same, with tool calling | six tools: `search_jobs`, `get_posting`, `board_summary`, `profile_summary`, `save_job`, `move_job` | cannot prepare or submit an application |
+| Interview prep (`prep/PrepService`) | same, when configured | part of the prep pack | out of product scope; not extended |
+| `bench-llm`, `ledger --model` | local Ollama | requirement-extraction experiments | ungrounded requirements dropped |
+| `bench-rewrite` | local Ollama | shadow resume-rewrite benchmark | output is a report; unreachable from `apply` |
+
+No model is used to fetch, screen, score, extract requirements when applying,
+build the coverage ledger, select resume content, or answer factual form fields.
+The model never writes a resume sentence.
+
+## The rewrite benchmark and its safety layer
+
+Before the evidence bank, the project measured whether a local model
+(`gemma4:26b` through Ollama) should rewrite resume bullets per posting. Across
+two benchmark runs on the same five postings it produced a handful of genuine
+improvements and more bullets made worse than better - tacked-on keywords,
+inflated objects, awkward wording - while never adding coverage the deterministic
+resume lacked. It was not adopted.
+
+What that work left, and where it lives now:
+
+- **Kept and used on the production path:** `ResumeClaimValidator`,
+  `QualifierGuard` and `RewriteQuality` (they validate every evidence variant),
+  `SkillOrdering` (the planner's skill order), `CompoundRequirements`, the
+  source-id scheme, and the coverage ledger.
+- **Kept as an experiment, unreachable from `apply`:** `RewritePrompt` (source ids
+  pinned in the JSON schema), `RewritePlanner`, `EvidenceScope`, `RewriteParser`,
+  `GenerativeTailor`, `ResumeRewriteBenchmark`, `bench-rewrite`. AI summary
+  rewriting was removed outright.
+
+The architecture intended for any future model help is narrower: the planner
+finds one specific edit opportunity, a model proposes that edit, the same
+validators accept or reject it, and an accepted wording becomes a variant only
+when the applicant approves it.
+
+---
+
+## Preparing applications
+
+```
+apply --posting-id=N
+  1. resume     ResumePipeline ─▶ ResumeRenderer ─▶ PdfWriter
+  2. open       Playwright, persistent Chromium profile, headed by default
+  3. read       FormReader (one injected script) ─▶ FieldClassifier
+  4. resolve    KnowledgeResolver ─▶ AnswerPlan ─▶ KnowledgeAnswers ─▶ SemanticOptions
+  5. letter     only if the form has a text box for one
+  6. fill       FormFiller: types, selects, uploads the resume; cannot submit
+  7. stop       screenshot + review.md; the attempt waits for a person
+```
+
+`Submitter` is the only class that submits. It runs after a typed `yes` at the
+terminal (`apply --posting-id=N --submit`) or after the preparation screen's
+"I have read it" box is ticked. `apply --all` prepares a batch and refuses
+`--submit`: most boards accept one application per posting, forever.
+
+In the web application, **Prepare** returns at once and `PreparationRunner` does
+the browser work on one background thread, recording progress as a stage on the
+attempt (queued, tailoring, opening, reading, resolving, filling, captured,
+finished, failed). An attempt ends ready for review, awaiting approval, awaiting
+an answer, manual required (no form, captcha, unsupported control or site, login
+required, automation error) or failed. Each field records two things apart: what
+Job Radar knows, and what the browser managed. A resumed attempt reuses the
+rendered resume and settled answers and re-reads only the form.
+
+An unrecognised question is never guessed. An answer that matches no option is
+refused rather than approximated. A consent checkbox is never ticked. `login`
+signs in to a board by hand once; the session lives in the browser profile.
+
+Every attempt writes to `./applications/` (gitignored): the PDF, the letter, a
+screenshot and `review.md`.
+
+## Knowledge: answering form questions
+
+`knowledge/` holds what the tool may say on a form.
+
+- **Concepts** (sponsorship, work authorisation, notice period, years of
+  experience...) with stable ids and a category: factual, contextual,
+  experience, open-ended, sensitive.
+- **Assertions**: stored answers with a **scope** (application, company, country,
+  work mode, strategic class, global) and a source (session, user input, user
+  rule, profile, resume, derived, historical, AI-proposed), in that order of
+  authority. A context-sensitive concept cannot be stored globally: a sponsorship
+  answer learned for Germany is never a candidate on an Indian form.
+- **Derivations**: sponsorship and work authorisation from the country the
+  employee will actually sit in (not the job's country); years of experience from
+  the resume's dates, refusing if any period is unparseable.
+- **Experience positioning** for "have you used X?", with the five levels above.
+  A positioning is never stored.
+
+`KnowledgeResolver` decides real form answers
+(`job-radar.knowledge.resolver-authoritative`, default true;
+`JOB_RADAR_KNOWLEDGE_AUTHORITATIVE=false` rolls back). The older `FieldMapper`
+stays compiled in as the fallback and as the oracle for `knowledge --shadow`,
+which compares the two across every recorded question and posting.
+
+`/knowledge` reviews assertions that arrived without a scope; `/answers` answers
+questions that blocked a form, effective on the next form without a restart.
+
+## Tracking
+
+- **The board** (`pipeline/`): saved, prepared, applied, screening, interview,
+  offer, rejected, dropped - with notes, a date applied and a reminder date.
+  `board --import` seeds it from the Google Sheet.
+- **Google Sheets**: the tracker is append-only and a mirror; the database is the
+  source of truth. Nothing before "applied" is written to it.
+- **Inbox** (`inbox`, `/setup`): Gmail with the `gmail.readonly` scope. Replies are
+  matched to applications and classified; acknowledgements do not count as
+  replies, and rejection phrases are checked first. `--apply` writes the proposed
+  status.
+- **Follow-ups** (`follow-up`): applications quiet for 14 days, oldest first;
+  `--close-abandoned` marks six-week silences.
+- **Today** (`worklist/`): one task per posting - answer a blocked question,
+  approve a draft, send a prepared application, finish a manual one, chase a
+  quiet one, act on a reminder, fix a broken board.
+
+## The web application
+
+`ui` serves `http://127.0.0.1:8080`: server-rendered HTML, one stylesheet and
+two small scripts in `src/main/resources/static/`, no build step.
+
+| Route | Page |
+|---|---|
+| `/` | Today: what needs a decision, then outcomes (sent, replies, in process, new this week) |
+| `/jobs` | the ranked feed, filtered on strategic lane, country, work mode, freshness and status; 25 per page |
+| `/posting/{id}` | one posting: the match factors with their reasoning, and Prepare |
+| `/attempt/{id}` | the preparation screen: progress, what needs the applicant, fields, resume |
+| `/board` | the pipeline board |
+| `/knowledge`, `/answers` | stored knowledge to review; blocked questions to answer |
+| `/strategy` | lanes, countries by relocation tier, salary floors (read-only) |
+| `/chat` | the assistant |
+| `/setup` (`/mail`) | Gmail connection and board health |
+
+A JSON API under `/api/preparation` and `/api/field/{id}` backs the preparation
+screen; the page also works with JavaScript off.
+
+**Localhost only.** It binds `127.0.0.1` and has no login. The machine holds live
+job-board session cookies, a Gmail token and a Google service-account key: do not
+expose the port. For access from another device, use a private network such as
+Tailscale.
+
+---
+
+## Commands
+
+Run with `mvn spring-boot:run -Dspring-boot.run.arguments="<command> <options>"`.
+
+| Command | Does |
+|---|---|
+| `fetch [--source=X] [--token=Y]` | read boards into the database |
+| `screen` | apply the filters; record verdicts and reasons |
+| `digest` | write and print today's digest |
+| `run` | fetch + screen + digest |
+| `probe --tokens=a,b,c [--add]` | test candidate board tokens |
+| `serve` | stay running for the daily schedule |
+| `sheet-list` / `sheet-append --posting-id=N` | read the tracker / record an application, after confirming |
+| `apply --posting-id=N [--submit]` | prepare an application and stop; `--submit` asks at the terminal |
+| `apply --posting-id=N --resume-only` | render the tailored resume only |
+| `apply --all [--limit=5]` | prepare the candidate list; refuses `--submit` |
+| `applications [--status=X]` | what has been prepared, sent or blocked |
+| `learn [--write]` | questions that blocked forms, as profile entries |
+| `follow-up [--days=14] [--close-abandoned]` | applications that have gone quiet |
+| `inbox [--days=60] [--apply]` | read replies; propose or write status changes |
+| `login --url=... \| --list` | sign in to a board by hand |
+| `ui` | the web application |
+| `board [--import]` | the pipeline in the terminal; seed it from the sheet |
+| `variants` | which resume opening has produced replies |
+| `prep --posting-id=N [--print]` | interview-prep pack (legacy, not extended) |
+| `knowledge` | concepts and assertions; `--migrate`, `--review`, `--shadow [--verbose] [--attempts]`, `--explain="..." [--posting-id=N]`, `--position=X`, `--audit`, `--adopt`, `--repair[=dry]` |
+| `evidence` | what the bank holds and whether resumes use it |
+| `evidence --check` | every problem in the file and against the resume |
+| `evidence --for="a requirement" [--limit=5]` | the strongest evidence for one requirement |
+| `evidence --plan --posting-id=N [--html=FILE]` | the resume plan for a posting; `--html` renders it |
+| `ledger --posting-id=N [--verbose]`, `--bench`, `--sources` | the coverage ledger (read-only; JSON under `build/reports/`) |
+| `bench-llm [--models=a,b]` | compare local Ollama models on requirement extraction |
+| `bench-rewrite [--posting-ids=a,b]` | the shadow rewrite benchmark |
+
+## Configuration
+
+`src/main/resources/application.yml` holds strategy and rules; personal data and
+keys are imported from outside the repository:
+
+| File | Holds | Committed? |
+|---|---|---|
+| `~/.config/job-radar/applicant.yml` | profile, compensation bands, resume (`job-radar.resume`) | no; `applicant.example.yml` is the skeleton |
+| `~/.config/job-radar/evidence.yml` | the evidence bank | no; `evidence.example.yml` is the skeleton |
+| `~/.config/job-radar/secrets.yml` | model endpoint and key (`job-radar.llm.*`) | no |
+| `~/.config/job-radar/google-key.json` | Sheets service-account key | no |
+| `~/.config/job-radar/gmail-oauth.json`, `gmail-tokens/` | Gmail OAuth client and refresh token | no |
+
+| Environment variable | Meaning | Default |
+|---|---|---|
+| `JOB_RADAR_DB` | JDBC URL | `jdbc:sqlite:./job-radar.db` |
+| `JOB_RADAR_PROFILE`, `JOB_RADAR_SECRETS` | profile and secrets files | `~/.config/job-radar/…` |
+| `JOB_RADAR_EVIDENCE` | evidence bank file | `~/.config/job-radar/evidence.yml` |
+| `JOB_RADAR_EVIDENCE_TAILORING` | plan resumes from the bank | `true` |
+| `JOB_RADAR_KNOWLEDGE_AUTHORITATIVE` | knowledge resolver decides form answers | `true` |
+| `JOB_RADAR_OUT` | digest directory | `./digests` |
+| `JOB_RADAR_SCHEDULE`, `JOB_RADAR_CRON` | daily schedule | `false`, `0 0 7 * * *` |
+| `JOB_RADAR_FIXTURES`, `JOB_RADAR_FIXTURE_DIR` | capture raw responses | `true`, `./fixtures` |
+| `JOB_RADAR_APPLICATIONS` | attempt output directory | `./applications` |
+| `JOB_RADAR_BROWSER_PROFILE`, `JOB_RADAR_HEADLESS` | Chromium profile, headless mode | `~/.config/job-radar/browser`, `false` |
+| `JOB_RADAR_SHEET_ID`, `JOB_RADAR_GOOGLE_KEY` | tracker spreadsheet, service-account key | unset (Sheets off), `~/.config/job-radar/google-key.json` |
+| `JOB_RADAR_GMAIL_KEY`, `JOB_RADAR_GMAIL_TOKENS` | Gmail OAuth client, token directory | `~/.config/job-radar/…` |
+| `JOB_RADAR_LLM`, `JOB_RADAR_LLM_URL`, `JOB_RADAR_LLM_MODEL`, `JOB_RADAR_LLM_KEY`, `JOB_RADAR_LLM_REASONING` | model endpoint | off; any OpenAI-compatible endpoint |
+| `JOB_RADAR_UI_PORT`, `JOB_RADAR_UI_BIND` | web server | `8080`, `127.0.0.1` |
+
+Screening rules, the country vocabulary, the strategy, salary floors, match
+weights and currency rates are all in `application.yml`, commented.
+
+For Gemini's OpenAI-compatible endpoint set `reasoning-effort: none`: Gemini 2.5
+spends thinking tokens against `max_tokens` and otherwise returns HTTP 200 with an
+empty message. The free tier allows about 20 requests a minute; the client waits
+out a rate limit once.
 
 ## Setup
 
 Requires JDK 25 and Maven.
 
 ```bash
-git clone <this repo> && cd job-radar
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home
 mvn test
+mkdir -p ~/.config/job-radar
+cp applicant.example.yml ~/.config/job-radar/applicant.yml
+cp evidence.example.yml ~/.config/job-radar/evidence.yml
+mvn spring-boot:run -Dspring-boot.run.arguments="evidence --check"
 mvn spring-boot:run -Dspring-boot.run.arguments="run"
+mvn spring-boot:run -Dspring-boot.run.arguments="ui"
 ```
 
-`JAVA_HOME` matters: Homebrew's Maven pulls in its own JDK 26, and Spring Boot
-3.5 is not tested against it.
-
-### Configuration
-
-Everything user-specific lives in `application.yml` and reads from environment
-variables. No path, key or spreadsheet id is hardcoded in Java source.
-
-| Variable | Meaning | Default |
-|---|---|---|
-| `JOB_RADAR_SHEET_ID` | Tracker spreadsheet id | unset — Sheets features off |
-| `JOB_RADAR_GOOGLE_KEY` | Service-account JSON | `~/.config/job-radar/google-key.json` |
-| `JOB_RADAR_OUT` | Digest output directory | `./digests` |
-| `JOB_RADAR_DB` | JDBC URL | `jdbc:sqlite:./job-radar.db` |
-| `JOB_RADAR_SCHEDULE` | Enable the daily schedule | `false` |
-
-The screening rules and salary floors are also configuration, under
-`job-radar.screening` and `job-radar.salary-floors`. That is deliberate: visa
-thresholds are re-indexed annually, and the title exclusion list grows every time
-a board invents a new senior-sounding word.
-
-The service-account key must never enter the repository; `.gitignore` covers
-`config/*.json`, `.env`, `*.db`, `/digests/` and `/fixtures/`.
-
----
-
-## Commands
-
-| Command | Does |
-|---|---|
-| `fetch [--source=X] [--token=Y]` | Read boards into the database |
-| `screen` | Apply the filters, record verdicts and reasons |
-| `digest` | Write `digests/YYYY-MM-DD.md` and print it |
-| `run` | fetch + screen + digest |
-| `probe --tokens=a,b,c [--add]` | Test candidate tokens across four platforms |
-| `serve` | Stay running for the daily schedule |
-| `sheet-list` | Print the application tracker (read-only) |
-| `sheet-append --posting-id=N` | Record an application, after confirming |
-| `apply --posting-id=N` | Tailor the resume, fill the form, **stop before submit** |
-| `apply --posting-id=N --submit` | The same, then ask at the terminal before sending |
-| `apply --posting-id=N --resume-only` | Render the tailored resume only. No browser, no board |
-| `apply --all [--limit=5]` | Prepare the candidate list. Refuses `--submit` |
-| `applications [--status=NEEDS_HUMAN]` | What has been prepared, sent or blocked |
-| `learn [--write]` | Questions that blocked forms, as profile entries. The `answers` page does this in one click |
-| `follow-up [--days=14] [--close-abandoned]` | Applications that have gone quiet |
-| `inbox [--days=60] [--apply]` | Read replies, update the tracker's status column |
-| `login --url=... \| --list` | Sign in to a board by hand, once per employer |
-| `prep --posting-id=N [--print]` | Interview pack: gaps, questions, your own answers |
-| `variants` | Which resume opening has actually produced replies |
-| `ui` | The web application at http://localhost:8080. Six pages; see below |
-| `board [--import]` | The pipeline in the terminal; `--import` seeds it from the sheet |
-
----
-
-## Applying
-
-`apply` does everything up to the submit button and then stops.
-
-```
-posting ──▶ resume/ResumeTailor ──▶ ResumeRenderer ──▶ PdfWriter ──▶ tailored.pdf
-                 (selects and orders; cannot write a sentence)
-
-        ──▶ form/FormReader ──▶ FieldClassifier ──▶ FieldMapper ──▶ FormFiller
-                 (one injected     (label → kind)    (kind + posting    (types it in;
-                  script reads                        → answer)          has no submit
-                  the live page)                                         button)
-
-        ──▶ letter/CoverLetterWriter    only if the form has a text box
-        ──▶ screenshot + review.md ──▶ STOP
-                                        └─ Submitter, only on a typed 'yes'
-```
-
-Everything before the last line is mechanical and costs twenty minutes a posting
-by hand. The last line is not, so it is not automated.
-
-**Why it stops.** Most boards accept one application per posting, forever. A form
-filled from a misread label does not cost a rejection — it costs the good
-application that could have been made instead. `--all` therefore refuses
-`--submit`: batch mode prepares, a human sends.
-
-**Tailoring is selection, never generation.** Every sentence on the resume was
-written by the applicant and lives in `applicant.yml`. The tailor chooses which
-summary opens, which projects lead and which bullets survive; it has no way to
-write a sentence. Handing the posting and the resume to a model produces better
-prose and quietly promotes "integrated ElevenLabs TTS" into "led speech
-infrastructure" — a sentence that then has to be defended in an interview.
-
-**A cover letter goes in a text box and nowhere else.** An optional attachment slot
-on an ATS is read by nobody. The letter is checked before it is used: a draft
-containing a years-of-experience claim, an unfilled `[Company]`, or a sign-off is
-discarded in favour of the template rather than repaired.
-
-**An unrecognised question stops the application.** It is never guessed at, never
-filled with something plausible and never left blank in the hope that it was
-optional. `applications --status=NEEDS_HUMAN` prints every question that stopped a
-run, which is the list of edits that make the next one go further.
-
-### After it is sent
-
-```
-inbox      ──▶ classify each reply ──▶ propose a tracker status ──▶ --apply writes it
-follow-up  ──▶ rows still "Applied" after 14 days, oldest first
-learn      ──▶ every question that stopped a form, as profile entries to paste
-prep       ──▶ what this posting names that your resume does not
-variants   ──▶ which resume opening produced replies (and whether that means anything)
-```
-
-**Acknowledgements are not replies.** Every application produces one within a
-minute, so counting them clears the follow-up list and reports total success.
-
-**Rejections are written to sound like near-misses**, so they share almost all
-their vocabulary with invitations: *"we would like to invite you to the next
-stage"* and *"we have decided not to invite you to the next stage"* differ by two
-words. The negation carries the meaning, so rejection markers are phrases and are
-checked first.
-
-**`variants` prints its own sample size and refuses to conclude below it.** Two
-replies from five against one from six looks like a 140% improvement and is three
-coin flips.
-
-### The web application
-
-`ui` serves six pages: **today**, **jobs**, **board**, **answers**, **assistant**
-and **setup**.
-
-**Today** is the home page, and it is deliberately not a list of jobs. The list
-was the home page first and it answered a question nobody has in the morning:
-nine thousand postings screen down to fifty-odd, of which a handful arrived this
-week and the rest were read days ago. Meanwhile the things that actually needed
-a decision were on no screen at all - applications filled and never sent, forms
-stopped on an unanswered question, applications silent for weeks.
-
-So it opens with what needs a decision, then the funnel, then this week's
-arrivals:
-
-```
-screened   open now   new this week   applied   answered   in process
-   9,032        56               7        17          2            0
-
-  "17 applications and no interview yet. At this volume that points at
-   the application rather than the search."
-```
-
-That sentence names the narrowest point rather than the most flattering number.
-"Screened" is rendered quiet on purpose: nine thousand is the denominator, not
-an achievement.
-
-Two things it deliberately does not do. It does not count a board retired on
-purpose as a board that is failing - `lastError` carries both meanings and all
-eight boards carrying it were retired, so the first version of this page
-announced "8 boards are failing" while nothing was wrong. And it does not file
-"the board never showed a form" under questions to answer: there is nothing to
-learn from those, only an application to make by hand.
-
-**Jobs** is the full ranked list, at `/jobs`, somewhere you go on purpose rather
-than somewhere you land. It ranks by a 0-100 match score rather than by date.
-Sorting by date was close to random: a posting is not more relevant for being
-newer. The score is arithmetic - skills 40, experience 25, geography 20,
-freshness 10, signals 5 - and every point traces to a rule, which is what lets
-the posting page show it as five bars with the reasoning under each.
-
-It is **not a filter**. Screening already decides what is eligible and says why
-per rejection; the score only orders what survived.
-
-Every row also carries what to ask for, in the employer's currency and in
-rupees:
-
-```
-  EUR 55,000 - 65,000   Rs 55L - 65L
-```
-
-The rates are configured in `application.yml` with the date they were set, and
-the posting page prints both the rate and that date, because a conversion that
-silently goes stale is worse than none. Rupee figures use lakhs and Indian
-grouping: `INR 1,800,000` is a number the person reading this has to stop and
-count.
-
-**Answers** is the loop that was open at both ends. A form that stops on a
-question it cannot answer records that question; `learn` would print a block of
-YAML with the answers blank, leaving you to find `applicant.yml`, paste it in
-the right place, fill it in and restart. Every step there is somewhere to stop,
-and stopping means the next form blocks on the same question.
-
-The page lists those questions, blocking ones first, with the form's own options
-as buttons where it offered any - the answer has to match one of them exactly or
-the filler refuses it. Typing an answer writes it to the profile, backs the file
-up first, and **takes effect on the next form without a restart**: the mapper
-reads an answer store rather than the startup-bound profile.
-
-The leverage is easy to miss. The match is a substring of the question, so
-answering "do you need sponsorship" once answers it on every board that asks,
-in whatever words they ask it.
-
-**The board** is the pipeline: saved, prepared, applied, screening, interview,
-then offer, rejected or dropped. `board --import` seeds it from the spreadsheet,
-which is worth running once - the tracker holds applications made before any of
-this existed, and a board that started empty would be a worse record than the
-sheet on its first day.
-
-The database is the source of truth and the sheet is a mirror. Writes go local
-first; a failed sheet write is logged and rolls nothing back. Nothing before
-APPLIED is mirrored, because the tracker is the record of applications sent and
-filling it with bookmarks would destroy the one question it answers.
-
-An offer is a **live** stage, not a closed one. It is the single stage where the
-next move is yours and it usually has a date on it, so it sits in the live band
-and a reminder set against it fires.
-
-Each sent application carries the day it went out, taken from the sheet's own
-Date Applied column on import. Nothing else could stand in for it - `savedAt` is
-when the row was created, which for seventeen imported rows was the afternoon of
-the import - and without a date nothing can tell a three-day-old application
-from a three-week-old one, which is the only question that matters once
-something has been sent.
-
-**The chat** is a Gemini assistant with six tools: it can search postings, read
-one in full, summarise the board and the profile, bookmark a job and move a card.
-It cannot submit an application and does not offer to.
-
-Two things to know about the free tier. It allows **twenty requests a minute**,
-and one chat turn with tool calling spends three or four, so a rate limit is the
-normal failure rather than an exceptional one. The client reads the delay out of
-the API's own error and waits it out once. And Gemini 2.5 thinks by default,
-charging those tokens against `max_tokens`, so a small cap returns HTTP 200 with
-an empty message and no error - hence `reasoning-effort: none`.
-
-**Setup** holds the two connections and the board health, because they answer the
-same question: is the machinery actually working. It separates boards that
-answered, boards retired on purpose, and boards that broke - three numbers, not
-one, for the reason above.
-
-Gmail lives here, and it exists because of a detail of how Google issues tokens.
-An OAuth app whose consent screen is still in **Testing** gets refresh tokens
-that **expire after seven days**. Re-approving is therefore not a setup step, it
-is a weekly chore, and a weekly chore that needs a terminal is a chore that gets
-skipped. So the page says whether replies are being read, how old the approval
-is, and warns on the sixth day rather than letting the next scan be the thing
-that tells you.
-
-Consent is a **link**, not a button that opens a browser. The first version used
-Google's installed-app helper, which starts a second web server on its own port
-and opens a browser itself. Spring Boot runs the JVM headless, so no browser ever
-opened: the helper printed the address into a log nobody reads. Worse, an
-abandoned attempt kept its port, and every later attempt collided with it and
-reported "Address already in use" forever.
-
-None of that was necessary. This is already a web server with a browser pointed
-at it, so Google redirects back to `/mail/callback` on the port already in use.
-No second server, no thread, nothing that can be left running.
-
-Publishing the consent screen removes the seven-day expiry, at the cost of an
-"unverified app" warning at consent. For a single-user local tool that warning is
-accurate and the trade is worth making; the page works either way.
-
-### The assistant
-
-The review page has a panel with three modes, separated because they carry
-different risk:
-
-- **Draft an answer** to an application question. Grounded in the profile, and
-  told to reply `NOTHING` rather than invent one. Asked about Kubernetes and
-  Terraform, which are nowhere in the resume, it returns nothing at all.
-- **Rewrite the letter**, optionally against a typed steer. Saved to the attempt.
-- **Ask about this posting**, which is for reading and goes nowhere.
-
-Anything that would be sent to an employer runs through `HumanTone`:
-
-**Dash punctuation is rewritten, machine phrasing is rejected.** Different
-mechanisms on purpose. A dash is a formatting habit and removing one changes
-nothing the sentence claims; the tells are whole phrases, and cutting one out
-leaves the sentence around it still shaped wrong. Only punctuation dashes go, so
-`event-driven` and `scikit-learn` survive intact.
-
-**A rejected draft is regenerated once, with the offending words named.** The
-second attempt is a different request from the first. A third would be the same
-request again.
-
-**Structure is checked, not just vocabulary.** The first draft that passed every
-phrase filter was still obviously generated: one unbroken block, nine sentences,
-eight of them starting with "I", no mention of the job. Every sentence was fine
-and the shape was wrong.
-
-### It runs on your machine only
-
-`ui` binds `127.0.0.1`. There is no login, because there is no second user and no
-route in: the port is not reachable from another machine, including one on the
-same wifi.
-
-That is a deliberate trade and it rests on the binding. The machine holds a
-Chromium profile with live session cookies for every job board signed into, a
-Gmail refresh token and a Google service-account key, so **do not expose this
-port**. To reach it from a phone, put the machine on a private network with
-[Tailscale](https://tailscale.com) rather than the app on a public one, and add a
-password first.
-
-**GitHub Pages cannot host this.** Pages serves static files; this is a Spring
-Boot server that drives a browser.
-
-### Setup
-
-```bash
-cp applicant.example.yml ~/.config/job-radar/applicant.yml   # then fill it in
-```
-
-The model is optional and lives in a separate file, because a profile is personal
-data you might one day show someone and a key is not:
-
-```yaml
-# ~/.config/job-radar/secrets.yml   (chmod 600, gitignored)
-job-radar:
-  llm:
-    enabled: true
-    base-url: https://generativelanguage.googleapis.com/v1beta/openai
-    model: gemini-2.5-flash
-    api-key: ...
-    reasoning-effort: none
-```
-
-Any OpenAI-compatible endpoint works, including Anthropic's. `reasoning-effort:
-none` matters on Gemini 2.5: it thinks by default and charges those tokens
-against `max_tokens`, so a small cap returns HTTP 200 with an empty message and
-no error at all.
-
-That file holds a home address, EEO self-identification and salary bands, so it
-lives outside this repository and `application.yml` imports it as `optional:`.
-Everything except `apply` works without it.
-
-The cover-letter model is optional and off by default. Any OpenAI-compatible
-endpoint works:
-
-```bash
-export JOB_RADAR_LLM=true
-export JOB_RADAR_LLM_KEY=...        # Groq's free tier, or Gemini's OpenAI-compatible endpoint
-```
-
-Chromium downloads itself on first use, into `~/Library/Caches/ms-playwright`.
-
----
-
-## Sample digest
-
-```markdown
-# job-radar — 2026-09-06
-
-## New candidates (8)
-
-- **Netradyne** — Associate Database Engineer — Bengaluru, Karnataka, India
-  Years: 1 | Graduate signal: no | posted: 4d ago
-  Floor: Rs 14,00,000 (relocation: ~Rs 30k/month rent and food)
-
-- **Grafana Labs** — Backend Engineer - Platform - Stacks | Ireland | Remote
-  Years: 1 | Graduate signal: no | posted: 110d ago — stale
-  Floor: EUR 40.904 (CSEP basic salary; below EUR 48.000 Dublin rent makes it ~Mumbai 10L)
-  Stated: the Base compensation range for this role is EUR 81,000 - EUR 102,000.
-
-## Needs human review — no years stated (56)
-
-- **N26** — Junior iOS Engineer - Payments — Berlin
-  Years: none stated | Graduate signal: no | posted: 5d ago
-  Floor: EUR 45.934,2 (Blue Card shortage-occupation threshold)
-  Visa: supportive: A relocation package with visa support for those who need it
-
-## Rejected (8936)
-- 5333 — outside target geographies
-- 760 — country-locked remote
-- 544 — title excluded on 'senior'
-- 216 — title excluded on seniority level
-- 127 — non-internship experience required
-
-_9 candidate(s) hidden — already applied to that company._
-
-## Board health
-All 106 boards healthy — 12228 postings.
-```
-
-Run it twice and the second digest is nearly empty. That is the point.
-
----
+Point `JAVA_HOME` at 25: Homebrew's Maven brings a newer JDK, which breaks
+Hibernate's bytecode generation. Chromium downloads itself on first use. Every
+command except `apply` works without a profile; applying needs the profile, and
+resumes are planned from the bank only once `evidence --check` reports it
+consistent with the resume.
 
 ## Scheduling
 
+`serve` with `JOB_RADAR_SCHEDULE=true` runs fetch, screen and digest at 07:00
+Asia/Kolkata - only while the process is running; a missed slot is not caught up.
+Two better options ship with the repository:
+
+- `deploy/com.anuragbhandary.job-radar.plist`: macOS launchd, which reruns a
+  missed calendar job when the machine wakes.
+- `Dockerfile`: builds the jar and runs `serve` with the schedule on; mount a
+  volume at `/data` for the database, digests and captured responses.
+
+`SchemaMigrator` runs before Spring starts and widens SQLite `CHECK` constraints
+when an enum gains a value, which Hibernate cannot do.
+
+## Testing
+
 ```bash
-JOB_RADAR_SCHEDULE=true mvn spring-boot:run -Dspring-boot.run.arguments="serve"
+mvn test
 ```
 
-`@Scheduled(cron = "0 0 7 * * *", zone = "Asia/Kolkata")`.
+1,160 tests. None contacts a live endpoint or opens a browser: fetchers run
+against trimmed real responses in `src/test/resources/fixtures/`, persistence
+tests use a real SQLite file under `target/`, and form logic is pure functions
+tested on wording real boards use. `CliContextTest` boots the CLI context exactly
+as `main()` does for non-web commands. CI (`.github/workflows/ci.yml`) runs
+`mvn verify` on every push and pull request to `main`, with no secrets.
 
-**This only fires while the process is running.** Spring's scheduler has no
-memory of missed runs: if the machine is asleep or off at 07:00, nothing happens
-then and nothing catches up afterwards. On a laptop that is the normal case.
+The evidence architecture's own suites: `EvidenceBankLoaderTest`,
+`EvidenceValidatorTest`, `EvidenceMatcherTest`, `ResumeConsistencyTest`,
+`TailoringPlannerTest`, `PipelineSafetyTest`, `EvidenceCommandTest`. They run on
+an invented resume and bank (`EvidenceFixtures`) and check, among other things,
+that no printed bullet is anything but an approved wording, that metrics and
+qualifiers survive every wording, that an unapproved variant is never printed,
+that the result is deterministic, that a posting asking for nothing renders the
+old resume byte-for-byte, and that the committed example files agree.
 
-Two better options ship with the repo:
+## Project structure
 
-- **macOS launchd** — `deploy/com.anuragbhandary.job-radar.plist`. launchd reruns
-  a missed `StartCalendarInterval` job when the machine wakes, which a
-  long-running JVM cannot, because it was not running. This is the right answer
-  for a laptop.
-- **Docker**, on anything that stays on. `docker build -t job-radar .` and mount
-  a volume at `/data` for the database, digests and captured responses.
+```
+src/main/java/com/anuragbhandary/jobradar/
+  fetch/          one fetcher per ATS, HTTP client, raw-response recorder, token prober
+  diff/           change detection
+  filter/         screening, location and work-mode classification, years extraction
+  strategy/       country tiers and outcomes
+  match/          0-100 match score
+  money/          salary floors, asking price, currency display
+  digest/         the daily digest
+  domain/ repo/   Posting, BoardToken, enums; Spring Data repositories
+  evidence/       the evidence bank: model, loader, validator, matcher, resume consistency
+  apply/          ApplyService, preparation runner, attempts, fields, answers
+    form/         form reading, classification, filling, option matching, Submitter, PDF
+    resume/       ResumeModel, ResumeTailor, ResumeRenderer
+      analysis/   requirement extraction, compound requirements, coverage ledger, source ids
+      plan/       TailoringPlanner, ResumePipeline, ResumeVerifier, TailoringPlan
+      rewrite/    claim validators and the rewrite experiment
+    letter/ llm/  cover letters; the model client and HumanTone
+  knowledge/      concepts, assertions, scopes, resolver, derivations, shadow comparison
+    experience/   experience index, skill graph, positioning, claim validation
+    ai/           drafted answers to open-ended questions
+  pipeline/ sheets/ mail/ followup/ worklist/   tracking
+  chat/ prep/     the assistant and the interview-prep pack
+  bench/          local-model benchmarks
+  web/            controllers and the shared page components
+  cli/            one class per command
+  config/ schedule/
+src/main/resources/   application.yml, static/ (app.css, app.js, prep.js)
+docs/                 milestone-by-milestone build log; design/ (the UI stylesheet source)
+deploy/               launchd job
+applicant.example.yml, evidence.example.yml   skeletons for the files in ~/.config/job-radar/
+```
+
+Gitignored local output: `job-radar.db`, `digests/`, `fixtures/`,
+`applications/`, `build/reports/`.
 
 ---
+
+## Known limitations
+
+- **The resume bullets live in two places for now.** The profile still carries
+  them, because the experience index, the ledger's source ids and the fallback
+  tailor read them there; the bank must repeat each one as a claim or approved
+  variant, and `ResumeConsistency` enforces that they agree. Moving those readers
+  onto the bank is the next step toward a single copy.
+- **Summaries are not in the bank.** The approved summary paragraphs stay in the
+  profile, and their facts are not checked against the bank.
+- **The skills list is not evidence.** A technology in the skills list or in a
+  bullet's tags is DIRECT to the ledger even with no bullet showing it in use; the
+  plan reports such requirements as "no evidence item shows it in use". A tag on a
+  bullet that only delivers to a technology (React clients) has the same effect.
+- **Matching is lexical.** Stems, curated phrases and the skill graph; an
+  equivalence nobody wrote down does not match.
+- **The planner does not measure page length.** The caps keep a resume to one page;
+  an approved variant much longer than its claim could push it over.
+- **Cover letters and answers do not read the bank yet.** They use the tailored
+  resume and the profile.
+- **The deterministic requirement reader is literal.** A posting with no section
+  headings yields `SIGNAL` for everything.
+- **One user, one machine.** SQLite, localhost, one browser profile, one
+  preparation at a time.
+
+## Future architecture
+
+Planned, not implemented. Each item names what it would build on.
+
+- **One copy of the facts**: the experience index, source ids and fallback tailor
+  read the bank; resume bullets leave the profile.
+- **Cover letters and application answers from evidence**: `strongestFor` per
+  requirement, claims and approved variants only, the same validators.
+- **Constrained editing**: the planner names one edit opportunity, a model
+  proposes it, `ResumeClaimValidator` judges it, the applicant approves it into a
+  variant.
+- **Resume match score and gap view in the UI**: from the ledger's weighted
+  coverage and the plan's coverage rows.
+- **ATS optimisation**: on top of evidence ranking and skill ordering, never by
+  adding unsupported keywords.
+- **Job alerts and external import**: notification delivery for the digest; a
+  posting from an arbitrary URL through the same mapper and screening.
+- **Salary intelligence**: market data beside the floors and asking prices.
+- **Analytics and learning**: outcomes by lane, country and resume variant.
 
 ## Design notes
 
 **A posting's identity is `(source, boardToken, externalId)`, not its URL.**
-Several ATSs rewrite public URLs without the posting having changed.
+Several ATSs rewrite public URLs without the posting changing.
 
-**Change detection diffs the description hash, never the board's own timestamp.**
-Celonis bulk-refreshes every posting's `updated_at` daily, which makes that field
-useless as a signal — and useless in a way that looks like it is working.
+**Change detection diffs the description hash, never the board's timestamp.** One
+ATS bulk-refreshes every posting's `updated_at` daily, which makes that field
+useless in a way that looks like it is working.
 
-**Board size and postings kept are different numbers.** SmartRecruiters postings
-are filtered before their descriptions are fetched, so recording the shortlist as
-board health would make a busy board with no matches look dead.
+**`minYears` distinguishes "not screened" from "states no requirement".** Treating
+the absence of a number as evidence of an entry-level role is the error the
+screening rules exist to prevent.
 
-**An empty board is not proof of anything.** Greenhouse, Ashby and Lever all 404
-an unknown token, so there an empty board is a real board with no openings.
-SmartRecruiters answers HTTP 200 with `totalFound: 0` for any company name at
-all, so there an empty result and a token that never existed are the same
-response. `probe` reports the difference rather than flattening it.
+**A city name is not a place.** "Dublin, Ohio" is checked before the target lists
+claim "Dublin", and place-name patterns are Unicode-aware, because `\b` in Java
+regex is ASCII-only and silently never matched "Malmö".
 
-**A board that failed to fetch never closes its postings.** A 404 makes every
-posting on that board look absent, and a naive staleness sweep would report that
-forty companies stopped hiring on the same morning.
+**"Distributed" is not a remote marker.** It matched "Distributed Systems" in a
+title and made an onsite role read as globally remote.
 
-**`minYears` distinguishes `null` from `-1`.** `null` is "not screened yet"; `-1`
-is "screened, and the posting states no requirement". Treating the absence of a
-number as evidence of an entry-level role is exactly the error the screening
-rules exist to prevent — which is why those postings get their own digest section
-instead of joining the candidates.
+**Workday reports its own size inconsistently.** Only the largest total a board
+reports is trusted, and the crawl stops on a short page as well.
 
-**The tracker is append-only.** It is the only record of where applications have
-gone and, unlike everything else here, cannot be rebuilt by re-fetching. Only a
-`SUBMITTED` attempt reaches it; twelve rows saying `PREPARED` would destroy the
-one question the sheet answers.
+**The tracker is append-only.** It is the one record that cannot be rebuilt by
+re-fetching.
 
-**"Authorised to work here?" and "need sponsorship?" are the same fact asked in
-opposite polarity, and both depend on the posting's country.** India and
-global-remote: yes and no. Everywhere else: no and yes. Neither is stored as a
-value — a constant answer is wrong for one of those two cases every time, and both
-questions are auto-reject triggers. `REMOTE` follows India because a global-remote
-role is worked from home on an Indian contract.
+**Selection, never generation, for anything that states a fact about the
+applicant.** Tailoring picks among approved sentences; a model that rewrote
+bullets produced better prose and claims that had to be defended in an interview.
+The evidence bank makes the approved sentences explicit, checkable data.
 
-**An answer that matches no dropdown option is refused, not approximated.** On a
-two-option yes/no field the closest wrong option is the opposite answer.
-
-**A consent checkbox is recognised and never ticked.** Agreeing to a company's
-terms on someone's behalf is not form-filling. It is left for the human along
-with the submit button.
-
-**Adding a `Source` value is no longer a database rebuild.** Hibernate writes a
-SQLite `CHECK` constraint listing the enum names, SQLite cannot alter one, and
-`ddl-auto` will not notice it is too narrow — so the failure arrives at the first
-insert, on a table that looks correct. `SchemaMigrator` patches the stored DDL
-before Spring starts, unions rather than replaces the value list, and recreates
-the indexes that the `DROP` would otherwise take with it.
-
----
-
-**A number in the "Preferred" section is not the bar.** Amazon's Network Dev
-Engineer I required "2+ years of IT Security experience" and preferred "1+ years
-of automation scripting". Taking the smallest number in the document read the
-requirement as 1 and shipped a two-year role as entry level. The years extractor
-now anchors on the requirements heading — the *last* one, because Stripe invites
-you to apply "even if you don't meet all the preferred qualifications" 57
-characters before its real "Minimum requirements" heading, and cutting at the
-first mention threw the requirements away entirely.
-
-**"Experience (non-internship) in professional software development" states no
-number, and is still a rejection.** It is Amazon's SDE II wording. The
-disqualifier used to require `N years of` in front of it, so 26 mid-level AWS
-roles — Firecracker, Shield, RDS Platform — sat in the candidate list, 30% of
-everything in it. Matching the bare token everywhere would be simpler and wrong:
-"internship and non-internship candidates welcome" is an invitation.
-
-**Workday reports its own size inconsistently.** Philips answers `total: 809` at
-offset 0, `total: 0` at offsets 780 and 800, and `total: 809` again at 820 —
-which is past its own end and still returns a full page. Believing the latest
-figure set the total to zero mid-crawl and ended the fetch on page one, so 809
-postings were read as 20. Only the largest figure a board ever reports can be
-trusted, and the crawl needs both a short-page and a total-based stop.
-
-**A city name is not a place.** `dublin ohio` sat in the exclusion list and could
-never fire: the target list matched "dublin", returned Ireland and never reached
-the exclusions. False friends are now checked first, and on adjacency after
-punctuation is flattened — so "Dublin, Ohio" is caught while "Dublin, Ireland;
-Columbus, Ohio" is not.
-
-**"(v/m/x)" is Dutch for "f/m/x", not Roman numeral five.** The seniority pattern
-read that "v" as a level and rejected Coolblue's Dutch postings as senior roles.
-Gender tags are stripped before any pattern sees the title. Bare digits had the
-same shape: "6 month contract" was a seniority rejection, and "Software Engineer,
-2 Year Rotational Programme" — the exact graduate fast-track the years extractor
-protects — would have been discarded by the title filter before the years logic
-ever ran.
-
-**Visa and salary are reported, never decisive.** Of 1,428 postings in the target
-geographies, 55 mention sponsorship, 218 mention relocation and 306 state a
-figure. That is a fifth of the list carrying the two facts that decide most, so
-they are extracted — but absence means nothing, and a filter built on them would
-throw away the other four fifths. No salary is parsed into a number and no
-comparison against the floors is made: the floor is printed beside the stated
-figure and a human does the subtraction.
-
-**Adding a value to an enum is a schema migration.** `Source.WORKDAY` failed on
-insert against `check (source in (...))`, which SQLite cannot `ALTER`. It failed
-loudly rather than silently, which is `hbm2ddl.halt_on_error` earning its keep —
-but the fix is to rebuild the table. Let Hibernate create a fresh database, copy
-the rows across with explicit column lists (the column *order* differs), and swap
-the files. `Country` has the same constraint and will need the same treatment.
-
-
-## What I learned
-**A guard that only fires when the data is shaped as expected is not a guard.**
-Splitting descriptions at "Preferred" fixed the case it was written for and broke
-three postings it was not: 6-, 8- and 10-year Stripe roles became candidates,
-because the split had thrown away the section stating those numbers. The tests
-still passed. The regression was visible only in a before-and-after diff of the
-real corpus — which is now the last step of every filter change, ahead of the
-test suite.
-
-**Every new board teaches the filters something.** Adding Workday brought in NXP
-and Philips, and with them 1,569 postings of chip design and medical devices. The
-first run offered "Digital Physical Design Engineer" and "X-Segment Physics
-Engineer" as candidates, and classified "Remote Service Engineer - CT" — a field
-engineer who drives to hospitals — as globally remote, because "remote" was the
-first word of the job title rather than a working arrangement. Exactly the shape
-of the "distributed" bug, found the same way: by reading the output.
-
-
-**"Race / Ethnicity" classified as a city field.** "ethnicity" contains "city".
-This is the "distributed" bug again, one milestone later and in a new file, and it
-would have put the applicant's home city in a US EEO dropdown. The rule that finally came out of it:
-a matcher token that is also a fragment of common English needs a word boundary,
-and the short ones always are. Every short token in the field classifier now
-matches on boundaries.
-
-**A default that competes is not a default.** The general-purpose resume summary
-was tagged `backend`, which appears in almost every title this tool surfaces — so
-it scored on the title every time and the four specialist summaries could never
-win. The fallback now carries no tags at all and wins only at zero.
-
-**Padding that loses a cascade looks exactly like padding that is absorbed.** The
-skills column had no gap. `box-sizing: border-box` on a shrink-to-fit cell was a
-plausible cause and was the wrong one: `table.skills td` beats a bare `.sk-items`
-on specificity, so the rule never applied. The visible symptom of a specificity
-loss and of a box-model quirk are identical.
-
-**One live form found more than the whole test suite.** Driving a single Ashby
-application end to end turned up eight defects, every one of which reported
-success while the page on screen disagreed: a relative resume path whose failure
-surfaced on a field called "Name"; a referral question filled with the applicant's
-own name because its label contains the words "full name"; a selector fallback of
-`input:nth-child(3)` that was not scoped to a parent and resolved to a hidden file
-input three sections away; checkbox groups read as one field per option, so the
-blocked list filled with entries like "I agree"; Yes/No toggles built from bare
-`<button type="submit">` that a reader querying `input, select, textarea` cannot
-see at all — two required questions sat empty while the report said zero blockers;
-comboboxes where `fill()` sets a value the widget never notices; a
-`Map<String, String>` of profile answers whose keys Spring canonicalised, so every
-key with a space or a slash bound mangled or not at all; and a blank profile value
-that printed as `null`.
-
-**The `Map<String, String>` one is the one to remember.** It bound without error,
-the property was present, and it was simply empty of the entries that mattered —
-so the escape hatch appeared to work while answering nothing. A list of records
-binds every character as written.
-
-**A form that looks submittable and is not is the worst output this tool has.**
-Worse than a crash, which is visible. That is why unreadable widgets are now read,
-and why a click that navigates is a hard failure rather than a logged warning.
-
-**`"\s"` in a Java string is not the regex whitespace class.** It is the
-escaped-space literal added in Java 15, so `split("(?<=[.!?])\s+")` compiles,
-runs, and quietly splits on spaces only. A four-sentence list read as three and
-slipped under a check written to catch exactly it. Two rounds of prompt
-engineering went into a missing backslash.
-
-**A cleanup regex ate the thing it was about to be judged on.** `removeDashes`
-collapsed runs of whitespace with `\s{2,}`, which includes newlines, so every
-paragraph break was destroyed before the structure check ran, and the model was
-then told off for writing one unbroken block it had not written.
-
-**A few-shot example gets its words copied, not just its shape.** Adding a worked
-letter was the only thing that produced paragraph breaks, and the very next draft
-lifted its closing two sentences verbatim. Twenty applications carrying the same
-last line is precisely the problem the example was added to solve, so the
-example's own phrasing is now contraband and checked for.
-
-**The dangerous bugs were the ones that produced no error.** Every serious defect
-in this project was silent, and every one was found by looking at the actual
-database or the actual output rather than at a green test suite.
-
-Hibernate's community SQLite dialect *discards composite unique constraints*: it
-has no `ALTER TABLE ... ADD CONSTRAINT` to emit, so it emits an empty string. The
-schema comes out missing the constraint you declared and nothing tells you. Since
-the whole tool rests on `(source, boardToken, externalId)` being unique, that
-would have surfaced four milestones later as "the digest reports everything as
-new". Three separate schema bugs hid behind `ddl-auto`'s habit of logging DDL
-failures and continuing, until `hbm2ddl.halt_on_error` made the whole class loud.
-
-**A difference between test config and production config is, by definition, the
-part you are not testing.** Four tests passed against a schema production never
-had, because the tests ran `ddl-auto: create-drop` and production ran `update` —
-two different Hibernate components emitting different DDL. Later, a test
-`application.yml` silently *shadowed* the main one, so the filter tests could not
-see the rules that ship.
-
-**Timezones break in production only.** SQLite has no date type, so sqlite-jdbc
-stored `LocalDate` as the epoch milliseconds of local midnight — a value that
-reads back as the previous day in any other zone. It round-trips perfectly on a
-developer machine, because the same wrong zone is used to write and to read, and
-shifts every date by a day in CI and Docker, which run UTC.
-
-**Design filters against real data, not imagination.** The years regex was
-written after surveying 4,897 real mentions across 5,893 postings. That is how
-`2-year development programme` turned up — a graduate fast-track that the obvious
-regex reads as "two years required" and rejects. The generosity of "take the
-smallest number stated" was measured rather than assumed: only 0.5% of postings
-could have a real rejection flipped by a stray small number, and every one was a
-title the filter rejects earlier anyway.
-
-**And the filters that passed 189 tests were still wrong.** `distributed` was a
-remote marker, so "Distributed Systems" in a title made a Malmö role read as
-hireable into India. Only Roman numerals counted as seniority, so "Software
-Engineer 2" passed as entry-level. The bare token `engineer` pulled 31 hardware
-roles at a defence company into the first 80 candidates. None of that is visible
-in a test you wrote yourself; all of it is obvious in thirty seconds of reading
-real output.
-
-**A dashboard that flatters you is a dashboard you stop reading.** The first
-version of the home page announced "8 boards are failing, jobs are being missed".
-All eight had been retired on purpose; `lastError` carried both meanings and
-nothing had distinguished them. A red banner about nothing teaches the reader to
-ignore red, which costs more than the banner was ever worth. The same instinct
-runs through the funnel: "screened" is nine thousand and is rendered quiet,
-because it is the denominator, not an achievement.
-
-**The backend knew things the interface never said.** Applications that had gone
-quiet, boards that had stopped answering, questions that kept blocking forms,
-what a job should pay - all of it was already in the database and none of it was
-on a screen, while the home page listed sixty jobs that had mostly been read
-days before. Rewriting the home page around the day's decisions took no new data
-at all. It only took asking what someone opens the tool to find out.
-
-**A loop with a restart in the middle is a loop nobody closes.** Answering a
-blocked question meant reading a terminal, editing a YAML file, and restarting.
-Each step is somewhere to stop, and stopping means the next form blocks on the
-same question. Making the answer take effect immediately was thirty lines.
+**An unknown field refuses the evidence file.** A misspelt key that binds as
+nothing is the most dangerous failure a data file can have, because everything
+still appears to work.
 
 Full build log, milestone by milestone, in [`docs/`](docs/).
