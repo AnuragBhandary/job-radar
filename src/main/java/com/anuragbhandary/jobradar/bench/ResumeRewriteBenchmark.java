@@ -38,7 +38,9 @@ import java.util.function.Consumer;
  *
  * <p>An experiment. Its only output is a report; nothing it produces reaches an
  * application. Requests go one at a time, and the model is unloaded when the batch
- * ends.
+ * ends. The production resume is planned from the evidence bank by
+ * {@link com.anuragbhandary.jobradar.apply.resume.plan.ResumePipeline}, which never
+ * calls a model; this benchmark is where free rewriting was measured and not adopted.
  *
  * <p>Bullets only. The summary is the approved one the deterministic tailor chose,
  * in both versions - see {@link RewritePlanner} for why summaries are not written.

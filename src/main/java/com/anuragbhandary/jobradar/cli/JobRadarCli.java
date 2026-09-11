@@ -40,6 +40,7 @@ public class JobRadarCli implements ApplicationRunner {
     private final BenchLlmCommand benchLlm;
     private final LedgerCommand ledger;
     private final BenchRewriteCommand benchRewrite;
+    private final EvidenceCommand evidence;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
@@ -48,7 +49,7 @@ public class JobRadarCli implements ApplicationRunner {
             ApplyCommand apply, ApplicationsCommand applications,
             FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, BoardCommand board,
             KnowledgeCommand knowledge, BenchLlmCommand benchLlm, LedgerCommand ledger,
-            BenchRewriteCommand benchRewrite) {
+            BenchRewriteCommand benchRewrite, EvidenceCommand evidence) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -71,6 +72,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.benchLlm = benchLlm;
         this.ledger = ledger;
         this.benchRewrite = benchRewrite;
+        this.evidence = evidence;
     }
 
     @Override
@@ -109,6 +111,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "bench-llm" -> benchLlm.run(options);
             case "ledger" -> ledger.run(options);
             case "bench-rewrite" -> benchRewrite.run(options);
+            case "evidence" -> evidence.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -164,13 +167,20 @@ public class JobRadarCli implements ApplicationRunner {
                   variants                                which resume opening gets replies
                   board [--import]                        the pipeline; --import seeds it from the sheet
 
-                Knowledge (the resolver is not authoritative yet - see --shadow):
+                Knowledge (the resolver answers real forms; --shadow diffs it against the legacy mapper):
                   knowledge                               concepts and stored assertions
                   knowledge --migrate                     import applicant.yml's extra-answers
                   knowledge --review                      answers migrated without a scope
                   knowledge --shadow [--verbose]          diff the resolver across the whole corpus
                   knowledge --shadow --attempts           diff it over the recorded applications only
                   knowledge --explain="..." [--posting-id=N]   answer one question, with reasoning
+
+                Evidence bank (the approved facts every resume is planned from):
+                  evidence                                what the bank holds, and whether it matches the resume
+                  evidence --check                        every problem in the file, and what it means for tailoring
+                  evidence --for="event-driven systems"   the strongest evidence for one requirement
+                  evidence --plan --posting-id=123 [--html=FILE]
+                                                          the resume plan for a posting; --html renders it (no PDF)
 
                 Resume analysis (experiments - nothing here changes a resume or an application):
                   ledger --posting-id=123 [--verbose]     each requirement, its evidence level, its source ids
@@ -179,8 +189,9 @@ public class JobRadarCli implements ApplicationRunner {
                   ledger --sources                        every resume source id a ledger can cite
                   bench-llm [--models=a,b] [--limit=N]    compare local Ollama models on requirement extraction;
                                                           name@N caps a model at N GPU layers (qwen3.6:27b@45)
-                  bench-rewrite [--posting-ids=a,b]       shadow benchmark: local-model bullet and summary rewrites,
-                                                          validated in Java, beside the deterministic resume
+                  bench-rewrite [--posting-ids=a,b]       shadow benchmark: local-model bullet rewrites, validated
+                                                          in Java, beside the deterministic resume. Never used
+                                                          by apply
 
                 `apply` never sends anything on its own. --submit asks at the
                 terminal once the form is filled, and --all refuses --submit.

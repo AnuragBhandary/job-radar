@@ -10,6 +10,15 @@ import java.util.Map;
  * Builds the candidate resume from the deterministic one and a set of accepted
  * bullet rewrites. Shadow only: nothing in the application flow calls this.
  *
+ * <p><b>Status: experimental, kept for {@code bench-rewrite} alone.</b> Applications
+ * get their resume from
+ * {@link com.anuragbhandary.jobradar.apply.resume.plan.ResumePipeline}, which selects
+ * approved evidence from the evidence bank and cannot reach this class or any model -
+ * {@code PipelineSafetyTest} fails the build if that changes. Two benchmark runs
+ * found free rewriting made more bullets worse than better; a future constrained
+ * editor would propose one specific edit for this class's validator to judge, not
+ * rewrite a bullet.
+ *
  * <p>Every structural decision stays the deterministic tailor's - which jobs,
  * which projects, which bullets, in what order, and which approved summary. Only
  * the wording of bullets whose rewrite passed validation changes, matched by
