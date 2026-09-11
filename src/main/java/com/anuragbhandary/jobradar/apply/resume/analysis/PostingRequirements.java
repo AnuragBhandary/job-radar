@@ -137,6 +137,18 @@ public final class PostingRequirements {
             .map(p -> key(p.term()))
             .collect(Collectors.toUnmodifiableSet());
 
+    /**
+     * A version attached to a name: "Python (3.14)", "Java 17+", "Python 3.x".
+     *
+     * <p>Only a separate token, so "S3" and "EC2" are untouched. A version does not
+     * change whose evidence it is: "Python (3.14)" was positioned as ADJACENT to his
+     * Python in the first rewrite benchmark, which is the same language reported as
+     * a gap.
+     */
+    private static final Pattern VERSION = Pattern.compile(
+            "\\s*\\(\\s*v?\\d+(?:\\.(?:\\d+|x))*\\+?\\s*\\)|\\s+v?\\d+(?:\\.(?:\\d+|x))*\\+?$",
+            Pattern.CASE_INSENSITIVE);
+
     /** Words a model wraps around a technology name: "strong Java experience". */
     private static final Set<String> FILLER = Set.of(
             "apache", "experience", "with", "in", "using", "knowledge", "of",
@@ -317,7 +329,10 @@ public final class PostingRequirements {
         if (term == null) {
             return "";
         }
-        String stripped = term.strip();
+        String stripped = VERSION.matcher(term.strip()).replaceAll("").strip();
+        if (stripped.isEmpty()) {
+            stripped = term.strip();
+        }
         String k = key(stripped);
         if (ALIASES.containsKey(k)) {
             return ALIASES.get(k);
@@ -390,7 +405,7 @@ public final class PostingRequirements {
             "distributed systems", "observability", "rest", "graphql", "grpc", "protobuf",
             "websockets", "websocket", "openapi", "swagger", "soap", "webhooks");
 
-    static RequirementCategory categoryOf(String vocabularyTerm) {
+    public static RequirementCategory categoryOf(String vocabularyTerm) {
         String term = key(vocabularyTerm);
         if (LANGUAGES.contains(term)) {
             return RequirementCategory.LANGUAGE;

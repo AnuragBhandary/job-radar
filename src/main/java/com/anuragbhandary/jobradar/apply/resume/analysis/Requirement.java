@@ -10,21 +10,27 @@ import java.util.Locale;
  * row of a coverage ledger can be traced back to a sentence the employer wrote -
  * whoever proposed it, a regex or a model.
  *
- * @param id    derived from the term, never supplied by a model. The same term
- *              always gets the same id, which is what makes duplicates mergeable
- *              and a ledger comparable across runs.
- * @param quote verbatim from the posting
+ * @param id            derived from the term, never supplied by a model. The same
+ *                      term always gets the same id, which is what makes
+ *                      duplicates mergeable and a ledger comparable across runs.
+ * @param quote         verbatim from the posting
+ * @param alternativeOf when this requirement is one option of several the posting
+ *                      offered - "Python / JavaScript / TypeScript" - the compound
+ *                      as written. Null for a requirement that stands alone. The
+ *                      ledger counts a set of alternatives once, at the strongest
+ *                      evidence any option has.
  */
 public record Requirement(
         String id,
         String term,
         RequirementCategory category,
         RequirementImportance importance,
-        String quote) {
+        String quote,
+        String alternativeOf) {
 
     public static Requirement of(String term, RequirementCategory category,
             RequirementImportance importance, String quote) {
-        return new Requirement(idFor(term), term.strip(), category, importance, quote);
+        return new Requirement(idFor(term), term.strip(), category, importance, quote, null);
     }
 
     /**
@@ -45,6 +51,6 @@ public record Requirement(
     }
 
     public Requirement withImportance(RequirementImportance stronger) {
-        return new Requirement(id, term, category, stronger, quote);
+        return new Requirement(id, term, category, stronger, quote, alternativeOf);
     }
 }

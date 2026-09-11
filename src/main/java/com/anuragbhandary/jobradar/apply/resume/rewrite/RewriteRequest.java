@@ -5,15 +5,17 @@ import com.anuragbhandary.jobradar.knowledge.experience.ExperienceLevel;
 import java.util.List;
 
 /**
- * One rewrite job: one source item, what the posting wants from it, and what it
+ * One rewrite job: one source bullet, what the posting wants from it, and what it
  * may not say.
  *
  * <p>There is no field for an employer, a title, a date or a project name. A
  * rewrite cannot change those because it is never given them as anything it
- * could write back.
+ * could write back. There is no summary variant either: summaries are chosen, not
+ * written - see {@link RewritePlanner}.
  *
- * @param targets    requirements this item's own evidence supports, strongest first
- * @param adjacent   requirements he does not have but this item is related to -
+ * @param targets    requirements this bullet's primary evidence supports,
+ *                   strongest first
+ * @param adjacent   requirements he does not have but this bullet is related to -
  *                   the evidence may be emphasised, the requirement never named
  * @param prohibited requirement terms that must not appear unless the source
  *                   already says them
@@ -27,8 +29,7 @@ public record RewriteRequest(
         List<Target> targets,
         List<Adjacent> adjacent,
         List<String> prohibited,
-        int maxChars,
-        boolean summary) {
+        int maxChars) {
 
     public record Target(String term, RequirementImportance importance, String quote) {
     }

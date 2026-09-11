@@ -10,6 +10,7 @@ import com.anuragbhandary.jobradar.apply.resume.analysis.ResumeSources;
 import com.anuragbhandary.jobradar.bench.OllamaClient;
 import com.anuragbhandary.jobradar.bench.ResumeRewriteBenchmark;
 import com.anuragbhandary.jobradar.bench.RewriteBenchmarkReport;
+import com.anuragbhandary.jobradar.bench.RewriteComparison;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,16 +31,20 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * {@code bench-rewrite} - the shadow benchmark for generative resume rewriting.
+ * {@code bench-rewrite} - the shadow benchmark for generative bullet rewriting.
  *
  * <p>Reads a handful of postings, builds the deterministic resume for each, asks a
- * local model to reword the selected bullets and summary one at a time, validates
- * every rewrite in Java, and writes the two versions side by side. It changes
- * nothing: no application, no attempt row, no resume the apply flow will use.
+ * local model to reword the selected bullets one at a time, validates every
+ * rewrite in Java, and writes the two versions side by side. It changes nothing:
+ * no application, no attempt row, no resume the apply flow will use. Summaries are
+ * never rewritten.
  *
  * <p>Run on an otherwise idle machine. Requests are strictly sequential, the model
  * is unloaded as soon as the last rewrite returns, and the PDFs are rendered only
  * after that - so Chromium and the model never compete for memory.
+ *
+ * <p>With {@code --baseline=<previous report json>} (default: the first Phase 2
+ * run, when present) the report compares the two runs.
  */
 @Component
 public class BenchRewriteCommand {
@@ -57,6 +62,7 @@ public class BenchRewriteCommand {
     }
 
     static final String DEFAULT_MODEL = "gemma4:26b@24";
+    static final String DEFAULT_BASELINE = "build/reports/phase2-run1/resume-rewrite-benchmark.json";
 
     private final PostingRepository postings;
     private final ResumeTailor tailor;
@@ -86,6 +92,7 @@ public class BenchRewriteCommand {
         String url = options.getOrDefault("url", BenchLlmCommand.ollamaUrl());
         Path out = Path.of(options.getOrDefault("out", "build/reports"));
         double temperature = Double.parseDouble(options.getOrDefault("temperature", "0.2"));
+        Path baseline = Path.of(options.getOrDefault("baseline", DEFAULT_BASELINE));
 
         List<ResumeRewriteBenchmark.Case> cases = loadCases(options);
         if (cases.isEmpty()) {
@@ -127,6 +134,15 @@ public class BenchRewriteCommand {
         }
         long totalMillis = (System.nanoTime() - started) / 1_000_000;
 
+        RewriteComparison comparison = null;
+        if (Files.exists(baseline)) {
+            try {
+                comparison = RewriteComparison.of(json.readTree(baseline.toFile()), runs, sources);
+            } catch (IOException e) {
+                System.out.println("Could not read the baseline " + baseline + ": " + e.getMessage());
+            }
+        }
+
         Map<String, Object> settings = new LinkedHashMap<>();
         settings.put("ollama", version.get());
         settings.put("gpuLayers", spec.gpuLayers() == null ? "Ollama's choice" : spec.gpuLayers());
@@ -134,8 +150,10 @@ public class BenchRewriteCommand {
         settings.put("extractionTemperature", 0.0);
         settings.put("numCtx", 8192);
         settings.put("sequential", true);
+        settings.put("sourceIdSchema", "enum of the one allowed id");
+        settings.put("baseline", comparison == null ? "none" : baseline.toString());
         RewriteBenchmarkReport report = new RewriteBenchmarkReport(Instant.now(), spec.name(),
-                settings, totalMillis, modelMillis, reported);
+                settings, totalMillis, modelMillis, reported, comparison);
         try {
             Files.createDirectories(out);
             Path jsonFile = out.resolve("resume-rewrite-benchmark.json");

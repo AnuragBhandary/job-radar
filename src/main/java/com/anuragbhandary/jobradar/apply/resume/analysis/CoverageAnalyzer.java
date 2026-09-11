@@ -83,17 +83,45 @@ public class CoverageAnalyzer {
      */
     public CoverageLedger analyse(Long postingId, String title, String requirementSource,
             List<Requirement> requirements) {
+        // Compounds are split and every id is keyed on the canonical name first,
+        // so "Python / JavaScript / TypeScript" is three rows and "K8s" and
+        // "Kubernetes" are one. See CompoundRequirements.
         Map<String, Requirement> unique = new LinkedHashMap<>();
         for (Requirement requirement : requirements) {
             if (requirement == null || requirement.id() == null || requirement.id().isBlank()) {
                 continue;
             }
-            unique.merge(requirement.id(), requirement, (a, b) ->
-                    b.importance().ordinal() < a.importance().ordinal() ? b : a);
+            for (Requirement part : CompoundRequirements.expand(requirement)) {
+                if (!part.id().isBlank()) {
+                    unique.merge(part.id(), part, CoverageAnalyzer::stronger);
+                }
+            }
         }
         List<Entry> entries = new ArrayList<>();
-        unique.values().forEach(requirement -> entries.add(assess(requirement)));
+        unique.values().forEach(requirement -> entries.add(withAlternativeNote(assess(requirement))));
         return CoverageLedger.of(postingId, title, requirementSource, entries);
+    }
+
+    /**
+     * Which of two mentions of one requirement to keep: the stronger importance,
+     * and on a tie the one asked for on its own rather than as one option of
+     * several.
+     */
+    static Requirement stronger(Requirement a, Requirement b) {
+        if (b.importance().ordinal() != a.importance().ordinal()) {
+            return b.importance().ordinal() < a.importance().ordinal() ? b : a;
+        }
+        return a.alternativeOf() != null && b.alternativeOf() == null ? b : a;
+    }
+
+    private static Entry withAlternativeNote(Entry entry) {
+        String alternatives = entry.requirement().alternativeOf();
+        if (alternatives == null) {
+            return entry;
+        }
+        return new Entry(entry.requirement(), entry.level(), entry.matchedBy(), entry.via(),
+                entry.evidence(), entry.candidateSourceIds(), entry.resumeUse(),
+                "one of \"" + alternatives + "\"; " + entry.note());
     }
 
     Entry assess(Requirement requirement) {

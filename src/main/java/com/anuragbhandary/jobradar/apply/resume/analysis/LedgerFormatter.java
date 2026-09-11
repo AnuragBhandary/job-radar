@@ -35,7 +35,10 @@ public final class LedgerFormatter {
             out.append('\n').append(title(importance)).append('\n');
             for (Entry entry : group) {
                 out.append("  ").append(symbol(entry.level())).append(' ')
-                        .append(entry.requirement().term()).append(" — ")
+                        .append(entry.requirement().term())
+                        .append(entry.requirement().alternativeOf() == null ? ""
+                                : " (one of \"" + entry.requirement().alternativeOf() + "\")")
+                        .append(" — ")
                         .append(entry.level());
                 if (!entry.via().isEmpty() && entry.level() != ExperienceLevel.DIRECT) {
                     out.append(" via ").append(String.join(", ", entry.via()));
