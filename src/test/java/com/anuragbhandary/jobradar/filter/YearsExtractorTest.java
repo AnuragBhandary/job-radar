@@ -19,6 +19,53 @@ class YearsExtractorTest {
     private final YearsExtractor extractor = new YearsExtractor();
 
     @Nested
+    @DisplayName("an optional number is not the bar")
+    class OptionalCases {
+
+        @Test
+        @DisplayName("Bosch 'SW developer :Java': the optional Product Owner years do not win")
+        void optionalYearsAreIgnored() {
+            // The real paragraph. It was recommended as a one-year role.
+            assertThat(minYears("Experience: 3-5 years of professional experience in Java "
+                    + "software development, with a focus on building enterprise-level "
+                    + "applications optionally 1-2 years of experience or significant "
+                    + "exposure to Product Owner responsibilities")).isEqualTo(3);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "2+ years of backend experience; ideally 1 year with Kafka",
+                "Minimum 4 years in Python. Preferably 1+ years of Go.",
+                "3 years building APIs, and ideally 1 year of Rust",
+        })
+        @DisplayName("hedge words before a smaller number leave the real requirement standing")
+        void hedgedNumbersAreSkipped(String text) {
+            assertThat(minYears(text)).isGreaterThan(1);
+        }
+
+        @ParameterizedTest(name = "{0} -> {1}")
+        @CsvSource(delimiter = '|', value = {
+                // Scale AI's heading for its requirements, not a softener.
+                "Ideally you'd have: 4+ years of experience building high-performance systems | 4",
+                // Philips: the only number in the posting, so it is the bar.
+                "You're the right fit if: Preferably 6+ years of experience.                   | 6",
+                // InMobi: the hedge belongs to the previous clause.
+                "Master's preferred; a PhD is a plus At least 3 years of experience as an MLE | 3",
+        })
+        @DisplayName("a hedge never makes a posting read as stating nothing")
+        void hedgeAloneIsStillTheBar(String text, int expected) {
+            assertThat(minYears(text)).isEqualTo(expected);
+        }
+
+        @Test
+        @DisplayName("an unhedged small number still counts")
+        void plainRequirementStillCounts() {
+            assertThat(minYears("You have 1-3 years of experience and optionally a degree."))
+                    .isEqualTo(1);
+        }
+    }
+
+    @Nested
     @DisplayName("years stated in the title")
     class TitleCases {
 

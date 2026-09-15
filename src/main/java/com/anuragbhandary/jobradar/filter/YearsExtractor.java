@@ -180,8 +180,15 @@ public class YearsExtractor {
 
         String required = requiredSection(description);
 
+        // Two minimums: over every number, and over the numbers nobody hedged. A
+        // hedge may stop a smaller number undercutting a stated requirement, but it
+        // never makes a posting read as stating nothing - Philips puts its only
+        // requirement behind "Preferably 6+ years", and skipping that turned a
+        // six-year role into a candidate.
         int min = YearsExtraction.NONE_STATED;
         String evidence = null;
+        int plainMin = YearsExtraction.NONE_STATED;
+        String plainEvidence = null;
 
         Matcher m = YEARS.matcher(required);
         while (m.find()) {
@@ -192,12 +199,20 @@ public class YearsExtractor {
             if (years >= IMPLAUSIBLE_YEARS) {
                 continue;
             }
+            String here = phrase(required, m.start(), m.end());
             if (min == YearsExtraction.NONE_STATED || years < min) {
                 min = years;
-                evidence = phrase(required, m.start(), m.end());
+                evidence = here;
+            }
+            if (!isOptional(required, m)
+                    && (plainMin == YearsExtraction.NONE_STATED || years < plainMin)) {
+                plainMin = years;
+                plainEvidence = here;
             }
         }
-        return new YearsExtraction(min, evidence, nonInternship);
+        return plainMin != YearsExtraction.NONE_STATED
+                ? new YearsExtraction(plainMin, plainEvidence, nonInternship)
+                : new YearsExtraction(min, evidence, nonInternship);
     }
 
     /**
@@ -245,6 +260,34 @@ public class YearsExtractor {
         // Look at the character immediately before the unit word.
         int unitStart = text.lastIndexOf(m.group(2), m.end());
         return unitStart > 0 && text.charAt(unitStart - 1) == '-';
+    }
+
+    /**
+     * A hedge word shortly before a number, with no colon between them.
+     *
+     * <p>The colon matters: "Ideally you'd have: 4+ years" is Scale AI's heading for
+     * its requirements, and "Preferred qualifications: 5+ years" opens a section.
+     * A hedge that introduces a list is a heading, not a softener of the number.
+     */
+    private static final Pattern OPTIONAL_BEFORE = Pattern.compile(
+            "\\b(?:optionally|optional|ideally|preferably|preferred|bonus|a plus|nice to have)\\b"
+                    + "[^.;:\\n]{0,25}$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Distinguishes "optionally 1-2 years of Product Owner exposure" from the bar.
+     *
+     * <p>Taking the smallest number is only generous when every number is a
+     * requirement. Bosch's "SW developer :Java" (2026-09) required "3-5 years of
+     * professional experience in Java" and then, in the same paragraph with no
+     * heading between, "optionally 1-2 years of experience ... as Product Owner".
+     * The optional 1 won, and a three-year role was recommended as entry level.
+     * A hedge placed in front of the number is the only signal there is, so this
+     * reads the few words before it.
+     */
+    private static boolean isOptional(String text, Matcher m) {
+        String before = text.substring(Math.max(0, m.start() - 40), m.start());
+        return OPTIONAL_BEFORE.matcher(before).find();
     }
 
     /** A little surrounding text, so the reject reason reads like the posting. */
