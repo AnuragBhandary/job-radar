@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.anuragbhandary.jobradar.apply.TestProfiles;
+import com.anuragbhandary.jobradar.apply.resume.ComposedResume;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.apply.resume.ResumeRenderer;
 import com.anuragbhandary.jobradar.apply.resume.ResumeTailor;
@@ -17,6 +18,7 @@ import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.evidence.EvidenceBank;
 import com.anuragbhandary.jobradar.evidence.EvidenceFixtures;
 import com.anuragbhandary.jobradar.evidence.EvidenceProperties;
+import com.anuragbhandary.jobradar.evidence.EvidenceReadiness;
 import com.anuragbhandary.jobradar.knowledge.experience.ExperienceIndex;
 import com.anuragbhandary.jobradar.knowledge.experience.ExperiencePositioner;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.env.MockEnvironment;
 
 /** The {@code evidence} command, including generating a resume from the terminal. */
 class EvidenceCommandTest {
@@ -39,10 +42,12 @@ class EvidenceCommandTest {
         ResumeTailor tailor = new ResumeTailor(RESUME);
         CoverageAnalyzer analyzer = new CoverageAnalyzer(
                 new ExperiencePositioner(new ExperienceIndex(RESUME)), new ResumeSources(RESUME));
-        ResumePipeline pipeline = new ResumePipeline(tailor, analyzer,
-                new TailoringPlanner(RESUME, tailor, bank), new EvidenceProperties(null, true));
-        return new EvidenceCommand(bank, RESUME, postings, pipeline,
-                new ResumeRenderer(TestProfiles.indianApplicant()));
+        ComposedResume composed = new ComposedResume(RESUME, List.of());
+        EvidenceReadiness readiness = new EvidenceReadiness(bank, composed);
+        ResumePipeline pipeline = new ResumePipeline(analyzer,
+                new TailoringPlanner(RESUME, tailor, bank), new EvidenceProperties(null, true), readiness);
+        return new EvidenceCommand(bank, composed, readiness, postings, pipeline,
+                new ResumeRenderer(TestProfiles.indianApplicant()), RESUME, new MockEnvironment());
     }
 
     private static EvidenceCommand command() {
@@ -56,7 +61,7 @@ class EvidenceCommandTest {
 
         assertThat(out).contains("4 source(s), 9 item(s), 3 approved variant(s), 1 proposed")
                 .contains("acme")
-                .contains("Resumes are planned from the bank.");
+                .contains("Applications are generated from the bank.");
     }
 
     @Test
@@ -68,9 +73,9 @@ class EvidenceCommandTest {
         String out = command(broken, mock(PostingRepository.class)).execute(Map.of("check", "true"));
 
         assertThat(out).contains("ERROR acme-cache").contains("'Terraform'")
-                .contains("Resumes are tailored as before: the bank does not match the resume.");
+                .contains("Applications will not be generated until this is fixed");
         assertThat(command().execute(Map.of("check", "true")))
-                .contains("The file has no problems.").contains("Against the resume: consistent.");
+                .contains("The file has no problems.").contains("Joined to applicant.yml: no problems.");
     }
 
     @Test
@@ -115,6 +120,7 @@ class EvidenceCommandTest {
         assertThat(command(EvidenceFixtures.bank(), postings)
                 .execute(Map.of("plan", "true", "posting-id", "99"))).isEqualTo("No posting 99\n");
         assertThat(command(EvidenceBank.empty("none", List.of()), postings).execute(Map.of()))
-                .contains("there is no usable evidence");
+                .contains("Applications will not be generated until this is fixed")
+                .contains("is unavailable");
     }
 }

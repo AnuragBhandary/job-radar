@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * The record of one attempt at one posting.
@@ -92,6 +94,21 @@ public class ApplicationAttempt {
     /** What the tailor changed, and why. */
     @Column(name = "tailoring_note", length = 1024)
     private String tailoringNote;
+
+    /**
+     * The evidence-bank ids printed on the resume, in printed order, comma-separated.
+     *
+     * <p>What a resumed preparation, a regenerated draft or the assistant rebuilds
+     * the application's evidence context from, so later prose rests on the selection
+     * already on disk rather than on a fresh plan. Null on attempts from before ids
+     * were recorded.
+     */
+    @Column(name = "resume_evidence_ids", columnDefinition = "text")
+    private String resumeEvidenceIds;
+
+    /** The evidence-bank ids the cover letter was grounded on, comma-separated. */
+    @Column(name = "letter_evidence_ids", columnDefinition = "text")
+    private String letterEvidenceIds;
 
     /**
      * The fill report, rendered.
@@ -249,6 +266,38 @@ public class ApplicationAttempt {
 
     public void setTailoringNote(String tailoringNote) {
         this.tailoringNote = tailoringNote;
+    }
+
+    /** Never null; empty for an attempt from before ids were recorded. */
+    public List<String> getResumeEvidenceIds() {
+        return splitIds(resumeEvidenceIds);
+    }
+
+    public void setResumeEvidenceIds(List<String> ids) {
+        this.resumeEvidenceIds = joinIds(ids);
+    }
+
+    /** Never null; empty when no letter was written. */
+    public List<String> getLetterEvidenceIds() {
+        return splitIds(letterEvidenceIds);
+    }
+
+    public void setLetterEvidenceIds(List<String> ids) {
+        this.letterEvidenceIds = joinIds(ids);
+    }
+
+    // Evidence ids are dotted slugs and never contain a comma, so a plain join is
+    // lossless and keeps the column readable in a SQLite shell.
+    private static List<String> splitIds(String joined) {
+        if (joined == null || joined.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(joined.split(",")).map(String::strip)
+                .filter(id -> !id.isEmpty()).toList();
+    }
+
+    private static String joinIds(List<String> ids) {
+        return ids == null || ids.isEmpty() ? null : String.join(",", ids);
     }
 
     public String getFieldLog() {

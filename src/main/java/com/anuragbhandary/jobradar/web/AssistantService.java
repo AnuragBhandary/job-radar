@@ -1,10 +1,14 @@
 package com.anuragbhandary.jobradar.web;
 
-import com.anuragbhandary.jobradar.apply.ApplicantProfile;
+import com.anuragbhandary.jobradar.apply.ApplicationEvidence;
 import com.anuragbhandary.jobradar.apply.llm.HumanTone;
 import com.anuragbhandary.jobradar.apply.llm.LlmClient;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.evidence.ApplicationEvidenceContext;
+import com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException;
+import com.anuragbhandary.jobradar.evidence.GroundedProse;
+import com.anuragbhandary.jobradar.knowledge.ai.CandidateMaterial;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -12,32 +16,34 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * The assistant behind the review page.
+ * The assistant behind the preparation screen.
  *
- * <p>Three jobs, all grounded in the same material the resume is built from:
- * draft an answer to an application question, rewrite the cover letter, and
- * answer a question about the posting.
+ * <p>Three jobs: draft an answer to an application question, rewrite the cover
+ * letter, and answer a question about the posting.
  *
  * <p>The first two produce text that will be sent to an employer under the
- * applicant's name, so they run through the same rules as the cover letter:
- * facts only from the profile, dash punctuation rewritten, machine-sounding
- * phrasing rejected and regenerated once. The third is for the applicant to read
- * and is only cleaned, not policed - it is allowed to say "the posting does not
- * say", which is exactly what a filter tuned for outbound prose would reject.
+ * applicant's name, so they are grounded on the posting's evidence context - the same
+ * evidence-bank selection its resume is printed from - and checked with
+ * {@link GroundedProse} as well as the {@link HumanTone} rules. A draft that is not
+ * grounded is refused with the reason, never returned. The third is for the applicant
+ * to read and goes nowhere; it may compare the posting with his evidence and with the
+ * skills he lists, labelled as a list rather than as evidence.
  */
 @Service
 public class AssistantService {
 
     private static final Logger log = LoggerFactory.getLogger(AssistantService.class);
 
-    private final LlmClient llm;
-    private final ResumeModel resume;
-    private final ApplicantProfile profile;
+    private static final int MATERIAL_ITEMS = 6;
 
-    public AssistantService(LlmClient llm, ResumeModel resume, ApplicantProfile profile) {
+    private final LlmClient llm;
+    private final ApplicationEvidence evidence;
+    private final ResumeModel resume;
+
+    public AssistantService(LlmClient llm, ApplicationEvidence evidence, ResumeModel resume) {
         this.llm = llm;
+        this.evidence = evidence;
         this.resume = resume;
-        this.profile = profile;
     }
 
     public boolean isUsable() {
@@ -46,10 +52,7 @@ public class AssistantService {
 
     /**
      * @param text     what to use, or null when nothing acceptable came back
-     * @param rejected why the first attempt was thrown away, for the page to show.
-     *                 Surfaced rather than hidden: "the first draft said
-     *                 'passionate about' so I asked again" is the feature working,
-     *                 and seeing it is how the phrase list earns trust.
+     * @param rejected why a draft was thrown away, for the page to show
      */
     public record Draft(String text, String rejected) {
 
@@ -64,37 +67,44 @@ public class AssistantService {
         static Draft none() {
             return new Draft(null, null);
         }
+
+        static Draft refused(String why) {
+            return new Draft(null, why);
+        }
     }
 
     /**
-     * Drafts an answer to one application question.
+     * Drafts an answer to one application question, from this posting's evidence.
      *
-     * <p>The instruction that matters is the last one: an answer it cannot support
-     * from the material must come back as the single word NOTHING rather than as
-     * a plausible sentence. A fabricated answer on an application is worse than a
-     * blank one, and a blank one is what the tool already does well.
+     * <p>An answer it cannot support must come back as the single word NOTHING rather
+     * than as a plausible sentence.
      */
     public Draft answerQuestion(Posting posting, String company, String question) {
         if (!llm.isUsable() || question == null || question.isBlank()) {
             return Draft.none();
         }
+        Optional<ApplicationEvidenceContext> context = contextFor(posting);
+        if (context.isEmpty()) {
+            return Draft.refused(unavailable);
+        }
+        CandidateMaterial material = CandidateMaterial.of(context.get(), MATERIAL_ITEMS);
 
         String system = """
                 You are drafting one answer to one question on a job application
-                form, for the person described below. He will read it before it is
-                sent, and he has to be able to defend every word of it in an
-                interview.
+                form, for the person whose evidence is given below. He will read it
+                before it is sent, and he has to be able to defend every word of it in
+                an interview.
 
                 Rules:
-                1. Use only what the material says. Do not invent projects,
-                   technologies, employers, numbers or dates.
+                1. Use only HIS EVIDENCE. Do not invent projects, technologies,
+                   employers, numbers or dates. Keep figures exactly as written and
+                   every phrase marked "keep".
                 2. Never state a number of years of experience.
                 3. Answer the question that was asked. Two or three sentences
                    unless it obviously wants one word.
-                4. If the material does not support an answer, reply with exactly:
+                4. If the evidence does not support an answer, reply with exactly:
                    NOTHING
-                   Do not write a plausible answer instead. A blank on a form is
-                   recoverable and a false claim is not.
+                   Do not write a plausible answer instead.
 
                 %s
                 Output the answer only, with no preamble.
@@ -103,9 +113,10 @@ public class AssistantService {
         String user = "QUESTION\n" + question
                 + "\n\nCONTEXT\nCompany: " + company
                 + "\nRole: " + posting.getTitle()
-                + "\n\n" + material();
+                + "\n\n" + material.prompt();
 
-        return policed(system, user, "answer");
+        return grounded(policed(system, user, "answer"), material.grounding(
+                List.of(nullSafe(company), nullSafe(posting.getTitle())), List.of()));
     }
 
     /** Rewrites the letter, optionally against a steer typed on the page. */
@@ -115,17 +126,23 @@ public class AssistantService {
         if (!llm.isUsable()) {
             return Draft.none();
         }
+        Optional<ApplicationEvidenceContext> context = contextFor(posting);
+        if (context.isEmpty()) {
+            return Draft.refused(unavailable);
+        }
+        CandidateMaterial material = CandidateMaterial.of(context.get(), MATERIAL_ITEMS);
 
         String system = """
                 You rewrite a job-application cover letter. Same facts, better
                 writing. You may drop a sentence, you may not add a claim.
 
                 Rules:
-                1. Only facts from the material below. Nothing added.
+                1. Only facts from HIS EVIDENCE below. The posting describes what the
+                   employer wants, never his experience. Keep figures exactly as
+                   written and every phrase marked "keep".
                 2. Never state a number of years of experience.
                 3. No placeholders such as [Company].
-                4. Pick at most two things he has built. Do not list everything,
-                   that is what the resume is for.
+                4. Pick at most two things he has built.
                 5. Exactly three paragraphs separated by a blank line, no greeting,
                    no sign-off, under 1800 characters and under 200 words. The
                    first paragraph must not start with "I". The second must say how
@@ -143,20 +160,20 @@ public class AssistantService {
         if (current != null && !current.isBlank()) {
             user.append("CURRENT LETTER\n").append(current).append("\n\n");
         }
-        user.append("POSTING\nCompany: ").append(company)
+        user.append("POSTING - what the employer wants, not his experience\nCompany: ").append(company)
                 .append("\nRole: ").append(posting.getTitle())
                 .append("\nDescription:\n").append(truncate(nullSafe(posting.getDescriptionText()), 4000))
-                .append("\n\n").append(material());
+                .append("\n\n").append(material.prompt());
 
-        return policed(system, user.toString(), "letter");
+        return grounded(policed(system, user.toString(), "letter"), material.grounding(
+                List.of(nullSafe(company), nullSafe(posting.getTitle())),
+                context.get().notClaimable()));
     }
 
     /**
      * Answers a question about the posting, for the applicant to read.
      *
-     * <p>Not policed for tone, because nothing here is sent anywhere. It is also
-     * explicitly allowed to say it does not know, which is the answer that matters
-     * most when the question is "does this mention sponsorship?".
+     * <p>Not policed for tone or grounding, because nothing here is sent anywhere.
      */
     public Draft ask(Posting posting, String company, String question) {
         if (!llm.isUsable() || question == null || question.isBlank()) {
@@ -174,16 +191,18 @@ public class AssistantService {
                 not guess at a salary, a visa policy or a team size.
 
                 A question of JUDGEMENT is answered by comparing the two documents
-                you have been given. "What should I revise?", "am I underqualified?",
-                "what will they push on?" are all answerable: name the specific
-                things the posting asks for that his background does not show, and
-                the specific things it does. Refusing these with "the posting does
-                not say" is unhelpful and wrong, because the posting was never where
-                the answer was.
+                you have been given. Name the specific things the posting asks for
+                that his evidence does not show, and the specific things it does. A
+                skill he only lists is not evidence of having used it; say so where
+                it matters.
 
                 Be brief and concrete. Name technologies, not qualities. No dashes
                 as punctuation, use commas or full stops.
                 """;
+
+        String background = contextFor(posting)
+                .map(context -> CandidateMaterial.of(context, MATERIAL_ITEMS).prompt())
+                .orElse("HIS EVIDENCE: unavailable (" + unavailable + ")\n");
 
         String user = "QUESTION\n" + question
                 + "\n\nPOSTING\nCompany: " + company
@@ -192,12 +211,39 @@ public class AssistantService {
                 + "\nStated pay: " + orNone(posting.getSalaryText())
                 + "\nSponsorship language: " + orNone(posting.getSponsorshipSignal())
                 + "\n\n" + truncate(nullSafe(posting.getDescriptionText()), 8000)
-                + "\n\n" + material();
+                + "\n\n" + background + skillsListed();
 
         return llm.complete(system, user)
                 .map(HumanTone::removeDashes)
                 .map(Draft::of)
                 .orElse(Draft.none());
+    }
+
+    // ------------------------------------------------------------------
+
+    /** Why the last context could not be built, for the page. */
+    private String unavailable = "the evidence bank is unavailable";
+
+    private Optional<ApplicationEvidenceContext> contextFor(Posting posting) {
+        try {
+            return Optional.of(evidence.forPosting(posting));
+        } catch (EvidenceIntegrityException e) {
+            unavailable = e.getMessage();
+            log.info("No evidence for the assistant: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /** A draft that is not grounded on the evidence it was given is refused, with the reason. */
+    private static Draft grounded(Draft draft, GroundedProse.Grounding grounding) {
+        if (!draft.ok()) {
+            return draft;
+        }
+        List<String> problems = GroundedProse.problems(draft.text(), grounding);
+        if (problems.isEmpty()) {
+            return draft;
+        }
+        return Draft.refused("The draft was refused: " + problems.getFirst());
     }
 
     /** Generate, clean, judge, and give it exactly one more go with the reason. */
@@ -214,13 +260,9 @@ public class AssistantService {
 
         List<String> tells = new java.util.ArrayList<>(HumanTone.tells(text));
         if ("letter".equals(what)) {
-            // Only the letter is written against the worked example, so only the
-            // letter can borrow from it.
             tells.addAll(HumanTone.borrowedFromExample(text));
         }
         boolean dashes = HumanTone.hasDashes(text);
-        // Structure is only judged on a letter. A one-line answer to "are you at
-        // least 18?" is one paragraph starting with "I" and is exactly right.
         List<String> structure = "letter".equals(what)
                 ? HumanTone.structureProblems(text) : List.of();
 
@@ -241,48 +283,26 @@ public class AssistantService {
             return Draft.none();
         }
         String rejected = "first draft used: " + String.join(", ", tells);
-        // Returned even when the second draft still has tells. It is shown to a
-        // human with the reason attached, and a slightly stiff draft he can edit
-        // beats no draft at all - which is not true of the cover letter written
-        // unattended, and is why that one falls back to a template instead.
+        // Returned even when the second draft still has tells: it is shown to a human
+        // with the reason attached. Grounding is checked after this, and is not
+        // negotiable the same way.
         return new Draft(second, tells.isEmpty() ? null : rejected);
+    }
+
+    private String skillsListed() {
+        if (resume.skills() == null || resume.skills().isEmpty()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder("\nSKILLS HE LISTS - a list, not evidence of use\n");
+        resume.skills().forEach(group -> out.append("- ").append(group.group()).append(": ")
+                .append(String.join(", ", group.items())).append('\n'));
+        return out.toString();
     }
 
     /** The model was told to say NOTHING when it cannot answer honestly. */
     private static boolean isRefusal(String text) {
         String trimmed = text.trim();
         return trimmed.equalsIgnoreCase("NOTHING") || trimmed.length() < 3;
-    }
-
-    /** Everything the model is allowed to draw on. */
-    private String material() {
-        StringBuilder out = new StringBuilder("HIS MATERIAL, the only facts you may use\n");
-        out.append("Name: ").append(profile.name().display()).append('\n');
-        out.append("Based in ").append(profile.address().city()).append(", ")
-                .append(profile.address().country()).append('\n');
-
-        if (resume.experience() != null) {
-            out.append("Experience:\n");
-            for (ResumeModel.Job job : resume.experience()) {
-                out.append("- ").append(job.title()).append(" at ").append(job.company())
-                        .append(" (").append(job.period()).append(", ")
-                        .append(nullSafe(job.note())).append(")\n");
-                job.bullets().forEach(b -> out.append("  * ").append(b.text()).append('\n'));
-            }
-        }
-        out.append("Projects:\n");
-        for (ResumeModel.Project project : resume.projects()) {
-            out.append("- ").append(project.name()).append(" [").append(project.stack())
-                    .append("]\n");
-            project.bullets().forEach(b -> out.append("  * ").append(b.text()).append('\n'));
-        }
-        if (resume.education() != null) {
-            out.append("Education:\n");
-            resume.education().forEach(degree -> out.append("- ").append(degree.degree())
-                    .append(", ").append(degree.institution())
-                    .append(" (").append(degree.period()).append(")\n"));
-        }
-        return out.toString();
     }
 
     private static String strip(String text) {

@@ -8,11 +8,15 @@ import com.anuragbhandary.jobradar.apply.resume.plan.TailoringPlan.Coverage;
 import com.anuragbhandary.jobradar.apply.resume.plan.TailoringPlan.Selection;
 import com.anuragbhandary.jobradar.apply.resume.rewrite.SkillOrdering;
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.evidence.ApplicationEvidenceContext;
+import com.anuragbhandary.jobradar.evidence.ApplicationEvidenceContext.EvidenceUse;
+import com.anuragbhandary.jobradar.evidence.ApplicationEvidenceContext.RequirementEvidence;
 import com.anuragbhandary.jobradar.evidence.EvidenceBank;
+import com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException;
 import com.anuragbhandary.jobradar.evidence.EvidenceItem;
 import com.anuragbhandary.jobradar.evidence.EvidenceMatch;
+import com.anuragbhandary.jobradar.evidence.EvidenceMatcher;
 import com.anuragbhandary.jobradar.evidence.EvidenceSource;
-import com.anuragbhandary.jobradar.evidence.ResumeConsistency;
 import com.anuragbhandary.jobradar.knowledge.experience.ExperienceLevel;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,16 +27,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 
 /**
- * Plans a posting's resume from the evidence bank. Selection, never generation.
+ * Plans a posting's resume, and the evidence context behind it, from the evidence
+ * bank. Selection, never generation.
  *
  * <pre>
  *   posting ─▶ requirements ─▶ coverage ledger ─▶ evidence for each requirement
  *           ─▶ items ranked per job and project ─▶ approved wording per item
  *           ─▶ skills ordered by the ledger ─▶ verified ─▶ TailoredResume
+ *                                                       + ApplicationEvidenceContext
  * </pre>
  *
  * <h2>What it decides</h2>
@@ -40,11 +45,10 @@ import org.springframework.stereotype.Component;
  *   <li><b>Which bullets.</b> Each item's relevance is the sum, over the ledger's
  *       requirements, of the requirement's weight times how well the item matches -
  *       {@link EvidenceBank#evidenceFor}, which respects the ledger's levels: a
- *       Kubernetes requirement lifts the Docker item, and never licenses the word.
+ *       Kubernetes requirement lifts the Docker item and never licenses the word.
  *       The most relevant items per job and project are kept, up to the resume's
- *       caps, and printed in the order the file lists them.</li>
- *   <li><b>Which projects.</b> By total relevance, the resume's own order breaking
- *       ties, up to the resume's cap.</li>
+ *       caps, and printed in the order the bank lists them.</li>
+ *   <li><b>Which projects.</b> By total relevance, the bank's order breaking ties.</li>
  *   <li><b>Which wording.</b> The claim, unless an approved variant's emphasis matches
  *       what this posting asks of that item.</li>
  *   <li><b>Skill order.</b> {@link SkillOrdering}: what the ledger found, first.
@@ -53,14 +57,11 @@ import org.springframework.stereotype.Component;
  * The summary is chosen exactly as before, from the approved paragraphs.
  *
  * <h2>What it cannot do</h2>
- * It has no way to write a sentence. Every bullet it outputs is the text of an item's
- * claim or approved variant, and {@link ResumeVerifier} checks that again before the
- * plan is returned. No model is consulted.
- *
- * <h2>When it steps aside</h2>
- * No bank, a bank the resume does not match, or a result that fails verification:
- * the resume is tailored exactly as it was before the bank existed, and the plan
- * says why.
+ * It has no way to write a sentence, and no model is consulted. The resume it reads
+ * is composed from the bank, so every bullet it can print is a bank claim or an
+ * approved variant, and {@link ResumeVerifier} checks that again. A plan that fails
+ * verification is refused with {@link EvidenceIntegrityException}; there is no other
+ * copy of the claims to fall back to.
  */
 @Component
 public class TailoringPlanner {
@@ -75,22 +76,9 @@ public class TailoringPlanner {
         this.bank = bank;
     }
 
+    /** The evidence-planned resume. */
     public TailoringPlan plan(Posting posting, CoverageLedger ledger) {
         TailoredResume base = tailor.tailor(posting);
-        if (bank.isEmpty()) {
-            return TailoringPlan.legacy(base, ledger, List.of(bank.hasErrors()
-                    ? "the evidence bank at " + bank.origin()
-                            + " has no usable items - run `evidence --check`"
-                    : "no evidence bank at " + bank.origin()));
-        }
-        ResumeConsistency consistency = ResumeConsistency.check(bank, resume);
-        if (!consistency.consistent()) {
-            List<String> reasons = new ArrayList<>();
-            reasons.add("the evidence bank does not match the resume - run `evidence --check`");
-            consistency.errors().forEach(p -> reasons.add(p.toString()));
-            return TailoringPlan.legacy(base, ledger, reasons);
-        }
-
         Map<String, Relevance> relevance = relevance(ledger);
         List<Selection> selections = new ArrayList<>();
 
@@ -144,16 +132,50 @@ public class TailoringPlanner {
                 resume.extras(),
                 base.matchedTags(),
                 dropped);
+        verify(planned);
+        return assemble(TailoringPlan.Mode.EVIDENCE, planned, posting, ledger, relevance, selections);
+    }
 
-        List<String> violations = ResumeVerifier.verify(planned, bank, resume);
-        if (!violations.isEmpty()) {
-            List<String> reasons = new ArrayList<>();
-            reasons.add("the planned resume failed verification, so the resume was tailored as before");
-            reasons.addAll(violations);
-            return TailoringPlan.legacy(base, ledger, reasons);
+    /**
+     * The kill switch's resume: {@link ResumeTailor}'s tag selection over the same
+     * composed, bank-backed resume. Claims only - no variants, no skill reordering -
+     * and verified like any other.
+     */
+    public TailoringPlan simple(Posting posting, CoverageLedger ledger) {
+        TailoredResume base = tailor.tailor(posting);
+        Map<String, Relevance> relevance = relevance(ledger);
+        List<Selection> selections = new ArrayList<>();
+        for (ResumeModel.Job job : base.experience()) {
+            orEmpty(job.bullets()).forEach(b -> selections.add(printed(job.company(), b, relevance)));
         }
-        return new TailoringPlan(TailoringPlan.Mode.EVIDENCE, planned, ledger, selections,
-                coverage(ledger, selections), List.of());
+        for (ResumeModel.Project project : base.projects()) {
+            orEmpty(project.bullets()).forEach(b -> selections.add(printed(project.name(), b, relevance)));
+        }
+        verify(base);
+        return assemble(TailoringPlan.Mode.SIMPLE, base, posting, ledger, relevance, selections);
+    }
+
+    /**
+     * The evidence context of a resume already printed with these ids - how a resumed
+     * application grounds its letter and answers on the PDF it already has.
+     *
+     * @throws EvidenceIntegrityException when an id is no longer in the bank
+     */
+    public ApplicationEvidenceContext context(Posting posting, CoverageLedger ledger,
+            List<String> printedIds) {
+        List<String> missing = printedIds.stream().filter(id -> bank.find(id).isEmpty()).toList();
+        if (!missing.isEmpty()) {
+            throw new EvidenceIntegrityException("The resume already rendered for this application "
+                    + "cites evidence the bank no longer holds - prepare it again to render a new one",
+                    missing.stream().map(id -> "missing evidence item " + id).toList());
+        }
+        Map<String, Relevance> relevance = relevance(ledger);
+        Map<String, String> wordings = new LinkedHashMap<>();
+        for (String id : printedIds) {
+            EvidenceItem item = bank.find(id).orElseThrow();
+            wordings.put(id, wording(item, relevance.get(id)).text());
+        }
+        return context(posting, ledger, relevance, printedIds, wordings);
     }
 
     // ------------------------------------------------------------------
@@ -185,12 +207,11 @@ public class TailoringPlanner {
     }
 
     /**
-     * The most relevant items of one source, up to the cap, printed in file order.
+     * The most relevant items of one source, up to the cap, printed in bank order.
      *
      * <p>Two orderings, as in {@link ResumeTailor}: selection by relevance,
-     * presentation by the order he wrote. A list re-sorted by score reads as
-     * assembled by a machine. Ties go to the earlier item, so a posting that asks
-     * for nothing he has keeps his opening bullets.
+     * presentation by the order he wrote. Ties go to the earlier item, so a posting
+     * that asks for nothing he has keeps his opening bullets.
      */
     private List<ResumeModel.Bullet> choose(EvidenceSource source, String section, int cap,
             Map<String, Relevance> relevance, List<Selection> selections) {
@@ -214,6 +235,12 @@ public class TailoringPlanner {
             }
         }
         return bullets;
+    }
+
+    private Selection printed(String section, ResumeModel.Bullet bullet, Map<String, Relevance> relevance) {
+        Relevance r = bullet.id() == null ? new Relevance() : relevance.getOrDefault(bullet.id(), new Relevance());
+        return new Selection(section, bullet.id(), EvidenceItem.CLAIM, bullet.text(), round(r.score),
+                because(r), true);
     }
 
     private record Wording(String id, String text) {
@@ -262,44 +289,111 @@ public class TailoringPlanner {
     }
 
     private static List<String> tags(EvidenceItem item) {
-        return Stream.concat(item.technologies().stream(), item.concepts().stream())
-                .map(TailoringPlanner::lower)
-                .distinct()
-                .toList();
+        List<String> tags = new ArrayList<>(item.technologies());
+        tags.addAll(item.concepts());
+        return tags.stream().distinct().toList();
     }
 
-    private List<Coverage> coverage(CoverageLedger ledger, List<Selection> selections) {
-        List<Coverage> rows = new ArrayList<>();
-        if (ledger == null) {
-            return rows;
+    private void verify(TailoredResume planned) {
+        List<String> violations = ResumeVerifier.verify(planned, bank, resume);
+        if (!violations.isEmpty()) {
+            throw new EvidenceIntegrityException(
+                    "The resume failed verification, so it was not generated", violations);
         }
-        Set<String> included = new LinkedHashSet<>();
-        selections.stream().filter(Selection::included).forEach(s -> included.add(s.evidenceId()));
-        for (CoverageLedger.Entry entry : ledger.entries()) {
-            List<EvidenceMatch> evidence = bank.evidenceFor(entry);
-            List<EvidenceMatch> printed = evidence.stream()
-                    .filter(m -> included.contains(m.itemId())).toList();
-            String note;
-            if (!printed.isEmpty()) {
-                note = printed.stream().anyMatch(EvidenceMatch::supportsClaim)
-                        ? "shown" : "related work shown; " + entry.requirement().term() + " is not claimed";
-            } else if (!evidence.isEmpty()) {
-                note = "evidence exists and was not selected: " + String.join(", ",
-                        evidence.stream().map(EvidenceMatch::itemId).toList());
-            } else if (entry.level() == ExperienceLevel.NONE) {
-                note = "nothing supports this; left out";
-            } else if (entry.level() == ExperienceLevel.TRANSFERABLE) {
-                note = "only general engineering foundations apply; nothing specific is put forward";
-            } else if (entry.level() == ExperienceLevel.DIRECT) {
-                note = "no evidence item shows it in use (the ledger found it in the skills list or tags)";
-            } else {
-                note = "no evidence item carries what it is related to";
+    }
+
+    private TailoringPlan assemble(TailoringPlan.Mode mode, TailoredResume planned, Posting posting,
+            CoverageLedger ledger, Map<String, Relevance> relevance, List<Selection> selections) {
+        List<String> printed = new ArrayList<>();
+        Map<String, String> wordings = new LinkedHashMap<>();
+        for (Selection s : selections) {
+            if (s.included() && s.evidenceId() != null) {
+                printed.add(s.evidenceId());
+                wordings.put(s.evidenceId(), s.text());
             }
-            rows.add(new Coverage(entry.requirement().term(), entry.requirement().importance(),
-                    entry.level(), entry.resumeUse(),
-                    printed.stream().map(EvidenceMatch::itemId).toList(), note));
         }
-        return rows;
+        ApplicationEvidenceContext context = context(posting, ledger, relevance, printed, wordings);
+        List<Coverage> coverage = new ArrayList<>();
+        if (ledger != null) {
+            for (int i = 0; i < ledger.entries().size(); i++) {
+                CoverageLedger.Entry entry = ledger.entries().get(i);
+                RequirementEvidence row = context.requirements().get(i);
+                List<String> shown = new ArrayList<>();
+                row.claimableIds().stream().filter(printed::contains).forEach(shown::add);
+                row.relatedIds().stream().filter(printed::contains).forEach(shown::add);
+                coverage.add(new Coverage(entry.requirement().term(), entry.requirement().importance(),
+                        entry.level(), entry.resumeUse(), shown, row.note()));
+            }
+        }
+        return new TailoringPlan(mode, planned, ledger, selections, coverage, context);
+    }
+
+    private ApplicationEvidenceContext context(Posting posting, CoverageLedger ledger,
+            Map<String, Relevance> relevance, List<String> printed, Map<String, String> wordings) {
+        Set<String> onResume = new LinkedHashSet<>(printed);
+        List<RequirementEvidence> requirements = new ArrayList<>();
+        if (ledger != null) {
+            for (CoverageLedger.Entry entry : ledger.entries()) {
+                List<EvidenceMatch> matches = bank.evidenceFor(entry);
+                List<String> claimable = matches.stream().filter(EvidenceMatch::supportsClaim)
+                        .map(EvidenceMatch::itemId).toList();
+                List<String> related = matches.stream().filter(m -> !m.supportsClaim())
+                        .map(EvidenceMatch::itemId).toList();
+                List<String> via = entry.level() == ExperienceLevel.ADJACENT
+                        || entry.level() == ExperienceLevel.CONCEPTUAL ? entry.via() : List.of();
+                String term = entry.requirement().term();
+                String display = matches.stream().filter(EvidenceMatch::supportsClaim)
+                        .map(EvidenceMatch::matched).findFirst().orElse(term);
+                requirements.add(new RequirementEvidence(term, display, entry.requirement().importance(),
+                        entry.level(), EvidenceMatcher.isProduct(term), claimable, related, via,
+                        note(entry, matches, onResume)));
+            }
+        }
+
+        List<EvidenceUse> uses = new ArrayList<>();
+        for (EvidenceItem item : bank.items()) {
+            Relevance r = relevance.get(item.id());
+            boolean on = onResume.contains(item.id());
+            if (!on && (r == null || r.hits.isEmpty())) {
+                continue;
+            }
+            List<String> supports = r == null ? List.of() : r.hits.stream()
+                    .filter(h -> h.match().supportsClaim())
+                    .map(h -> h.entry().requirement().term()).distinct().toList();
+            List<String> relatedTo = r == null ? List.of() : r.hits.stream()
+                    .filter(h -> !h.match().supportsClaim())
+                    .map(h -> h.entry().requirement().term()).distinct().toList();
+            uses.add(new EvidenceUse(item, bank.sourceOf(item),
+                    wordings.getOrDefault(item.id(), item.claim()),
+                    r == null ? 0 : round(r.score), on, supports, relatedTo));
+        }
+        List<String> order = new ArrayList<>(printed);
+        uses.sort(Comparator.comparing((EvidenceUse u) -> !u.onResume())
+                .thenComparing(u -> !u.supportsDirectClaim())
+                .thenComparing(Comparator.comparingDouble(EvidenceUse::relevance).reversed())
+                .thenComparingInt(u -> order.contains(u.id()) ? order.indexOf(u.id()) : Integer.MAX_VALUE)
+                .thenComparingInt(u -> bank.orderOf(u.item())));
+        return new ApplicationEvidenceContext(posting.getId(), posting.getTitle(), requirements, uses,
+                printed);
+    }
+
+    private static String note(CoverageLedger.Entry entry, List<EvidenceMatch> matches,
+            Set<String> printed) {
+        List<EvidenceMatch> shown = matches.stream().filter(m -> printed.contains(m.itemId())).toList();
+        if (!shown.isEmpty()) {
+            return shown.stream().anyMatch(EvidenceMatch::supportsClaim)
+                    ? "shown" : "related work shown; " + entry.requirement().term() + " is not claimed";
+        }
+        if (!matches.isEmpty()) {
+            return "evidence exists and was not selected: " + String.join(", ",
+                    matches.stream().map(EvidenceMatch::itemId).toList());
+        }
+        return switch (entry.level()) {
+            case NONE -> "nothing supports this; left out";
+            case TRANSFERABLE -> "only general engineering foundations apply; nothing specific is put forward";
+            case DIRECT -> "no evidence item shows it in use (the ledger found it in the skills list or tags)";
+            default -> "no evidence item carries what it is related to";
+        };
     }
 
     private static double round(double value) {

@@ -106,8 +106,17 @@ public final class EvidenceValidator {
                 problems.add(error(where, "a source needs a kind: employment or project"));
             } else if (source.name() == null || source.name().isBlank()) {
                 problems.add(error(where, "a source needs a name, written as the resume writes it"));
+            } else if (valid.values().stream().anyMatch(other -> other.kind() == source.kind()
+                    && EvidenceText.normalise(other.name()).equals(EvidenceText.normalise(source.name())))) {
+                problems.add(error(where, "another " + source.kind().name().toLowerCase(Locale.ROOT)
+                        + " source is already named '" + source.name() + "'"));
             } else {
-                valid.put(source.id(), source);
+                List<String> stackLine = stackLineErrors(source);
+                if (stackLine.isEmpty()) {
+                    valid.put(source.id(), source);
+                } else {
+                    stackLine.forEach(e -> problems.add(error(where, e)));
+                }
             }
         }
 
@@ -145,12 +154,38 @@ public final class EvidenceValidator {
                 if (variantErrors.isEmpty()) {
                     variants.add(variant);
                 } else {
-                    variantErrors.forEach(e -> problems.add(error(at, e)));
+                    variantErrors.forEach(e -> problems.add(EvidenceProblem.variantError(at, e)));
                 }
             }
             kept.add(withVariants(item, variants));
         }
         return new Result(List.copyOf(valid.values()), List.copyOf(kept), List.copyOf(problems));
+    }
+
+    /**
+     * A printed stack line may say nothing the stack does not, and must show
+     * everything it does. It is presentation of the same evidence, not more of it.
+     */
+    static List<String> stackLineErrors(EvidenceSource source) {
+        if (source.stackLine() == null) {
+            return List.of();
+        }
+        List<String> errors = new ArrayList<>();
+        Set<String> stack = new LinkedHashSet<>();
+        source.stack().forEach(s -> stack.add(EvidenceItem.key(s)));
+        Set<String> named = EvidenceText.technologiesNamed(source.stackLine());
+        for (String term : named) {
+            if (!stack.contains(term)) {
+                errors.add("stack-line names '" + term + "', which is not in the stack");
+            }
+        }
+        for (String entry : source.stack()) {
+            if (!EvidenceText.wholeWord(source.stackLine(), entry)
+                    && !named.contains(EvidenceItem.key(entry))) {
+                errors.add("stack-line does not show '" + entry + "', which the stack lists");
+            }
+        }
+        return errors;
     }
 
     // ------------------------------------------------------------------

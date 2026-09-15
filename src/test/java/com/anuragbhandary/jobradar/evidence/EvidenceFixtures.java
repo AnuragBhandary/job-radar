@@ -49,6 +49,25 @@ public final class EvidenceFixtures {
     public static final String JAVA_FIRST = "Built a Java and Spring Boot job-scheduling backend "
             + "exposing REST APIs for creating and cancelling jobs.";
 
+    /**
+     * The resume as production builds it: {@link #resume()}'s metadata, with every
+     * bullet and project taken from {@link #bank()} and carrying its evidence id.
+     */
+    public static com.anuragbhandary.jobradar.apply.resume.ComposedResume composed() {
+        ResumeModel metadata = resume();
+        List<com.anuragbhandary.jobradar.apply.resume.ResumeProfile.Employment> jobs =
+                metadata.experience().stream()
+                        .map(j -> new com.anuragbhandary.jobradar.apply.resume.ResumeProfile.Employment(
+                                j.company(), j.title(), j.location(), j.period(), j.note(), List.of()))
+                        .toList();
+        return com.anuragbhandary.jobradar.apply.resume.ResumeComposer.compose(
+                new com.anuragbhandary.jobradar.apply.resume.ResumeProfile(metadata.headline(),
+                        metadata.summaries(), metadata.skills(), jobs, List.of(), metadata.education(),
+                        metadata.extras(), metadata.maxProjects(), metadata.maxBulletsPerJob(),
+                        metadata.maxBulletsPerProject()),
+                bank());
+    }
+
     public static ResumeModel resume() {
         return new ResumeModel(
                 "Backend Engineer",

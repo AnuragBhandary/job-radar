@@ -97,6 +97,14 @@ final class EvidenceText {
         return keys;
     }
 
+    /** As {@link #technologiesIn}, without "spring" counted again inside "spring boot". */
+    static Set<String> technologiesNamed(String text) {
+        Set<String> found = technologiesIn(text);
+        Set<String> named = new LinkedHashSet<>(found);
+        named.removeIf(term -> found.stream().anyMatch(other -> other.startsWith(term + " ")));
+        return named;
+    }
+
     /**
      * A product, language, framework, database or cloud service - something a
      * person has or has not used. Architecture words ("event-driven",

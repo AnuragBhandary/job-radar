@@ -122,7 +122,7 @@ class PreparationFixtureTest {
         AnswerProposer proposer = mock(AnswerProposer.class);
         when(proposer.isUsable()).thenReturn(true);
         when(proposer.evidenceFor(any())).thenReturn(List.of());
-        when(proposer.propose(any(), any(), anyString())).thenReturn(Optional.of(
+        when(proposer.propose(any(), any(), anyString(), any())).thenReturn(Optional.of(
                 new ProposedAnswer(ProposedAnswer.Status.PROPOSED, Concepts.WHY_COMPANY.id(),
                         "Your work on process orchestration is the closest thing I have "
                                 + "seen to the replay system I built.",
@@ -131,7 +131,7 @@ class PreparationFixtureTest {
         recorder = new FieldRecorder(fields, sightings, resolver);
         proposals = new ProposalService(fields, proposer, knowledge,
                         new com.anuragbhandary.jobradar.knowledge.AnswerPlan(
-                                resolver, positioner));
+                                resolver, positioner), mock(ApplicationEvidence.class));
         ApplicationContextFactory contexts = new ApplicationContextFactory(
                 boards, profile, RealConfigAccess.countryStrategy());
         actions = new FieldActions(fields, attempts, postings, assertions, knowledge,

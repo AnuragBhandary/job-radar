@@ -3,7 +3,7 @@ package com.anuragbhandary.jobradar;
 import com.anuragbhandary.jobradar.apply.ApplicantProfile;
 import com.anuragbhandary.jobradar.apply.ApplyProperties;
 import com.anuragbhandary.jobradar.apply.llm.LlmProperties;
-import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
+import com.anuragbhandary.jobradar.apply.resume.ResumeProfile;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
 import com.anuragbhandary.jobradar.evidence.EvidenceProperties;
@@ -31,11 +31,13 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @SpringBootApplication
 @EnableConfigurationProperties({
         AppProperties.class,
-        // The applying side. ApplicantProfile and ResumeModel are personal data
+        // The applying side. ApplicantProfile and ResumeProfile are personal data
         // and are imported from ~/.config/job-radar/ rather than living in
-        // application.yml - see the spring.config.import block there.
+        // application.yml - see the spring.config.import block there. The
+        // ResumeModel everything reads is composed from ResumeProfile and the
+        // evidence bank; see ResumeConfig.
         ApplicantProfile.class,
-        ResumeModel.class,
+        ResumeProfile.class,
         ApplyProperties.class,
         LlmProperties.class,
         GmailProperties.class,

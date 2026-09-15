@@ -114,7 +114,7 @@ class FieldActionsTest {
                         boards, profile, RealConfigAccess.countryStrategy()),
                 new ProposalService(fields, proposer, knowledge,
                         new com.anuragbhandary.jobradar.knowledge.AnswerPlan(
-                                resolver, positioner)), answerStore);
+                                resolver, positioner), mock(ApplicationEvidence.class)), answerStore);
 
         attemptId = germanAttempt();
     }
@@ -322,7 +322,7 @@ class FieldActionsTest {
         ApplicationField field = draft("The first draft.");
         Long firstProposal = field.getPendingAssertionId();
 
-        when(proposer.propose(any(), any(), anyString())).thenReturn(Optional.of(
+        when(proposer.propose(any(), any(), anyString(), any())).thenReturn(Optional.of(
                 new ProposedAnswer(ProposedAnswer.Status.PROPOSED, Concepts.WHY_COMPANY.id(),
                         "The second draft.", List.of("R1"), Confidence.MEDIUM, null)));
         actions.regenerate(field.getId(), field.getVersion(), firstProposal);
@@ -394,7 +394,7 @@ class FieldActionsTest {
     void aFailedRegenerationKeepsTheOldDraft() {
         ApplicationField field = draft("The only draft there is.");
         Long proposalId = field.getPendingAssertionId();
-        when(proposer.propose(any(), any(), anyString())).thenReturn(Optional.empty());
+        when(proposer.propose(any(), any(), anyString(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
                 actions.regenerate(field.getId(), field.getVersion(), proposalId))

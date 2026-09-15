@@ -29,6 +29,14 @@ public final class EvidenceMatcher {
     private EvidenceMatcher() {
     }
 
+    /**
+     * A product - language, framework, database, cloud service - as opposed to an
+     * idea. Only an item listing a product may support a claim about it.
+     */
+    public static boolean isProduct(String term) {
+        return EvidenceText.isProductName(EvidenceItem.key(term)) || EvidenceText.isProductName(term);
+    }
+
     /** Added once when the claim states a measured result. Small enough never to cross a kind. */
     static final double METRIC_BONUS = 0.02;
 

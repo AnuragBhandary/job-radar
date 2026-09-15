@@ -1,50 +1,66 @@
 package com.anuragbhandary.jobradar.cli;
 
+import com.anuragbhandary.jobradar.apply.resume.ComposedResume;
+import com.anuragbhandary.jobradar.apply.resume.ProfileMigration;
 import com.anuragbhandary.jobradar.apply.resume.ResumeModel;
 import com.anuragbhandary.jobradar.apply.resume.ResumeRenderer;
 import com.anuragbhandary.jobradar.apply.resume.plan.ResumePipeline;
 import com.anuragbhandary.jobradar.apply.resume.plan.TailoringPlan;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.evidence.EvidenceBank;
+import com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException;
 import com.anuragbhandary.jobradar.evidence.EvidenceItem;
 import com.anuragbhandary.jobradar.evidence.EvidenceMatch;
 import com.anuragbhandary.jobradar.evidence.EvidenceProblem;
+import com.anuragbhandary.jobradar.evidence.EvidenceReadiness;
 import com.anuragbhandary.jobradar.evidence.EvidenceSource;
-import com.anuragbhandary.jobradar.evidence.ResumeConsistency;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
- * {@code evidence} - what the evidence bank holds, whether it can be used, and what
- * it would put on a resume.
+ * {@code evidence} - what the evidence bank holds, whether applications can be
+ * generated from it, and what it would put on a resume.
  *
- * <p>Read-only. Nothing here writes the bank, the database or an application; with
- * {@code --html} it writes one rendered resume where it is told to, and no PDF, so
+ * <p>Read-only except for {@code --migrate-profile}, which removes the duplicate
+ * bullets and projects from applicant.yml once the bank is confirmed to hold them,
+ * keeping a backup. {@code --plan --html} writes one rendered resume and no PDF, so
  * no browser is started.
  */
 @Component
 public class EvidenceCommand {
 
+    /** How application.yml imports the profile; resolved the same way here. */
+    static final String PROFILE = "${JOB_RADAR_PROFILE:${user.home}/.config/job-radar/applicant.yml}";
+
     private final EvidenceBank bank;
-    private final ResumeModel resume;
+    private final ComposedResume composed;
+    private final EvidenceReadiness readiness;
     private final PostingRepository postings;
     private final ResumePipeline pipeline;
     private final ResumeRenderer renderer;
+    private final ResumeModel resume;
+    private final Environment environment;
 
-    public EvidenceCommand(EvidenceBank bank, ResumeModel resume, PostingRepository postings,
-            ResumePipeline pipeline, ResumeRenderer renderer) {
+    public EvidenceCommand(EvidenceBank bank, ComposedResume composed, EvidenceReadiness readiness,
+            PostingRepository postings, ResumePipeline pipeline, ResumeRenderer renderer,
+            ResumeModel resume, Environment environment) {
         this.bank = bank;
-        this.resume = resume;
+        this.composed = composed;
+        this.readiness = readiness;
         this.postings = postings;
         this.pipeline = pipeline;
         this.renderer = renderer;
+        this.resume = resume;
+        this.environment = environment;
     }
 
     public void run(Map<String, String> options) {
@@ -65,6 +81,9 @@ public class EvidenceCommand {
                 return "No posting " + id + "\n";
             }
             return plan(posting.get(), options.get("html"));
+        }
+        if (options.containsKey("migrate-profile")) {
+            return migrate("dry".equals(options.get("migrate-profile")));
         }
         if (options.containsKey("check")) {
             return check();
@@ -87,10 +106,10 @@ public class EvidenceCommand {
                     bank.itemsFrom(source.id()).size()));
         }
         long errors = bank.problems().stream().filter(EvidenceProblem::isError).count();
-        ResumeConsistency consistency = ResumeConsistency.check(bank, resume);
-        sb.append(String.format(Locale.ROOT, "  %d problem(s) in the file (%d error(s))%n",
-                bank.problems().size(), errors));
-        sb.append("  ").append(verdict(consistency)).append('\n');
+        sb.append(String.format(Locale.ROOT, "  %d problem(s) in the file (%d error(s)); "
+                + "%d joining it to applicant.yml%n", bank.problems().size(), errors,
+                composed.problems().size()));
+        sb.append("  ").append(verdict()).append('\n');
         sb.append("Run `evidence --check` for every problem.\n");
         return sb.toString();
     }
@@ -103,25 +122,23 @@ public class EvidenceCommand {
             sb.append("  The file:\n");
             bank.problems().forEach(p -> sb.append("    ").append(p).append('\n'));
         }
-        ResumeConsistency consistency = ResumeConsistency.check(bank, resume);
-        if (consistency.problems().isEmpty()) {
-            sb.append("  Against the resume: consistent.\n");
+        if (composed.problems().isEmpty()) {
+            sb.append("  Joined to applicant.yml: no problems.\n");
         } else {
-            sb.append("  Against the resume:\n");
-            consistency.problems().forEach(p -> sb.append("    ").append(p).append('\n'));
+            sb.append("  Joined to applicant.yml:\n");
+            composed.problems().forEach(p -> sb.append("    ").append(p).append('\n'));
         }
-        sb.append("  ").append(verdict(consistency)).append('\n');
+        sb.append("  ").append(verdict()).append('\n');
         return sb.toString();
     }
 
-    private String verdict(ResumeConsistency consistency) {
-        if (bank.isEmpty()) {
-            return "Resumes are tailored as before: there is no usable evidence.";
+    private String verdict() {
+        List<String> blockers = readiness.blockers();
+        if (blockers.isEmpty()) {
+            return "Applications are generated from the bank.";
         }
-        if (!consistency.consistent()) {
-            return "Resumes are tailored as before: the bank does not match the resume.";
-        }
-        return "Resumes are planned from the bank.";
+        return "Applications will not be generated until this is fixed: " + blockers.getFirst()
+                + (blockers.size() > 1 ? " (+" + (blockers.size() - 1) + " more)" : "");
     }
 
     String strongest(String requirement, int limit) {
@@ -147,8 +164,13 @@ public class EvidenceCommand {
     }
 
     String plan(Posting posting, String html) {
-        TailoringPlan plan = pipeline.tailor(posting);
         StringBuilder sb = new StringBuilder("Posting " + posting.getId() + ": " + posting.getTitle() + "\n");
+        TailoringPlan plan;
+        try {
+            plan = pipeline.tailor(posting);
+        } catch (EvidenceIntegrityException e) {
+            return sb.append("Nothing generated. ").append(e.getMessage()).append('\n').toString();
+        }
         sb.append(plan.explain());
         if (html != null) {
             Path out = "true".equals(html)
@@ -163,6 +185,54 @@ public class EvidenceCommand {
             } catch (IOException e) {
                 sb.append("Could not write the resume: ").append(e.getMessage()).append('\n');
             }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Removes the duplicate bullets and projects from applicant.yml, keeping a backup.
+     * Refuses, and writes nothing, unless the bank holds every one of them.
+     */
+    String migrate(boolean dry) {
+        Path file = Path.of(environment.resolvePlaceholders(PROFILE));
+        if (!Files.isRegularFile(file)) {
+            return "No applicant.yml at " + file + " - nothing to migrate.\n";
+        }
+        if (bank.isEmpty()) {
+            return "The evidence bank is unavailable, so nothing in applicant.yml can be confirmed "
+                    + "as held by it. Fix the bank first (`evidence --check`).\n";
+        }
+        String text;
+        try {
+            text = Files.readString(file);
+        } catch (IOException e) {
+            return "Could not read " + file + ": " + e.getMessage() + "\n";
+        }
+        ProfileMigration.Result result = ProfileMigration.migrate(text, bank);
+        StringBuilder sb = new StringBuilder("applicant.yml: " + file + "\n");
+        if (!result.ok()) {
+            sb.append("  Not migrated, nothing written:\n");
+            result.problems().forEach(p -> sb.append("    ").append(p).append('\n'));
+            return sb.toString();
+        }
+        if (!result.changed()) {
+            return sb.append("  Already migrated: it holds no resume bullets and no projects.\n").toString();
+        }
+        sb.append(dry ? "  Would remove (the evidence bank holds every one):\n"
+                : "  Removed (the evidence bank holds every one):\n");
+        result.removed().forEach(r -> sb.append("    ").append(r).append('\n'));
+        if (dry) {
+            return sb.append("  Dry run - nothing written. Run `evidence --migrate-profile` to apply.\n")
+                    .toString();
+        }
+        try {
+            Path backup = file.resolveSibling(file.getFileName() + ".pre-evidence-bank.bak");
+            Files.copy(file, backup, StandardCopyOption.REPLACE_EXISTING);
+            Files.writeString(file, result.text());
+            sb.append("  Backup: ").append(backup).append('\n')
+                    .append("  Every other key and comment is unchanged. The next run reads the new file.\n");
+        } catch (IOException e) {
+            sb.append("  Could not write it: ").append(e.getMessage()).append('\n');
         }
         return sb.toString();
     }
