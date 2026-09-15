@@ -1,70 +1,57 @@
 package com.anuragbhandary.jobradar.apply.resume.plan;
 
-import com.anuragbhandary.jobradar.apply.resume.ResumeTailor;
 import com.anuragbhandary.jobradar.apply.resume.analysis.CoverageAnalyzer;
 import com.anuragbhandary.jobradar.apply.resume.analysis.CoverageLedger;
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException;
 import com.anuragbhandary.jobradar.evidence.EvidenceProperties;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.anuragbhandary.jobradar.evidence.EvidenceReadiness;
 import org.springframework.stereotype.Component;
 
 /**
- * The resume for a posting, as applications use it.
+ * The resume, and the evidence context, for a posting - as applications use them.
  *
  * <pre>
- *   posting ─▶ PostingRequirements (deterministic) ─▶ CoverageAnalyzer ─▶ ledger
- *           ─▶ TailoringPlanner ─▶ evidence-selected resume, verified
+ *   EvidenceReadiness ─▶ PostingRequirements (deterministic) ─▶ CoverageAnalyzer
+ *     ─▶ ledger ─▶ TailoringPlanner ─▶ verified resume + ApplicationEvidenceContext
  * </pre>
  *
- * <p>No language model anywhere on this path. Requirements are read by the
- * deterministic reader, the ledger by the positioner, the plan by selection. The
- * model-rewrite experiment ({@code bench-rewrite}) is not reachable from here.
+ * <p>No language model anywhere on this path. The model-rewrite experiment
+ * ({@code bench-rewrite}) is not reachable from here, and a test fails the build if
+ * that changes.
  *
- * <p>Fails safe, in three ways. With {@code job-radar.evidence.tailoring} off the
- * ledger is not even built. When the ledger or the planner throws, the posting gets
- * the resume it would have got before the bank existed and the reason is logged.
- * And the planner itself steps aside when the bank is missing or out of step with
- * the resume.
+ * <p><b>Fails closed.</b> A missing, refused or invalid evidence bank, bullets still
+ * in applicant.yml, or a plan that fails verification throws
+ * {@link EvidenceIntegrityException}. Nothing falls back to another copy of the
+ * applicant's claims, because there is none. {@code job-radar.evidence.tailoring=false}
+ * changes only how the canonical claims are selected (tag matching instead of the
+ * ledger), never where they come from.
  */
 @Component
 public class ResumePipeline {
 
-    private static final Logger log = LoggerFactory.getLogger(ResumePipeline.class);
-
-    private final ResumeTailor tailor;
     private final CoverageAnalyzer analyzer;
     private final TailoringPlanner planner;
     private final EvidenceProperties properties;
+    private final EvidenceReadiness readiness;
 
-    public ResumePipeline(ResumeTailor tailor, CoverageAnalyzer analyzer, TailoringPlanner planner,
-            EvidenceProperties properties) {
-        this.tailor = tailor;
+    public ResumePipeline(CoverageAnalyzer analyzer, TailoringPlanner planner,
+            EvidenceProperties properties, EvidenceReadiness readiness) {
         this.analyzer = analyzer;
         this.planner = planner;
         this.properties = properties;
+        this.readiness = readiness;
     }
 
+    /**
+     * @throws EvidenceIntegrityException when the evidence cannot be trusted to
+     *                                    generate from
+     */
     public TailoringPlan tailor(Posting posting) {
-        if (!properties.tailoringEnabled()) {
-            return TailoringPlan.legacy(tailor.tailor(posting), null,
-                    List.of("evidence tailoring is switched off (job-radar.evidence.tailoring)"));
-        }
-        CoverageLedger ledger;
-        try {
-            ledger = analyzer.analyse(posting);
-        } catch (RuntimeException e) {
-            log.warn("Coverage ledger failed for posting {}: {}", posting.getId(), e.toString());
-            return TailoringPlan.legacy(tailor.tailor(posting), null,
-                    List.of("the coverage ledger failed: " + e.getMessage()));
-        }
-        try {
-            return planner.plan(posting, ledger);
-        } catch (RuntimeException e) {
-            log.warn("Evidence planner failed for posting {}: {}", posting.getId(), e.toString());
-            return TailoringPlan.legacy(tailor.tailor(posting), ledger,
-                    List.of("the evidence planner failed: " + e.getMessage()));
-        }
+        readiness.requireReady();
+        CoverageLedger ledger = analyzer.analyse(posting);
+        return properties.tailoringEnabled()
+                ? planner.plan(posting, ledger)
+                : planner.simple(posting, ledger);
     }
 }

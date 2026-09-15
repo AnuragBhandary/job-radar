@@ -26,6 +26,12 @@ public record Evidence(Kind kind, String ref, String excerpt) {
         PROFILE_FIELD,
         /** A bullet, project or skill from the resume. */
         RESUME_ITEM,
+        /**
+         * An evidence-bank item, by its stable id. What a career answer or a cover
+         * letter was grounded on; the id still resolves after the resume is
+         * re-tailored, which a copied sentence cannot.
+         */
+        EVIDENCE_ITEM,
         /** Something the posting itself says. */
         POSTING_FIELD,
         /** Part of the application context: country, work mode, employer. */
@@ -44,6 +50,10 @@ public record Evidence(Kind kind, String ref, String excerpt) {
 
     public static Evidence resume(String ref, String excerpt) {
         return new Evidence(Kind.RESUME_ITEM, ref, excerpt);
+    }
+
+    public static Evidence evidenceItem(String evidenceId, String excerpt) {
+        return new Evidence(Kind.EVIDENCE_ITEM, evidenceId, excerpt);
     }
 
     public static Evidence context(String ref, String excerpt) {

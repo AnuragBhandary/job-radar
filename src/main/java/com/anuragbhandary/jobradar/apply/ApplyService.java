@@ -60,15 +60,16 @@ public class ApplyService {
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
 
     /**
-     * The resume for a posting: selected from the evidence bank, or tailored as
-     * before when there is no bank, it does not match the resume, or it is
-     * switched off. Either way, selection only - nothing here writes a sentence.
+     * The resume for a posting, selected from the evidence bank. Fails closed:
+     * with no usable bank there is no resume, rather than one from another copy
+     * of the claims. Selection only - nothing here writes a sentence.
      */
     private final ResumePipeline resumes;
     private final ResumeRenderer renderer;
     private final ResumeModel resume;
     private final PdfWriter pdf;
     private final CoverLetterWriter letters;
+    private final ApplicationEvidence evidence;
     private final FormReader reader;
     private final FormFiller filler;
     private final Submitter submitter;
@@ -91,7 +92,8 @@ public class ApplyService {
 
     public ApplyService(
             ResumePipeline resumes, ResumeRenderer renderer, ResumeModel resume, PdfWriter pdf,
-            CoverLetterWriter letters, FormReader reader, FormFiller filler, Submitter submitter,
+            CoverLetterWriter letters, ApplicationEvidence evidence,
+            FormReader reader, FormFiller filler, Submitter submitter,
             SheetsClient sheets, BoardTokenRepository boards,
             ApplicationAttemptRepository attempts, ApplyProperties config,
             ApplicantProfile profile,
@@ -103,6 +105,7 @@ public class ApplyService {
         this.resume = resume;
         this.pdf = pdf;
         this.letters = letters;
+        this.evidence = evidence;
         this.reader = reader;
         this.filler = filler;
         this.submitter = submitter;
@@ -236,6 +239,7 @@ public class ApplyService {
                 attempt.setResumePath(resumePdf.toString());
                 attempt.setTailoringNote(plan.note());
                 attempt.setSummaryId(tailored.summary().id());
+                attempt.setResumeEvidenceIds(plan.resumeEvidenceIds());
                 log.info("Resume: {}", plan.note());
             } else {
                 log.info("Reusing the resume already rendered for attempt {}", attempt.getId());
@@ -276,12 +280,17 @@ public class ApplyService {
                                 && !attempt.getCoverLetter().isBlank()
                         ? attempt.getCoverLetter()
                         : letterBox
-                                // Tailored again only here, and only when a form
-                                // reveals a letter box that the earlier run did
-                                // not have one for. The writer needs the resume
-                                // model, not the note on the row.
+                                // Grounded on the evidence the PDF was printed
+                                // with, rebuilt from the ids on the row rather
+                                // than re-planned, so the letter cannot rest on a
+                                // different selection from the resume beside it.
                                 .flatMap(box -> letters.write(posting, company,
-                                        resumes.tailor(posting).resume(), 0))
+                                        evidence.forResume(posting,
+                                                attempt.getResumeEvidenceIds()), 0))
+                                .map(written -> {
+                                    attempt.setLetterEvidenceIds(written.evidenceIds());
+                                    return written.text();
+                                })
                                 .orElse(null);
                 if (letterBox.isEmpty() && letter == null) {
                     log.info("No cover letter text box on this form - none written");
@@ -471,6 +480,7 @@ public class ApplyService {
         attempt.setResumePath(resumePdf.toString());
         attempt.setTailoringNote(plan.note());
         attempt.setSummaryId(tailored.summary().id());
+        attempt.setResumeEvidenceIds(plan.resumeEvidenceIds());
         attempt.setBlockerReason("resume-only run - no form was opened");
         attempt.setStage(PreparationStage.FINISHED, "resume rendered, no form opened");
         attempt.setFinishedAt(Instant.now());

@@ -347,45 +347,53 @@ class TailoringPlannerTest {
         }
     }
 
-    // ---- Stepping aside ------------------------------------------------------------
+    // ---- Failing closed -------------------------------------------------------------
 
-    @Test
-    @DisplayName("a bank out of step with the resume is not used, and the resume is the old one exactly")
-    void driftFallsBack() {
-        EvidenceBank drifted = EvidenceFixtures.bank(EvidenceFixtures.BANK_YAML.replace(
-                EvidenceFixtures.RUNBOOKS, "Wrote runbooks."));
-        TailoringPlan plan = new TailoringPlanner(RESUME, TAILOR, drifted)
-                .plan(NEUTRAL, ledger(req("Kafka", RequirementImportance.REQUIRED)));
-
-        assertThat(plan.mode()).isEqualTo(TailoringPlan.Mode.LEGACY);
-        assertThat(plan.resume()).isEqualTo(TAILOR.tailor(NEUTRAL));
-        assertThat(plan.reasons()).anySatisfy(r -> assertThat(r).contains("does not match the resume"))
-                .anySatisfy(r -> assertThat(r).contains("Wrote runbooks for the on-call rotation."));
-        assertThat(plan.note()).contains("tailored without the evidence bank");
+    private static com.anuragbhandary.jobradar.evidence.EvidenceReadiness readiness(EvidenceBank bank) {
+        return new com.anuragbhandary.jobradar.evidence.EvidenceReadiness(bank,
+                new com.anuragbhandary.jobradar.apply.resume.ComposedResume(RESUME, List.of()));
     }
 
     @Test
-    @DisplayName("no bank at all is the old resume, with the reason")
-    void noBank() {
-        TailoringPlan plan = new TailoringPlanner(RESUME, TAILOR, EvidenceBank.empty("none", List.of()))
-                .plan(NEUTRAL, ledger(req("Kafka", RequirementImportance.REQUIRED)));
-
-        assertThat(plan.mode()).isEqualTo(TailoringPlan.Mode.LEGACY);
-        assertThat(plan.resume()).isEqualTo(TAILOR.tailor(NEUTRAL));
-        assertThat(plan.reasons()).singleElement().asString().contains("no evidence bank");
+    @DisplayName("bullets that are not evidence-bank claims are refused, never printed")
+    void unbackedBulletsFailClosed() {
+        // The hand-written fixture resume carries no evidence ids: exactly what an
+        // applicant.yml from before the bank looks like. Tag selection would print
+        // its sentences as they stand, so verification has to refuse them.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> PLANNER.simple(NEUTRAL,
+                        ledger(req("Kafka", RequirementImportance.REQUIRED))))
+                .isInstanceOf(com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException.class)
+                .hasMessageContaining("failed verification")
+                .hasMessageContaining("is not an approved wording");
     }
 
     @Test
-    @DisplayName("switched off, the pipeline does not even build a ledger")
+    @DisplayName("no bank at all generates nothing, and says why")
+    void noBankFailsClosed() {
+        EvidenceBank none = EvidenceBank.empty("none", List.of());
+        ResumePipeline pipeline = new ResumePipeline(ANALYZER, new TailoringPlanner(RESUME, TAILOR, none),
+                new EvidenceProperties(null, true), readiness(none));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pipeline.tailor(NEUTRAL))
+                .isInstanceOf(com.anuragbhandary.jobradar.evidence.EvidenceIntegrityException.class)
+                .hasMessageContaining("Evidence Bank unavailable");
+    }
+
+    @Test
+    @DisplayName("switched off, selection falls back to tags - over the same bank claims")
     void killSwitch() {
-        ResumePipeline off = new ResumePipeline(TAILOR, ANALYZER, PLANNER, new EvidenceProperties(null, false));
-        ResumePipeline on = new ResumePipeline(TAILOR, ANALYZER, PLANNER, new EvidenceProperties(null, true));
+        ResumeModel composed = EvidenceFixtures.composed().resume();
+        TailoringPlanner planner = new TailoringPlanner(composed, new ResumeTailor(composed), BANK);
+        ResumePipeline off = new ResumePipeline(ANALYZER, planner,
+                new EvidenceProperties(null, false), readiness(BANK));
+        ResumePipeline on = new ResumePipeline(ANALYZER, planner,
+                new EvidenceProperties(null, true), readiness(BANK));
 
-        TailoringPlan legacy = off.tailor(NEUTRAL);
+        TailoringPlan simple = off.tailor(NEUTRAL);
 
-        assertThat(legacy.mode()).isEqualTo(TailoringPlan.Mode.LEGACY);
-        assertThat(legacy.ledger()).isNull();
-        assertThat(legacy.reasons()).singleElement().asString().contains("switched off");
+        assertThat(simple.mode()).isEqualTo(TailoringPlan.Mode.SIMPLE);
+        assertThat(simple.resumeEvidenceIds()).isNotEmpty()
+                .allSatisfy(id -> assertThat(BANK.find(id)).isPresent());
         assertThat(on.tailor(NEUTRAL).mode()).isEqualTo(TailoringPlan.Mode.EVIDENCE);
     }
 }

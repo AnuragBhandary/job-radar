@@ -2,16 +2,22 @@ package com.anuragbhandary.jobradar.apply.resume;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
  * The resume as data rather than as a PDF.
  *
- * <p>Everything downstream depends on this being the only source of claims. The
- * tailor reorders these items and the renderer prints them; neither invents a
- * sentence, and the language model that writes the cover letter is given this
- * object and told it may use nothing else.
+ * <p>Not bound from configuration. {@link ResumeComposer} builds it at startup from
+ * {@link ResumeProfile} (applicant.yml: headline, summaries, skills, job titles and
+ * dates, education) and the evidence bank (every bullet, every project, each
+ * project's stack line). Every bullet is an evidence-bank claim and carries its
+ * evidence id, so the tailor, the planner, the coverage ledger and the experience
+ * index all read the same canonical claims and nothing else.
+ *
+ * <p>Cover letters and application answers do not read this: they are given an
+ * {@link com.anuragbhandary.jobradar.evidence.ApplicationEvidenceContext}, which
+ * says which evidence supports which requirement rather than what happens to be
+ * printed.
  *
  * <p>That constraint is not stylistic. Any resume may be checked, and a resume
  * containing an embellishment its owner did not write turns a verification
@@ -23,7 +29,6 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  *                   Tuning lives in config because the right weighting is found
  *                   by looking at rendered output, not by reasoning about it.
  */
-@ConfigurationProperties(prefix = "job-radar.resume")
 public record ResumeModel(
         String headline,
         List<Summary> summaries,
