@@ -18,6 +18,38 @@ class YearsExtractorTest {
 
     private final YearsExtractor extractor = new YearsExtractor();
 
+    @Nested
+    @DisplayName("years stated in the title")
+    class TitleCases {
+
+        @ParameterizedTest(name = "{0} -> {1}")
+        @CsvSource(delimiter = '|', value = {
+                "Site Reliability Engineer - AWS (4 to 8 Years) | 4",
+                "Backend Engineer (5+ years)                    | 5",
+                "Data Engineer, 3-5 yrs                         | 3",
+                "Software Engineer (0-2 Years)                  | 0",
+        })
+        @DisplayName("a plural or range form is a requirement")
+        void readsStatedYears(String title, int expected) {
+            assertThat(extractor.extractFromTitle(title).minYears()).isEqualTo(expected);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "Software Engineer, 2 Year Rotational Programme",
+                "Graduate Engineer - 2 Years Rotational Program",
+                "Engineer, 3 years fixed-term",
+                "Software Engineer (12 month contract)",
+                "SDE I",
+        })
+        @DisplayName("a duration is not a requirement")
+        void ignoresDurations(String title) {
+            // A false positive in a title rejects a whole role, so the singular
+            // form and anything followed by a programme word are never read.
+            assertThat(extractor.extractFromTitle(title).isNoneStated()).isTrue();
+        }
+    }
+
     private int minYears(String text) {
         return extractor.extract(text).minYears();
     }

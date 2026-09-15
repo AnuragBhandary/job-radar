@@ -50,6 +50,26 @@ class ScreeningServiceTest {
     }
 
     @Test
+    @DisplayName("years stated only in the title still reject, and the reason says where")
+    void yearsInTheTitleReject() {
+        // PhonePe's real title; its description never repeats the number.
+        Posting p = posting("Site Reliability Engineer - AWS (4 to 8 Years)", "Bengaluru, India",
+                "Run our AWS estate. Strong Linux fundamentals.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getRejectReason()).startsWith("4 years required").contains("in the title");
+    }
+
+    @Test
+    @DisplayName("a graduate programme's length in the title is not a requirement")
+    void programmeDurationInTheTitleIsEligible() {
+        Posting p = posting("Software Engineer, 2 Year Rotational Programme", "Dublin, Ireland",
+                "For recent graduates. 0-1 years of experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+    }
+
+    @Test
     @DisplayName("geography is checked before title and years")
     void geographyRejectsFirst() {
         // A senior role in Argentina could be rejected three ways. The geography

@@ -27,6 +27,10 @@ import java.util.Map;
  *                         quietly shrinks is one you stop trusting.
  * @param duplicatesCollapsed how many repeat listings of a role already shown
  *                         were folded away. Counted for the same reason.
+ * @param startHere        the day's strongest few, across all three lists, ranked
+ *                         by match score. The one thing to read if nothing else is.
+ * @param staleSetAside    requisitions open long enough to be stale, taken out of
+ *                         the lists above and counted. Still stored, still on /jobs.
  */
 public record Digest(
         LocalDate date,
@@ -38,7 +42,23 @@ public record Digest(
         List<BoardToken> boards,
         boolean salaryFloorsNeedReverification,
         int suppressedAlreadyApplied,
-        int duplicatesCollapsed) {
+        int duplicatesCollapsed,
+        List<Pick> startHere,
+        int staleSetAside) {
+
+    /** One ranked posting, with the score that put it there. */
+    public record Pick(Posting posting, int score, String band) {
+    }
+
+    /** A digest with no ranking and nothing set aside. */
+    public Digest(LocalDate date, List<Posting> newCandidates, List<Posting> needsHumanReview,
+            List<Posting> updated, List<Posting> closed, Map<String, Long> rejections,
+            List<BoardToken> boards, boolean salaryFloorsNeedReverification,
+            int suppressedAlreadyApplied, int duplicatesCollapsed) {
+        this(date, newCandidates, needsHumanReview, updated, closed, rejections, boards,
+                salaryFloorsNeedReverification, suppressedAlreadyApplied, duplicatesCollapsed,
+                List.of(), 0);
+    }
 
     /** True when there is nothing to report but board health. */
     public boolean isQuiet() {

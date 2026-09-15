@@ -87,7 +87,11 @@ public class TitleFilter {
         if (title == null || title.isBlank()) {
             return FilterVerdict.reject("no title");
         }
-        String normalised = GENDER_TAG.matcher(title.toLowerCase(Locale.ROOT))
+        // Underscores become spaces first. Bosch India prefixes titles with codes
+        // like "IN_RBIN_Senior Engineer_Lab engineer", and "_" is a word character,
+        // so no \b boundary exists before "Senior" and every exclusion missed.
+        String normalised = GENDER_TAG.matcher(
+                        title.toLowerCase(Locale.ROOT).replace('_', ' '))
                 .replaceAll(" ");
 
         String excluded = firstMatch(normalised, screening.titleExclude());
