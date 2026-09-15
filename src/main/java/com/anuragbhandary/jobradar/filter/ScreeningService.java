@@ -179,6 +179,15 @@ public class ScreeningService {
         posting.setSalaryText(signalExtractor.salary(posting.getDescriptionText()));
 
         YearsExtraction years = yearsExtractor.extract(posting.getDescriptionText());
+        // A title can state the bar the description never does ("(4 to 8 Years)").
+        // The stricter of the two wins: a posting is not more junior for having
+        // left the number out of its body text.
+        YearsExtraction inTitle = yearsExtractor.extractFromTitle(posting.getTitle());
+        if (!inTitle.isNoneStated()
+                && (years.isNoneStated() || inTitle.minYears() > years.minYears())) {
+            years = new YearsExtraction(inTitle.minYears(), "in the title: " + inTitle.evidence(),
+                    years.nonInternship());
+        }
         posting.setMinYears(years.minYears());
 
         if (years.hasNonInternshipRequirement()) {

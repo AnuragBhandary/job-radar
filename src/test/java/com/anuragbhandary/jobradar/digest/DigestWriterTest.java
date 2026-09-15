@@ -208,4 +208,33 @@ class DigestWriterTest {
 
         assertThat(out).contains("6 repeat listing(s) folded");
     }
+
+    @Test
+    @DisplayName("'Start here' ranks the strongest roles above every dated list")
+    void rendersStartHereFirst() {
+        Posting best = candidate("stripe", "Software Engineer, New Grad", "Dublin",
+                Country.IRELAND, 0, true);
+        String out = writer.render(new Digest(TODAY, List.of(best), List.of(), List.of(), List.of(),
+                Map.of(), List.of(), false, 0, 0, List.of(new Digest.Pick(best, 82, "strong")), 0));
+
+        assertThat(out).contains("## Start here")
+                .contains("1. **stripe** — Software Engineer, New Grad — Dublin — 82/100 strong");
+        assertThat(out.indexOf("## Start here")).isLessThan(out.indexOf("## New candidates"));
+    }
+
+    @Test
+    @DisplayName("no ranking means no empty 'Start here' heading")
+    void omitsEmptyStartHere() {
+        String out = writer.render(digest(List.of(), List.of(), Map.of(), false));
+        assertThat(out).doesNotContain("Start here");
+    }
+
+    @Test
+    @DisplayName("stale requisitions set aside are counted, not silently dropped")
+    void countsStaleSetAside() {
+        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
+                Map.of(), List.of(), false, 0, 0, List.of(), 7));
+
+        assertThat(out).contains("7 stale requisition(s) set aside");
+    }
 }

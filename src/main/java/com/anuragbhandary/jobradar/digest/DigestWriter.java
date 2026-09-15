@@ -78,6 +78,24 @@ public class DigestWriter {
                     .append("> review date has passed. Check them at source before relying on them.\n");
         }
 
+        if (!digest.startHere().isEmpty()) {
+            // The one section that is ranked rather than dated. Everything below
+            // it is still there; this is what to open first on a busy morning.
+            out.append("\n## Start here\n\n");
+            int rank = 1;
+            for (Digest.Pick pick : digest.startHere()) {
+                Posting p = pick.posting();
+                out.append(rank++).append(". **").append(company(p, labels)).append("** — ")
+                        .append(p.getTitle()).append(" — ")
+                        .append(p.getLocation() == null ? "?" : p.getLocation())
+                        .append(" — ").append(pick.score()).append("/100 ").append(pick.band())
+                        .append('\n');
+                if (p.getUrl() != null) {
+                    out.append("   ").append(p.getUrl()).append('\n');
+                }
+            }
+        }
+
         section(out, "New candidates", digest.newCandidates(), labels, digest.date());
         section(out, "Updated postings", digest.updated(), labels, digest.date());
         section(out, "Needs human review — no years stated", digest.needsHumanReview(), labels, digest.date());
@@ -105,6 +123,14 @@ public class DigestWriter {
             out.append("\n_")
                     .append(digest.duplicatesCollapsed())
                     .append(" repeat listing(s) folded into a role already shown above._\n");
+        }
+
+        if (digest.staleSetAside() > 0) {
+            // Counted, not dropped, for the same reason as the two above. An old
+            // requisition at a company worth applying to is still on /jobs.
+            out.append("\n_")
+                    .append(digest.staleSetAside())
+                    .append(" stale requisition(s) set aside — still on /jobs under the freshness filter._\n");
         }
 
         out.append("\n## Board health\n");

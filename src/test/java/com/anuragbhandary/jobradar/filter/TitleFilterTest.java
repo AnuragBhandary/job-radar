@@ -182,4 +182,63 @@ class TitleFilterTest {
         assertThat(filter.screen(title).accepted()).isFalse();
     }
 
+    // ---- From the 2026-09-15 digest. Every title below is real. ----------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Pflichtpraktikum Software Development für datenbasierte Anwendungen im industriellen Umfeld",
+            "Pflichtpraktikum im Bereich Softwareentwicklung (Full-Stack)",
+            "Internship in Software Testing - Bosch eBike Systems",
+            "PreMaster Programm – Full Stack Entwicklung im Bereich Business Excellence",
+            "Masterarbeit Software Engineering",
+            "Thesis: Machine Learning for Predictive Maintenance",
+    })
+    @DisplayName("student-only programmes are rejected, though their token sits inside a longer word")
+    void rejectsStudentOnlyProgrammes(String title) {
+        // "praktikum" and "intern" were already excluded, as whole words, so
+        // neither ever fired inside "Pflichtpraktikum" or "Internship".
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Lab Engineer FMR",
+            "Process Engineer",
+            "Maintenance Engineer CMP (w/m/div.)",
+            "Product Stability Test Engineer",
+            "IN_RBIC_PLC & Industry automation engineer",
+            "Werkvoorbereider / Detail Engineer",
+            "Junior Project Engineer Services",
+            "Network Development Engineer, Corporate Network Engineering - Core",
+            "Mid level - Fullstack Engineer",
+            "Software Leader-DXR",
+    })
+    @DisplayName("plant and manufacturing 'engineer' titles are a different discipline")
+    void rejectsPlantEngineering(String title) {
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "IN_RBIN_Senior Engineer_Lab engineer FMR_PS/QMM-NaP",
+            "IN_RBAI_Senior Engineer/Asst. Manager_Complaint Management_IN",
+    })
+    @DisplayName("an underscore is a separator, so a coded title's seniority is still seen")
+    void underscoresSeparateWords(String title) {
+        assertThat(filter.screen(title).reason()).contains("senior");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "SAP Test Automation Engineer",
+            "SW developer :Java",
+            "Site Reliability Engineer",
+            "Software Engineer - Java (x/f/m)",
+            "Trading Tools Software Engineer",
+            "Backend Engineer - Payments",
+    })
+    @DisplayName("software titles next to the new exclusions are still accepted")
+    void newExclusionsAreNotGreedy(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
 }

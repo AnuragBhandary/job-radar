@@ -1,5 +1,6 @@
 package com.anuragbhandary.jobradar.filter;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -123,6 +124,45 @@ public class YearsExtractor {
      * required lines run to 96 characters before "Preferred:" arrives.
      */
     private static final int MIN_REQUIRED_LENGTH = 30;
+
+    /** A programme or contract word straight after a number: a duration, not a bar. */
+    private static final Pattern DURATION_AFTER = Pattern.compile(
+            "^\\W{0,3}(?:program|programme|rotation|rotational|contract|fixed|term)",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * A years requirement stated in the title, as in PhonePe's "Site Reliability
+     * Engineer - AWS (4 to 8 Years)", whose description never repeats it.
+     *
+     * <p>Narrower than {@link #extract}, because a false positive here rejects a
+     * whole role on thirty characters of evidence. Only a plural or range form
+     * counts: a singular "2 Year" in a title is a duration ("Software Engineer,
+     * 2 Year Rotational Programme"), and a number followed by a programme or
+     * contract word is never read as a requirement.
+     */
+    public YearsExtraction extractFromTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return YearsExtraction.none();
+        }
+        int min = YearsExtraction.NONE_STATED;
+        Matcher m = YEARS.matcher(title);
+        while (m.find()) {
+            String unit = m.group(2).toLowerCase(Locale.ROOT);
+            if (unit.equals("year") || unit.equals("yr")) {
+                continue;
+            }
+            String after = title.substring(m.end(), Math.min(title.length(), m.end() + 20));
+            if (DURATION_AFTER.matcher(after).find()) {
+                continue;
+            }
+            int years = Integer.parseInt(m.group(1));
+            if (years < IMPLAUSIBLE_YEARS && (min == YearsExtraction.NONE_STATED || years < min)) {
+                min = years;
+            }
+        }
+        return min == YearsExtraction.NONE_STATED ? YearsExtraction.none()
+                : new YearsExtraction(min, title.replaceAll("\\s+", " ").strip(), null);
+    }
 
     public YearsExtraction extract(String description) {
         if (description == null || description.isBlank()) {

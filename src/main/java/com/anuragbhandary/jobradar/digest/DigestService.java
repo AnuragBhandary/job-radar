@@ -5,11 +5,15 @@ import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Verdict;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.filter.ScreeningService;
+import com.anuragbhandary.jobradar.match.MatchProperties;
+import com.anuragbhandary.jobradar.match.MatchScore;
+import com.anuragbhandary.jobradar.match.MatchScorer;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.anuragbhandary.jobradar.sheets.SheetsClient;
 import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,16 +51,25 @@ public class DigestService {
     private final BoardTokenRepository boards;
     private final SheetsClient sheets;
     private final AppProperties.SalaryFloors floors;
+    private final MatchScorer scorer;
+    private final MatchProperties match;
+
+    /** How many ranked rows open the digest. A shortlist, not a second copy of the lists. */
+    static final int START_HERE = 5;
 
     public DigestService(
             PostingRepository postings,
             BoardTokenRepository boards,
             SheetsClient sheets,
-            AppProperties properties) {
+            AppProperties properties,
+            MatchScorer scorer,
+            MatchProperties match) {
         this.postings = postings;
         this.boards = boards;
         this.sheets = sheets;
         this.floors = properties.salaryFloors();
+        this.scorer = scorer;
+        this.match = match;
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +108,13 @@ public class DigestService {
                 && (p.getStrategyOutcome() == null
                         || p.getStrategyOutcome() == StrategyOutcome.RECOMMENDED);
 
+        // Open long enough to be stale: taken out of the three lists and counted.
+        // Never an eligibility decision - the row is untouched and still on /jobs.
+        // Guarded so a missing match config cannot make every posting stale.
+        Predicate<Posting> stale = p -> match != null && match.staleDays() > 0
+                && p.getPostedDate() != null
+                && ChronoUnit.DAYS.between(p.getPostedDate(), date) >= match.staleDays();
+
         // A candidate stating no years goes to review rather than to the
         // candidate list, so the two sections do not report the same posting
         // twice and the candidate list stays worth trusting.
@@ -106,15 +127,22 @@ public class DigestService {
                 .filter(p -> p.getStatus() == PostingStatus.NEW)
                 .filter(candidate)
                 .filter(notYetApplied)
+                .filter(stale.negate())
                 .filter(p -> !ScreeningService.needsHumanReview(p))
                 .sorted(BY_RECENCY_THEN_COMPANY)
                 .toList();
         List<Posting> newCandidates = dedupe(newCandidatesRaw);
 
+        // The same strategy predicate as the candidates. Without it this list
+        // printed every eligible onsite role in a country the strategy excludes
+        // or has no policy for - New York, San Francisco, Milan, Tokyo - which on
+        // 2026-09-15 was most of its sixty rows.
         List<Posting> reviewRaw = all.stream()
                 .filter(fresh)
+                .filter(candidate)
                 .filter(ScreeningService::needsHumanReview)
                 .filter(notYetApplied)
+                .filter(stale.negate())
                 .sorted(BY_RECENCY_THEN_COMPANY)
                 .toList();
         List<Posting> review = dedupe(reviewRaw);
@@ -123,6 +151,7 @@ public class DigestService {
                 .filter(p -> p.getStatus() == PostingStatus.UPDATED)
                 .filter(candidate)
                 .filter(notYetApplied)
+                .filter(stale.negate())
                 .filter(p -> !ScreeningService.needsHumanReview(p))
                 .sorted(BY_RECENCY_THEN_COMPANY)
                 .toList();
@@ -148,11 +177,45 @@ public class DigestService {
                 + (reviewRaw.size() - review.size())
                 + (updatedRaw.size() - updated.size());
 
+        int staleSetAside = (int) all.stream()
+                .filter(fresh).filter(candidate).filter(notYetApplied).filter(stale)
+                .map(p -> p.getBoardToken() + " " + p.getTitle())
+                .distinct()
+                .count();
+
         return new Digest(date, newCandidates, review, updated, closed, rejections,
                 activeBoards,
                 floors != null && floors.needsReverification(date),
                 (int) suppressed,
-                collapsed);
+                collapsed,
+                startHere(newCandidates, review, updated),
+                staleSetAside);
+    }
+
+    /**
+     * The strongest few across all three lists, by match score; recency breaks ties.
+     *
+     * <p>Every list below this is dated, not ranked, so on a day with sixty rows the
+     * best role could sit ninth in one of them. The scorer is the one the jobs page
+     * already uses, so the digest and the page cannot disagree about what is strong.
+     */
+    private List<Digest.Pick> startHere(List<Posting> newCandidates, List<Posting> review,
+            List<Posting> updated) {
+        if (scorer == null) {
+            return List.of();
+        }
+        Map<String, Posting> byRole = new LinkedHashMap<>();
+        Stream.of(newCandidates, review, updated).flatMap(List::stream)
+                .forEach(p -> byRole.putIfAbsent(p.getBoardToken() + " " + p.getTitle(), p));
+        return byRole.values().stream()
+                .map(p -> {
+                    MatchScore score = scorer.score(p);
+                    return new Digest.Pick(p, score.score(), score.band().label());
+                })
+                .sorted(Comparator.comparingInt(Digest.Pick::score).reversed()
+                        .thenComparing(Digest.Pick::posting, BY_RECENCY_THEN_COMPANY))
+                .limit(START_HERE)
+                .toList();
     }
 
     private static String category(Posting posting) {

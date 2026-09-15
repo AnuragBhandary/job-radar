@@ -20,6 +20,9 @@ class CountryStrategyTest {
             "DE | PRIMARY",
             "IE | PRIMARY",
             "NL | PRIMARY",
+            "AE | PRIMARY",
+            "SA | PRIMARY",
+            "QA | PRIMARY",
             "AU | SECONDARY",
             "GB | SECONDARY",
             "FI | SECONDARY",
@@ -35,6 +38,17 @@ class CountryStrategyTest {
     @DisplayName("the configured tiers are the ones the brief asked for")
     void tiersMatchTheStrategy(String code, RelocationTier expected) {
         assertThat(strategy.tierFor(code)).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("an onsite Gulf role is recommended, not left in the unknown tier")
+    void gulfRolesAreRecommended() {
+        // Scale AI's Doha new-grad role resolved to UNKNOWN before these rows
+        // existed, and was only visible at all because of a digest bug.
+        for (String code : new String[] {"AE", "SA", "QA"}) {
+            assertThat(strategy.outcomeFor(StrategicClass.INTERNATIONAL_RELOCATION, code, null))
+                    .as(code).isEqualTo(StrategyOutcome.RECOMMENDED);
+        }
     }
 
     @Test
