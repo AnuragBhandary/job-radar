@@ -19,6 +19,61 @@ class YearsExtractorTest {
     private final YearsExtractor extractor = new YearsExtractor();
 
     @Nested
+    @DisplayName("the qualification line, wherever the posting puts it")
+    class QualificationLineCases {
+
+        @Test
+        @DisplayName("Bosch writes it last, after the 'Good to Have' heading")
+        void afterTheWishlistHeadingStillCounts() {
+            // Both real, and both reached the 2026-09-16 digest as "none stated".
+            assertThat(minYears("Must Have Skills: Strong proficiency in React, TypeScript. "
+                    + "Good To Have: VSCode extension development on Azure. "
+                    + "B.E 3 to 6 years experience")).isEqualTo(3);
+            assertThat(minYears("Build System Development: modern CMake. Good to Have: "
+                    + "Zephyr know how , MCU Know how BE, ME - Electronics background "
+                    + "4 to 7 years")).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("Bosch's 'No. of years of Experience required' heading counts")
+        void explicitExperienceHeading() {
+            assertThat(minYears("Educational qualification: 5 No. of years of Experience "
+                    + "required: 1 to 2 years of hands-on experience with hydraulic pumps"))
+                    .isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("a wishlist line is not a qualification, however it is worded")
+        void aWishlistLineIsNotAQualification() {
+            // Real. A first version of this rule anchored on the generic "N years
+            // of experience" and rejected this posting on its nice-to-have line.
+            assertThat(extractor.extract("Requirements: You write Go and enjoy platform work. "
+                    + "NICE TO HAVES: - 2-4 years of experience as a Software Engineer")
+                    .isNoneStated()).isTrue();
+        }
+
+        @Test
+        @DisplayName("the qualification survives being written across lines")
+        void lineBreaksDoNotHideIt() {
+            // How the board actually stores it: a bulleted list, one item per line.
+            assertThat(minYears("Must Have Skills:\n- React, TypeScript\nGood To Have:\n"
+                    + "- Azure Cloud Foundation\nB.E\n3 to 6 years experience")).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("'degree, or N years of equivalent experience' adds no requirement here")
+        void anAlternativeToADegreeAddsNothing() {
+            // Amazon's and Google's phrasing, and an alternative to a degree rather
+            // than a bar. This rule must not be what rejects such a posting; the
+            // older whole-description minimum still reads it as N, which is a known
+            // conservative bias and is not changed by this phase.
+            assertThat(extractor.extract("Good to Have: Bachelor's degree in Computer "
+                    + "Science, or 4+ years of equivalent practical experience.")
+                    .minYears()).isEqualTo(4);
+        }
+    }
+
+    @Nested
     @DisplayName("an optional number is not the bar")
     class OptionalCases {
 

@@ -210,6 +210,27 @@ public class YearsExtractor {
                 plainEvidence = here;
             }
         }
+        // The qualification line, wherever it sits. Bosch writes it last, after its
+        // "Good to Have" heading, so requiredSection() cut it off entirely: "B.E 3
+        // to 6 years experience" and "BE, ME - Electronics background 4 to 7 years"
+        // both read as stating nothing, and a three- and a four-year role reached
+        // the digest as entry level.
+        Matcher tail = YEARS.matcher(description);
+        while (tail.find()) {
+            if (isProgrammeDuration(description, tail) || isOptional(description, tail)
+                    || !isQualification(description, tail)) {
+                continue;
+            }
+            int years = Integer.parseInt(tail.group(1));
+            if (years >= IMPLAUSIBLE_YEARS) {
+                continue;
+            }
+            if (plainMin == YearsExtraction.NONE_STATED || years < plainMin) {
+                plainMin = years;
+                plainEvidence = phrase(description, tail.start(), tail.end());
+            }
+        }
+
         return plainMin != YearsExtraction.NONE_STATED
                 ? new YearsExtraction(plainMin, plainEvidence, nonInternship)
                 : new YearsExtraction(min, evidence, nonInternship);
@@ -288,6 +309,51 @@ public class YearsExtractor {
     private static boolean isOptional(String text, Matcher m) {
         String before = text.substring(Math.max(0, m.start() - 40), m.start());
         return OPTIONAL_BEFORE.matcher(before).find();
+    }
+
+    /**
+     * The qualification line's own vocabulary: a degree, a named background, or an
+     * explicit count of years required.
+     *
+     * <p>Deliberately not "N years of experience", which is how every wishlist line
+     * is written too: "NICE TO HAVES: - 2-4 years of experience as a Software
+     * Engineer" is not a bar, and anchoring on the generic phrase rejected a real
+     * candidate on it.
+     */
+    private static final Pattern QUALIFICATION_BEFORE = Pattern.compile(
+            "\\b(?:b\\.?e|b\\.?tech|m\\.?e|m\\.?tech|b\\.?sc|m\\.?sc|bachelor'?s?|master'?s?"
+                    + "|background|no\\.?\\s*of\\s+years\\s+of\\s+experience(?:\\s+required)?)\\b"
+                    + "[^.;\\n]{0,30}$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * An alternative to a degree, not a requirement in its own right.
+     *
+     * <p>"Bachelor's degree, or 4+ years of equivalent experience" is Amazon's and
+     * Google's standard phrasing and means the opposite of a four-year bar for
+     * somebody who has the degree. Without this guard the rule below would reject
+     * exactly the entry-level roles it exists to protect.
+     */
+    private static final Pattern ALTERNATIVE_TO_A_DEGREE =
+            Pattern.compile("\\bor\\b[^.;\\n]{0,20}$", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Whether a number states a qualification, wherever in the document it sits.
+     *
+     * <p>Anchored on the words around it rather than on a section heading, because
+     * the postings this exists for have no requirements heading at all and put the
+     * line after the wishlist.
+     */
+    private static boolean isQualification(String text, Matcher m) {
+        // Newlines flattened first: boards render the qualification as a list, so
+        // "B.E" and its years sit on separate lines, and an anchor that treated a
+        // line break as the end of the clause never fired on a real posting.
+        String before = text.substring(Math.max(0, m.start() - 40), m.start())
+                .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
+        if (ALTERNATIVE_TO_A_DEGREE.matcher(before).find()) {
+            return false;
+        }
+        return QUALIFICATION_BEFORE.matcher(before).find();
     }
 
     /** A little surrounding text, so the reject reason reads like the posting. */
