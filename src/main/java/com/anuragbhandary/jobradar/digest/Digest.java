@@ -7,61 +7,57 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Everything today's digest needs, already selected and sorted.
+ * Everything one handoff file needs, already selected and sorted.
  *
- * <p>Separated from the writer so that what goes in the digest is decided in one
- * place and how it is formatted in another - and so the selection can be tested
- * without parsing markdown.
+ * <p>The handoff file is read in a Claude session, where the judging happens:
+ * fit, order, what to lead with. So nothing here is ranked or scored. It is the
+ * postings that survived the fact-based filters, with enough of each description
+ * to judge them, and counts for everything set aside, so that a short file can be
+ * told apart from a broken one.
  *
- * @param newCandidates    new, eligible, and stating a years requirement we meet
- * @param needsHumanReview new or updated, eligible, but stating no years at all.
- *                         Listed separately rather than mixed into the
- *                         candidates, because the absence of a number is not
- *                         evidence of an entry-level role - it is a question.
- * @param updated          previously seen, but the description has since changed
- * @param closed           postings that disappeared from their board
+ * @param date             the day the file is for
+ * @param since            null for the daily file; for an export, the first day
+ *                         covered. An export lists every open candidate first seen
+ *                         on or after it, not only today's new and updated ones
+ * @param candidates       eligible, recommended, not yet decided on, one per role
+ * @param closed           candidates that disappeared from their board
  * @param rejections       counts by reason, for the postings seen this run
- * @param suppressedAlreadyApplied how many candidates were withheld because the
- *                         tracker already records an application to that company.
- *                         Counted rather than silently dropped - a digest that
- *                         quietly shrinks is one you stop trusting.
- * @param duplicatesCollapsed how many repeat listings of a role already shown
- *                         were folded away. Counted for the same reason.
- * @param startHere        the day's strongest few, across all three lists, ranked
- *                         by match score. The one thing to read if nothing else is.
- * @param staleSetAside    requisitions open long enough to be stale, taken out of
- *                         the lists above and counted. Still stored, still on /jobs.
+ * @param alreadyDecided   withheld because the posting was marked applied,
+ *                         skipped or shortlisted
+ * @param duplicatesCollapsed repeat listings of a role already listed, folded away
+ * @param staleSetAside    open long enough to be stale, taken out and counted
  */
 public record Digest(
         LocalDate date,
-        List<Posting> newCandidates,
-        List<Posting> needsHumanReview,
-        List<Posting> updated,
+        LocalDate since,
+        List<Entry> candidates,
         List<Posting> closed,
         Map<String, Long> rejections,
         List<BoardToken> boards,
         boolean salaryFloorsNeedReverification,
-        int suppressedAlreadyApplied,
+        int alreadyDecided,
         int duplicatesCollapsed,
-        List<Pick> startHere,
         int staleSetAside) {
 
-    /** One ranked posting, with the score that put it there. */
-    public record Pick(Posting posting, int score, String band) {
+    /**
+     * One candidate.
+     *
+     * @param updated        true when the posting was seen before and its
+     *                       description has since changed
+     * @param companyApplied true when the tracker already records an application to
+     *                       this company. Said, not acted on: an application to one
+     *                       Amazon team is no reason to hide every other Amazon role
+     */
+    public record Entry(Posting posting, boolean updated, boolean companyApplied) {
     }
 
-    /** A digest with no ranking and nothing set aside. */
-    public Digest(LocalDate date, List<Posting> newCandidates, List<Posting> needsHumanReview,
-            List<Posting> updated, List<Posting> closed, Map<String, Long> rejections,
-            List<BoardToken> boards, boolean salaryFloorsNeedReverification,
-            int suppressedAlreadyApplied, int duplicatesCollapsed) {
-        this(date, newCandidates, needsHumanReview, updated, closed, rejections, boards,
-                salaryFloorsNeedReverification, suppressedAlreadyApplied, duplicatesCollapsed,
-                List.of(), 0);
+    /** True for an export over a window, false for the daily file. */
+    public boolean isExport() {
+        return since != null;
     }
 
-    /** True when there is nothing to report but board health. */
+    /** True when there is nothing to read. */
     public boolean isQuiet() {
-        return newCandidates.isEmpty() && needsHumanReview.isEmpty() && updated.isEmpty();
+        return candidates.isEmpty();
     }
 }

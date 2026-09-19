@@ -192,7 +192,7 @@ public class YearsExtractor {
 
         Matcher m = YEARS.matcher(required);
         while (m.find()) {
-            if (isProgrammeDuration(required, m)) {
+            if (isProgrammeDuration(required, m) || isDegreeAlternative(required, m)) {
                 continue;
             }
             int years = Integer.parseInt(m.group(1));
@@ -218,6 +218,7 @@ public class YearsExtractor {
         Matcher tail = YEARS.matcher(description);
         while (tail.find()) {
             if (isProgrammeDuration(description, tail) || isOptional(description, tail)
+                    || isDegreeAlternative(description, tail)
                     || !isQualification(description, tail)) {
                 continue;
             }
@@ -336,6 +337,38 @@ public class YearsExtractor {
      */
     private static final Pattern ALTERNATIVE_TO_A_DEGREE =
             Pattern.compile("\\bor\\b[^.;\\n]{0,20}$", Pattern.CASE_INSENSITIVE);
+
+    /** A degree, then "or", then the number: "Bachelor's degree, or 4+ years". */
+    private static final Pattern DEGREE_THEN_OR = Pattern.compile(
+            "\\b(?:degree|diploma)\\b[^.;\\n]{0,40}\\bor\\s+(?:a\\s+)?"
+                    + "(?:minimum\\s+(?:of\\s+)?|at\\s+least\\s+)?$",
+            Pattern.CASE_INSENSITIVE);
+
+    /** "3 years with a Master's degree": years that come with a degree, not instead of one. */
+    private static final Pattern WITH_A_DEGREE_AFTER = Pattern.compile(
+            "^\\s+(?:of\\s+\\w+\\s+)?with\\s+(?:a\\s+|an\\s+)?"
+                    + "(?:master|ph\\.?d|doctorate|bachelor|m\\.?sc?\\b|b\\.?sc?\\b)",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Years offered as a substitute for a degree, which is no bar to someone who
+     * has the degree.
+     *
+     * <p>"Bachelor's degree in Computer Science, or 4+ years of equivalent practical
+     * experience" asks for one or the other. Reading the 4 as a requirement rejects
+     * an entry-level role. The shape it must not catch is "5 years with a
+     * Bachelor's degree, or 3 years with a Master's degree", where each number
+     * comes with its own degree and is a real bar.
+     */
+    private static boolean isDegreeAlternative(String text, Matcher m) {
+        String before = text.substring(Math.max(0, m.start() - 70), m.start())
+                .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
+        if (!DEGREE_THEN_OR.matcher(before).find()) {
+            return false;
+        }
+        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 40));
+        return !WITH_A_DEGREE_AFTER.matcher(after).find();
+    }
 
     /**
      * Whether a number states a qualification, wherever in the document it sits.
