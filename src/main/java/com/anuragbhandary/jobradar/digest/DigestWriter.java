@@ -66,7 +66,23 @@ public class DigestWriter {
         return file;
     }
 
+    /**
+     * Writes {@code <output-dir>/<fileName>} with its own first heading, for
+     * {@code openings}, whose window is a time rather than a day.
+     */
+    public Path write(Digest digest, String fileName, String heading) throws IOException {
+        Path dir = Path.of(properties.outputDir());
+        Files.createDirectories(dir);
+        Path file = dir.resolve(fileName);
+        Files.writeString(file, render(digest, heading), StandardCharsets.UTF_8);
+        return file;
+    }
+
     public String render(Digest digest) {
+        return render(digest, null);
+    }
+
+    public String render(Digest digest, String heading) {
         // Board tokens are handles like "razorpaysoftwareprivatelimited". The
         // seeder carries a readable label for each; use it where there is one.
         Map<String, String> labels = digest.boards().stream()
@@ -75,9 +91,13 @@ public class DigestWriter {
                         (a, b) -> a));
 
         StringBuilder out = new StringBuilder();
-        out.append("# job-radar handoff — ").append(digest.date());
-        if (digest.isExport()) {
-            out.append(" (everything open since ").append(digest.since()).append(')');
+        if (heading != null) {
+            out.append("# ").append(heading);
+        } else {
+            out.append("# job-radar handoff — ").append(digest.date());
+            if (digest.isExport()) {
+                out.append(" (everything open since ").append(digest.since()).append(')');
+            }
         }
         out.append("\n\n");
         header(out, digest);
@@ -96,6 +116,24 @@ public class DigestWriter {
             out.append("\n## Candidates (").append(digest.candidates().size()).append(")\n");
             for (Digest.Entry entry : digest.candidates()) {
                 candidate(out, entry, labels, digest.date());
+            }
+        }
+
+        if (!digest.shortlisted().isEmpty()) {
+            // Last on purpose: the new postings are what the review is for, and this
+            // is the reminder underneath it.
+            out.append("\n## Shortlisted, not yet applied (")
+                    .append(digest.shortlisted().size()).append(")\n");
+            for (com.anuragbhandary.jobradar.pipeline.JobInterest i : digest.shortlisted()) {
+                long days = i.getSavedAt() == null ? 0 : ChronoUnit.DAYS.between(
+                        i.getSavedAt().atZone(ZoneId.systemDefault()).toLocalDate(), digest.date());
+                out.append("- ").append(i.getPostingId()).append(" · ").append(i.getCompany())
+                        .append(" · ").append(i.getRole()).append(" · saved ").append(days)
+                        .append("d ago");
+                if (i.getNotes() != null && !i.getNotes().isBlank()) {
+                    out.append(" · ").append(i.getNotes().replace('\n', ' '));
+                }
+                out.append('\n');
             }
         }
 

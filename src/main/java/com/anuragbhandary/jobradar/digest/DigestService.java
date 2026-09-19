@@ -7,6 +7,7 @@ import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Verdict;
 import com.anuragbhandary.jobradar.pipeline.JobInterest;
 import com.anuragbhandary.jobradar.pipeline.JobInterestRepository;
+import com.anuragbhandary.jobradar.pipeline.PipelineStage;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.anuragbhandary.jobradar.sheets.SheetsClient;
@@ -50,6 +51,7 @@ public class DigestService {
     private final JobInterestRepository interests;
     private final AppProperties.SalaryFloors floors;
     private final int staleDays;
+    private final java.util.Set<String> staleExempt;
 
     public DigestService(
             PostingRepository postings,
@@ -57,13 +59,18 @@ public class DigestService {
             SheetsClient sheets,
             JobInterestRepository interests,
             AppProperties properties,
-            @Value("${job-radar.digest.stale-days:45}") int staleDays) {
+            @Value("${job-radar.digest.stale-days:45}") int staleDays,
+            @Value("${job-radar.digest.stale-exempt-boards:}") String staleExempt) {
         this.postings = postings;
         this.boards = boards;
         this.sheets = sheets;
         this.interests = interests;
         this.floors = properties.salaryFloors();
         this.staleDays = staleDays;
+        this.staleExempt = java.util.Arrays.stream(staleExempt.split(","))
+                .map(s -> s.trim().toLowerCase(Locale.ROOT))
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
     }
 
     /** Today's file: candidates that are new or changed since the last fetch. */
@@ -92,6 +99,39 @@ public class DigestService {
                 .filter(p -> p.getFirstSeen() != null && !p.getFirstSeen().isBefore(from))
                 .toList();
         return assemble(date, since, window, p -> p.getStatus() != PostingStatus.CLOSED);
+    }
+
+    /**
+     * Everything that became worth reviewing since the last reviewed window.
+     *
+     * <p>Dated by when a posting became a recommended candidate, not when it was
+     * fetched, so a rule change or a strategy change that makes an old posting
+     * eligible still reaches the next review. A description that changed since
+     * then comes back too.
+     */
+    @Transactional(readOnly = true)
+    public Digest buildOpenings(LocalDate date, Instant since) {
+        List<Posting> window = postings.findByVerdict(Verdict.CANDIDATE).stream()
+                .filter(p -> {
+                    Instant news = p.getNewsworthySince();
+                    boolean isNew = news != null && !news.isBefore(since);
+                    boolean changed = p.getStatus() == PostingStatus.UPDATED
+                            && p.getLastSeen() != null && !p.getLastSeen().isBefore(since);
+                    return isNew || changed;
+                })
+                .toList();
+        Digest base = assemble(date, since.atZone(ZoneId.systemDefault()).toLocalDate(),
+                window, p -> p.getStatus() != PostingStatus.CLOSED);
+        List<JobInterest> shortlisted = interests.findAll()
+                .stream()
+                .filter(i -> i.getStage() == PipelineStage.SAVED)
+                .sorted(Comparator.comparing(
+                        JobInterest::getSavedAt))
+                .toList();
+        return new Digest(base.date(), base.since(), base.candidates(), base.closed(),
+                base.rejections(), base.boards(), base.salaryFloorsNeedReverification(),
+                base.alreadyDecided(), base.duplicatesCollapsed(), base.staleSetAside(),
+                shortlisted);
     }
 
     private Digest assemble(LocalDate date, LocalDate since, List<Posting> all,
@@ -124,7 +164,10 @@ public class DigestService {
                         || p.getStrategyOutcome() == StrategyOutcome.RECOMMENDED);
 
         // Open long enough to be stale: taken out and counted, never re-judged.
+        // Employers that keep standing roles open for years (Canonical's are dated
+        // 2019-2024) are exempt: for them the posted date says nothing.
         Predicate<Posting> stale = p -> staleDays > 0 && p.getPostedDate() != null
+                && !staleExempt.contains(p.getBoardToken().toLowerCase(Locale.ROOT))
                 && ChronoUnit.DAYS.between(p.getPostedDate(), date) >= staleDays;
 
         List<Posting> eligible = all.stream().filter(inScope).filter(candidate).toList();

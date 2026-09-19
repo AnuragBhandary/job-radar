@@ -12,20 +12,23 @@ Build with `JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home
 
 ## Reviewing jobs
 
-1. Read `inbox/<today>.md`. launchd writes it at 07:00, or on wake if the Mac was
-   asleep. If it is missing, or its "Last fetch" line says it is days old, run
-   `run` (a few minutes; it fetches ~110 boards) and then read it.
-2. After a gap, `export --since=YYYY-MM-DD` writes `inbox/since-<date>.md` with every
-   open candidate first seen since then. A daily file only has what was new that
-   morning.
-3. Judge every candidate against the resume (`resume --list` prints it). Give a
-   short ranked list with a one-line reason each, and say plainly why the others
-   were dropped.
-4. Record each decision: `mark <id> skip --note="..."` or `mark <id> shortlist`. A
-   marked posting never appears in a handoff file again.
+The full routine, including how to judge and rank, is the personal skill
+`~/.claude/skills/job-openings/SKILL.md`, which triggers on "get me today's
+openings" and similar from any directory. In short:
+
+1. If the last fetch (header of the newest `inbox/` file, or `inbox/launchd.log`)
+   is more than ~20 hours old, run `run` first.
+2. `openings` writes `inbox/openings-<time>.md`: every posting that became a
+   recommended candidate since the last review, dated by when it became one (so a
+   rule change that makes an old posting eligible still shows up), plus the
+   shortlist not yet applied to.
+3. Judge each against the resume (`resume --list`), rank, reply briefly.
+4. Record every decision: `mark <id>,<id>,... shortlist|skip --note="..."`, then
+   `openings --done`, which closes the window at the moment the file was written.
 5. Only after the user says they applied: `mark <id> applied`. This appends a row
    to the tracker Google Sheet, so never run it speculatively. Later stages:
    `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
+6. `export --since=YYYY-MM-DD` remains for looking back over a date range.
 
 ## Preparing an application
 
@@ -50,12 +53,18 @@ Build with `JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home
   once hidden a rule that fired on nothing in the real data.
   `JOB_RADAR_DB=jdbc:sqlite:<copy> ... screen`
 - Adding a board: `probe --tokens=a,b,c` tries every supported ATS; `--add` saves hits.
+  Check a hit's locations and a few descriptions before trusting it: SmartRecruiters
+  answers for unknown companies, and some boards hold only placeholder postings.
+- Rejections that are facts, not judgement: seniority and stack in the title, a
+  stated minimum above 1 year ("up to N years" is a ceiling), Amazon's
+  non-internship rule, a stated service bond, and German being required or the
+  posting being written in German.
 
 ## Where things are
 
 | | |
 |---|---|
-| Fetchers, one per ATS | `fetch/` |
+| Fetchers, one per ATS or feed (incl. HN, Jobicy, We Work Remotely, Arbeitnow) | `fetch/` |
 | Screening rules (title, years, geography, strategy) | `filter/`, `strategy/`, `application.yml` |
 | Handoff file | `digest/` |
 | Decisions and tracker sync | `pipeline/`, `sheets/`, `cli/MarkCommand` |

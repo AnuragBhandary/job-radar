@@ -96,6 +96,18 @@ public class Posting {
     @Column(name = "last_seen", nullable = false)
     private Instant lastSeen;
 
+    /**
+     * When this posting last became a recommended candidate.
+     *
+     * <p>Set by screening, not by fetching: a posting fetched in March that a rule
+     * change makes eligible in September is news in September, and dating it by
+     * {@code firstSeen} would hide it from {@code openings} forever. Null on rows
+     * that were already candidates when the column was added; readers fall back
+     * to {@code firstSeen}.
+     */
+    @Column(name = "recommended_since")
+    private Instant recommendedSince;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private Verdict verdict = Verdict.UNSCREENED;
@@ -329,6 +341,26 @@ public class Posting {
 
     public void setFirstSeen(Instant firstSeen) {
         this.firstSeen = firstSeen;
+    }
+
+    public Instant getRecommendedSince() {
+        return recommendedSince;
+    }
+
+    public void setRecommendedSince(Instant recommendedSince) {
+        this.recommendedSince = recommendedSince;
+    }
+
+    /** When this became worth showing: {@link #recommendedSince}, or first seen. */
+    public Instant getNewsworthySince() {
+        return recommendedSince != null ? recommendedSince : firstSeen;
+    }
+
+    /** Eligible, and the strategy recommends it. A null outcome counts as recommended. */
+    public boolean isRecommendedCandidate() {
+        return verdict == Verdict.CANDIDATE
+                && (strategyOutcome == null
+                        || strategyOutcome == StrategyOutcome.RECOMMENDED);
     }
 
     public Instant getLastSeen() {

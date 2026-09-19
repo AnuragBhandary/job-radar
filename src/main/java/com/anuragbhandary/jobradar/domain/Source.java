@@ -23,7 +23,11 @@ package com.anuragbhandary.jobradar.domain;
  * </ul>
  *
  * <p>{@link #HACKER_NEWS} is not an ATS: it is the monthly "Who is hiring?"
- * thread, one board whose postings are free-text comments.
+ * thread, one board whose postings are free-text comments. {@link #JOBICY},
+ * {@link #WE_WORK_REMOTELY} and {@link #ARBEITNOW} are job aggregators with
+ * public feeds, one board each. RemoteOK and Himalayas were measured and left out
+ * (no role and one role that fit, out of 99 and 200); Wellfound has no public
+ * feed and forbids scraping.
  */
 public enum Source {
     GREENHOUSE,
@@ -33,5 +37,8 @@ public enum Source {
     AMAZON,
     WORKDAY,
     RECRUITEE,
-    HACKER_NEWS
+    HACKER_NEWS,
+    JOBICY,
+    WE_WORK_REMOTELY,
+    ARBEITNOW
 }

@@ -61,6 +61,14 @@ public class BoardTokenSeeder {
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
 
+    /** Aggregators with public feeds: one board each. */
+    private static final Map<String, String> JOBICY =
+            Map.of(com.anuragbhandary.jobradar.fetch.JobicyFetcher.BOARD, "Jobicy");
+    private static final Map<String, String> WE_WORK_REMOTELY =
+            Map.of(com.anuragbhandary.jobradar.fetch.WeWorkRemotelyFetcher.BOARD, "We Work Remotely");
+    private static final Map<String, String> ARBEITNOW =
+            Map.of(com.anuragbhandary.jobradar.fetch.ArbeitnowFetcher.BOARD, "Arbeitnow");
+
     static {
         WORKDAY.put("philips/wd3/jobs-and-careers", "Philips");
         WORKDAY.put("nxp/wd3/careers", "NXP Semiconductors");
@@ -277,7 +285,10 @@ public class BoardTokenSeeder {
                 + seedSource(Source.AMAZON, AMAZON)
                 + seedSource(Source.WORKDAY, WORKDAY)
                 + seedSource(Source.RECRUITEE, RECRUITEE)
-                + seedSource(Source.HACKER_NEWS, HACKER_NEWS);
+                + seedSource(Source.HACKER_NEWS, HACKER_NEWS)
+                + seedSource(Source.JOBICY, JOBICY)
+                + seedSource(Source.WE_WORK_REMOTELY, WE_WORK_REMOTELY)
+                + seedSource(Source.ARBEITNOW, ARBEITNOW);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }
