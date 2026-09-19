@@ -93,9 +93,9 @@ public record AppProperties(
      * <p>These look wrong without the reasoning. They are set on money left after
      * housing rather than on headline salary, and they assume the home city costs
      * nothing to live in. Relocating anywhere else in India runs to roughly
-     * INR 30,000 a month in rent and food, which is why the out-of-city floor is
-     * double the home one: INR 10 lakh in Bangalore leaves less than INR 7 lakh
-     * at home.
+     * INR 30,000 a month in rent and food, which is why the out-of-city floor sits
+     * above the home one. It is a floor, not an ask, and the gap is kept narrow on
+     * purpose so that a reasonable offer in another city is not screened out.
      *
      * <p>The three European figures are legal visa thresholds, not preferences,
      * and every one of them is re-indexed annually - hence {@code verifyBy}.
