@@ -13,6 +13,8 @@ target/
 # Generated digests are local output, not source
 /digests/
 /inbox/
+# Rendered resumes carry contact details
+/resumes/
 
 # Secrets. The Google service-account key must never enter this repo.
 config/*.json

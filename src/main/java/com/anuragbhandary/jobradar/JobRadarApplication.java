@@ -1,56 +1,38 @@
 package com.anuragbhandary.jobradar;
 
-import com.anuragbhandary.jobradar.apply.ApplicantProfile;
-import com.anuragbhandary.jobradar.apply.ApplyProperties;
-import com.anuragbhandary.jobradar.apply.llm.LlmProperties;
-import com.anuragbhandary.jobradar.apply.resume.ResumeProfile;
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.config.SchemaMigrator;
-import com.anuragbhandary.jobradar.evidence.EvidenceProperties;
+import com.anuragbhandary.jobradar.resume.Applicant;
+import com.anuragbhandary.jobradar.resume.ResumeSource;
 import com.anuragbhandary.jobradar.filter.GeoVocabulary;
 import com.anuragbhandary.jobradar.strategy.StrategyProperties;
-import com.anuragbhandary.jobradar.mail.GmailProperties;
-import com.anuragbhandary.jobradar.money.MoneyProperties;
-import com.anuragbhandary.jobradar.match.MatchProperties;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
- * job-radar: a scheduled batch job that reads public ATS boards, screens the
- * results against a fixed eligibility profile, and reports what is new.
+ * job-radar: a daily batch job that reads public ATS boards, screens the results
+ * against facts about the applicant, and writes a handoff file for review.
  *
- * <p>There is no web layer by design. This is a CLI plus a scheduler.
- *
- * <p>Since milestone 9 it also prepares applications: it tailors the resume to a
- * posting, renders it, drafts a cover letter where the form has a box for one,
- * fills the form in a real browser and stops in front of the submit button. See
- * {@link com.anuragbhandary.jobradar.apply.ApplyService} for why it stops there.
+ * <p>There is no web layer, by design. Judging which postings are worth applying
+ * to, and what to lead with, happens in a Claude session reading the handoff file;
+ * see CLAUDE.md. The form-filling, knowledge and UI code that used to live here is
+ * at the tag {@code v1-full}.
  */
 @SpringBootApplication
 @EnableConfigurationProperties({
         AppProperties.class,
-        // The applying side. ApplicantProfile and ResumeProfile are personal data
-        // and are imported from ~/.config/job-radar/ rather than living in
-        // application.yml - see the spring.config.import block there. The
-        // ResumeModel everything reads is composed from ResumeProfile and the
-        // evidence bank; see ResumeConfig.
-        ApplicantProfile.class,
-        ResumeProfile.class,
-        ApplyProperties.class,
-        LlmProperties.class,
-        GmailProperties.class,
-        MatchProperties.class,
-        MoneyProperties.class,
         // Country vocabulary and country strategy. Two roots rather than one
         // because they are different kinds of thing: the vocabulary says where
         // a place is, which is a fact, and the strategy says whether he wants to
         // go there, which is not.
         GeoVocabulary.class,
         StrategyProperties.class,
-        // Where the evidence bank is, and whether resumes are planned from it.
-        EvidenceProperties.class})
+        // Personal data, imported from ~/.config/job-radar/applicant.yml rather
+        // than living in application.yml - see the spring.config.import block.
+        ResumeSource.class,
+        Applicant.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {
@@ -60,23 +42,9 @@ public class JobRadarApplication {
         // the first insert. See SchemaMigrator for why plain JDBC in main is the
         // honest place for this.
         SchemaMigrator.migrate(jdbcUrl());
-
-        // spring-boot-starter-web is on the classpath for one command. Left to
-        // itself Spring Boot would bind a port for all eleven, so `fetch` would
-        // start a servlet container to make HTTP requests and `digest` would hold
-        // 8080 while writing a markdown file. The web layer is opt-in per run.
         new SpringApplicationBuilder(JobRadarApplication.class)
-                .web(wantsUi(args) ? WebApplicationType.SERVLET : WebApplicationType.NONE)
+                .web(WebApplicationType.NONE)
                 .run(args);
-    }
-
-    private static boolean wantsUi(String[] args) {
-        for (String arg : args) {
-            if ("ui".equals(arg)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

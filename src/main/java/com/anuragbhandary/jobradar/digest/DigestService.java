@@ -57,7 +57,7 @@ public class DigestService {
             SheetsClient sheets,
             JobInterestRepository interests,
             AppProperties properties,
-            @Value("${job-radar.match.stale-days:45}") int staleDays) {
+            @Value("${job-radar.digest.stale-days:45}") int staleDays) {
         this.postings = postings;
         this.boards = boards;
         this.sheets = sheets;
