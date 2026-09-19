@@ -20,7 +20,7 @@ class DigestWriterTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 6);
 
     private static final AppProperties.SalaryFloors FLOORS = new AppProperties.SalaryFloors(
-            new BigDecimal("700000"), new BigDecimal("800000"),
+            new BigDecimal("500000"), new BigDecimal("800000"),
             new BigDecimal("45934.20"), new BigDecimal("40904"),
             new BigDecimal("52284"), new BigDecimal("48000"),
             LocalDate.of(2027, 3, 1));
@@ -150,7 +150,7 @@ class DigestWriterTest {
                 candidate("slice", "Backend Engineer", "Bengaluru", Country.INDIA, 1, false)),
                 Map.of(), false));
 
-        assertThat(mumbai).contains("Rs 7,00,000").contains("no rent");
+        assertThat(mumbai).contains("Rs 5,00,000").contains("no rent");
         assertThat(bangalore).contains("Rs 8,00,000").contains("relocation");
     }
 

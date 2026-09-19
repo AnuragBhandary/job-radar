@@ -54,10 +54,11 @@ job-radar:
       # --- home -------------------------------------------------------------
       - country-code: IN
         relocation-tier: PRIMARY
-        salary-floor: 700000
+        salary-floor: 500000
         currency: INR
-        # Living at home covers housing, so nearly all of take-home can service
-        # the loan. That is what makes 7L in Mumbai better than 10L elsewhere.
+        # Living at home covers housing. Set low on purpose (2026-09-19): the first
+        # payslipped year is worth more than the salary it pays, so a real
+        # software role at home is taken almost regardless of pay.
         salary-floor-basis: "home metro, living at home - no rent"
 
       # --- primary relocation ------------------------------------------------
@@ -484,7 +485,7 @@ job-radar:
   # would have run two months of digests on stale thresholds without saying so.
   # ---------------------------------------------------------------------------
   salary-floors:
-    mumbai-inr: 700000
+    mumbai-inr: 500000
     india-other-inr: 800000
     germany-eur: 45934.20
     ireland-eur: 40904
