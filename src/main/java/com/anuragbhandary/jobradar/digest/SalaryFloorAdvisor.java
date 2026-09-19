@@ -121,8 +121,8 @@ public class SalaryFloorAdvisor {
         return switch (country) {
             case INDIA -> geo.isMumbai(posting.getLocation())
                     // Living at home covers housing, so nearly all of take-home
-                    // can service the loan. That is what makes 7L in Mumbai
-                    // better than 10L elsewhere, and why the floors differ.
+                    // is free. That is why the Mumbai floor sits below the one
+                    // for the rest of India.
                     ? inr(floors.mumbaiInr()) + " (Mumbai - no rent)"
                     : inr(floors.indiaOtherInr()) + " (relocation: ~Rs 30k/month rent and food)";
             case REMOTE -> inr(floors.mumbaiInr()) + " (remote into India - no rent)";
