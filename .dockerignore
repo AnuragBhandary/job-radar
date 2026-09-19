@@ -1,8 +1,0 @@
-target/
-digests/
-fixtures/
-*.db
-.git/
-.idea/
-config/*.json
-.env

@@ -91,54 +91,10 @@
     </dependency>
 
     <!--
-      Playwright drives the real application form. There is no public "submit an
-      application" API on any of the six ATSs this tool reads: the read APIs are
-      open, the write path is a browser session with CSRF tokens and, on some
-      boards, a captcha. So the form is filled the way a person fills it.
-
-      It earns its size twice, because the same browser renders the tailored
-      resume HTML to PDF - which is why there is no LaTeX or docx dependency here.
+      Playwright renders the resume HTML to PDF with headless Chromium, which is
+      why there is no LaTeX or docx dependency here. It used to fill application
+      forms too; that code is at the tag v1-full.
     -->
-
-    <!--
-      Gmail, read-only, for matching replies back to applications.
-      
-      Unlike Sheets this cannot use the service account: a service account has no
-      inbox, and reading a personal Gmail with one needs domain-wide delegation
-      that a consumer account cannot grant. So this is the installed-app OAuth
-      flow - one browser consent, a refresh token cached in ~/.config/job-radar -
-      and google-oauth-client-jetty is what serves the localhost redirect.
-    -->
-
-    <!--
-      The review UI, and the only reason there is a web layer at all. It is off
-      unless the `ui` command is used: main() picks NONE for every other command,
-      so fetch, screen and digest still start in under a second and never bind a
-      port. See UiCommand for why a queue in a browser earned this.
-    -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.google.apis</groupId>
-      <artifactId>google-api-services-gmail</artifactId>
-      <version>v1-rev20260727-2.0.0</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>listenablefuture</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>com.google.oauth-client</groupId>
-      <artifactId>google-oauth-client-jetty</artifactId>
-      <version>1.39.0</version>
-    </dependency>
-
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>

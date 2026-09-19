@@ -1,37 +1,5 @@
 job-radar:
 
-  knowledge:
-    # Whether the knowledge resolver decides what goes into a real form, or the
-    # legacy FieldMapper does.
-    #
-    # Both are compiled in and both stay. Turning this off is a config edit and a
-    # restart - the only kind of rollback worth having on the path that fills an
-    # employer's form, because the alternative is reverting a commit while an
-    # application is half-filled.
-    #
-    # The gate for turning it on was `knowledge --shadow` reporting zero
-    # unexplained regressions across the corpus, not a percentage. Switched on
-    # 2026-09-10 against 3,321 comparisons: 3,133 agreement, 10 improvement,
-    # 97 legitimate, 81 presentation, 0 regression, 0 unclassified.
-    #
-    # To roll back: JOB_RADAR_KNOWLEDGE_AUTHORITATIVE=false, then restart. The
-    # legacy mapper is still there and is still the shadow's oracle.
-    resolver-authoritative: ${JOB_RADAR_KNOWLEDGE_AUTHORITATIVE:true}
-
-  # ---------------------------------------------------------------------------
-  # Evidence bank: the approved facts of his career, claim by claim, that every
-  # resume is planned from.
-  #
-  # The file is personal data, like applicant.yml, so it lives outside this
-  # repository; evidence.example.yml is the committed skeleton. Missing, broken,
-  # or out of step with the resume, and every resume is tailored exactly as it
-  # was before the bank existed - `evidence --check` says which, and why.
-  #
-  # To roll back: JOB_RADAR_EVIDENCE_TAILORING=false, then restart.
-  # ---------------------------------------------------------------------------
-  evidence:
-    path: ${JOB_RADAR_EVIDENCE:~/.config/job-radar/evidence.yml}
-    tailoring: ${JOB_RADAR_EVIDENCE_TAILORING:true}
   google:
     # Service-account key. Never committed; see .gitignore. The account already
     # holds Editor on the target spreadsheet.
@@ -43,14 +11,6 @@ job-radar:
 
   # The daily handoff file, read in a Claude session. See CLAUDE.md.
   output-dir: ${JOB_RADAR_OUT:./inbox}
-
-  schedule:
-    # Off unless asked for. Only the `serve` command keeps the process alive long
-    # enough for this to matter; every other command exits when it is done.
-    enabled: ${JOB_RADAR_SCHEDULE:false}
-    # 07:00 Asia/Kolkata. Fires only while the process is running - nothing is
-    # caught up after a missed slot.
-    cron: ${JOB_RADAR_CRON:0 0 7 * * *}
 
   http:
     user-agent: "job-radar/1.0 (personal job search tool)"
@@ -65,114 +25,10 @@ job-radar:
     enabled: ${JOB_RADAR_FIXTURES:true}
     dir: ${JOB_RADAR_FIXTURE_DIR:./fixtures}
 
-  # ---------------------------------------------------------------------------
-  # Applying. See ApplyService for why nothing here submits on its own.
-  # ---------------------------------------------------------------------------
-  apply:
-    # One directory per attempt: tailored resume, cover letter, screenshot, review.
-    output-dir: ${JOB_RADAR_APPLICATIONS:./applications}
-    # Chromium's user-data directory. Holds live session cookies for every board
-    # signed into - Workday makes an account per employer - so it is credentials
-    # and lives outside the repository.
-    browser-profile: ${JOB_RADAR_BROWSER_PROFILE:~/.config/job-radar/browser}
-    # Headed by default. A human is expected at the submit step, and a form the
-    # tool correctly refused to finish has to be finishable by hand.
-    headless: ${JOB_RADAR_HEADLESS:false}
-    slow-mo-ms: 120
-    page-timeout-seconds: 45
-
-  # ---------------------------------------------------------------------------
-  # Match scoring. Strategy, not personal data, which is why it lives here and
-  # the address does not.
-  #
-  # NOT a filter. Screening has already decided what is eligible, with a stated
-  # reason per rejection; these weights only order what survived. A low score
-  # means "read this one later", never "you cannot apply".
-  # ---------------------------------------------------------------------------
-  match:
-    # 0-100 per geography. Ordered by annual surplus after living costs rather
-    # than by salary: remote-from-home and the Gulf leave the most, Europe the
-    # least, because rent eats the premium.
-    country-preference:
-      REMOTE: 100
-      INDIA: 70
-      IRELAND: 60
-      GERMANY: 55
-      NETHERLANDS: 55
-      OTHER: 30
-    # Years he can evidence without stretching. A posting asking for this or less
-    # scores full marks; past it the score falls away fast, because two years over
-    # is a stretch worth trying and five is a different job with the same title.
-    # One, not two. He has about a year, and screening already rejects anything
-    # asking for two or more - so a two set here had the scorer awarding full
-    # marks for a requirement the rest of the tool treats as disqualifying.
-    comfortable-years: 1
-    fresh-days: 7
+  # Postings open at least this many days are set aside from the handoff file and
+  # counted. Not an eligibility decision: the row is untouched.
+  digest:
     stale-days: 45
-
-  # ---------------------------------------------------------------------------
-  # Gmail, read-only, for matching replies back to applications.
-  #
-  # Cannot reuse the Sheets service account: a service account has no mailbox, and
-  # reading a personal Gmail with one needs domain-wide delegation a consumer
-  # account cannot grant. Create an OAuth client (Desktop app) in the same Cloud
-  # project, download the JSON, and point JOB_RADAR_GMAIL_KEY at it. The first run
-  # opens a browser once; the refresh token is cached in tokens-dir.
-  # ---------------------------------------------------------------------------
-  gmail:
-    credentials-path: ${JOB_RADAR_GMAIL_KEY:~/.config/job-radar/gmail-oauth.json}
-    # A live credential to the mailbox. Outside the repo, and in .gitignore.
-    tokens-dir: ${JOB_RADAR_GMAIL_TOKENS:~/.config/job-radar/gmail-tokens}
-    scan-days: 60
-
-  # ---------------------------------------------------------------------------
-  # Optional. Used for one thing: drafting a cover letter when the form has a box
-  # for one. Nothing else in the tool calls a model, and with this off the letter
-  # falls back to a template assembled from the resume.
-  #
-  # Any OpenAI-compatible endpoint works. Groq's free tier is the cheapest useful
-  # option; Gemini exposes a compatible endpoint at
-  # https://generativelanguage.googleapis.com/v1beta/openai
-  # ---------------------------------------------------------------------------
-  llm:
-    enabled: ${JOB_RADAR_LLM:false}
-    base-url: ${JOB_RADAR_LLM_URL:https://api.groq.com/openai/v1}
-    model: ${JOB_RADAR_LLM_MODEL:llama-3.3-70b-versatile}
-    api-key: ${JOB_RADAR_LLM_KEY:}
-    # Low, not zero. Zero produces the same three sentences for every posting,
-    # which is worse than a template because it looks like it tried.
-    temperature: 0.4
-    # Raised from 900. That cap was set for a cover-letter paragraph; the chat
-    # reuses the same client and was being cut off mid-explanation, which read as
-    # the model having nothing more to say.
-    max-output-tokens: 2200
-    timeout-seconds: 45
-    # Gemini 2.5 thinks by default and charges those tokens against max_tokens,
-    # so a small cap returns HTTP 200 with an empty message and no error at all.
-    # "none" spends the whole budget on the answer. Blank it for a provider that
-    # rejects the field.
-    reasoning-effort: ${JOB_RADAR_LLM_REASONING:none}
-
-  # ---------------------------------------------------------------------------
-  # Rates for showing a foreign salary in rupees, so a euro figure can be read
-  # without opening a converter mid-application.
-  #
-  # Configured rather than fetched: this tool is expected to work with the
-  # network off, and a conversion that silently falls back to a stale cache is
-  # worse than one whose age is printed on screen. The UI shows both the rate and
-  # this date, so a figure that looks wrong can be checked rather than believed.
-  #
-  # Orientation only. The number that goes on a German form is euros.
-  # ---------------------------------------------------------------------------
-  money:
-    rates-as: "8 September 2026"
-    inr-per:
-      EUR: 100
-      USD: 88
-      GBP: 112
-      AED: 24
-      SGD: 66
-      CHF: 108
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -615,7 +471,7 @@ spring:
     # Personal data - name, address, EEO answers, salary bands, resume bullets -
     # is imported from outside the repository, because this repository is public
     # and that file is not the kind of thing to put in it. `optional:` so every
-    # command that does not apply for a job still boots without it.
+    # command but `resume` still boots without it.
     import:
       - optional:file:${JOB_RADAR_PROFILE:${user.home}/.config/job-radar/applicant.yml}
       # Credentials, kept apart from the profile: that file is personal data you
@@ -640,17 +496,6 @@ spring:
           # that SQLite refused. Both surfaced much later as something else.
           halt_on_error: true
     open-in-view: false
-
-# Only bound by the `ui` command - every other command starts with the web layer
-# switched off in main(), so nothing else holds a port.
-#
-# 127.0.0.1, not 0.0.0.0. Changing this makes the UI reachable from other machines
-# on the network, and the UI can drive a browser that is signed in to your job
-# boards. SecurityConfig refuses to start on a non-loopback address with no
-# password set, which is the combination worth guarding rather than either half.
-server:
-  port: ${JOB_RADAR_UI_PORT:8080}
-  address: ${JOB_RADAR_UI_BIND:127.0.0.1}
 
 logging:
   level:

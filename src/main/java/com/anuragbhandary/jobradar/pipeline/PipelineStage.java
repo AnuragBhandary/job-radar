@@ -5,10 +5,9 @@ import java.util.List;
 /**
  * Where a job has got to, as the applicant sees it.
  *
- * <p>Distinct from {@link com.anuragbhandary.jobradar.apply.AttemptStatus}, which
- * records what the automation did, and from the tracker's free-text status column,
- * which is what a human typed into a spreadsheet. This is the one ordered pipeline
- * the board renders, and the other two feed it.
+ * <p>Distinct from the tracker's free-text status column, which is what a human
+ * typed into a spreadsheet. This is the one ordered pipeline, set by {@code mark}
+ * and by importing the sheet.
  */
 public enum PipelineStage {
 
@@ -70,10 +69,8 @@ public enum PipelineStage {
      * The stage a tracker status word means.
      *
      * <p>The spreadsheet predates this enum and its status column is hand-typed,
-     * so it holds "Applied", "OA sent", "Round 2" and "Ghosted". Reusing
-     * {@link com.anuragbhandary.jobradar.followup.ApplicationStage}'s vocabulary
-     * would flatten all of those to three values; this keeps the distinctions the
-     * board needs while still refusing to guess at a word it does not know.
+     * so it holds "Applied", "OA sent", "Round 2" and "Ghosted". This keeps those
+     * distinctions while still refusing to guess at a word it does not know.
      */
     public static PipelineStage fromTrackerStatus(String status) {
         if (status == null || status.isBlank()) {

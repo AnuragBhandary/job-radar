@@ -1,19 +1,14 @@
 package com.anuragbhandary.jobradar.pipeline;
 
 import com.anuragbhandary.jobradar.domain.Posting;
-import com.anuragbhandary.jobradar.match.MatchScore;
-import com.anuragbhandary.jobradar.match.MatchScorer;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.anuragbhandary.jobradar.sheets.SheetsClient;
 import com.anuragbhandary.jobradar.sheets.SheetsClient.ExistingApplication;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,43 +38,14 @@ public class PipelineService {
     private final JobInterestRepository interests;
     private final PostingRepository postings;
     private final BoardTokenRepository boards;
-    private final MatchScorer scorer;
     private final SheetsClient sheets;
 
     public PipelineService(JobInterestRepository interests, PostingRepository postings,
-            BoardTokenRepository boards, MatchScorer scorer, SheetsClient sheets) {
+            BoardTokenRepository boards, SheetsClient sheets) {
         this.interests = interests;
         this.postings = postings;
         this.boards = boards;
-        this.scorer = scorer;
         this.sheets = sheets;
-    }
-
-    /** A column of the board, with its entries already joined to their postings. */
-    public record Column(PipelineStage stage, List<Entry> entries) {
-
-        public int size() {
-            return entries.size();
-        }
-    }
-
-    /**
-     * @param posting null for an application made before this tool existed
-     * @param score   recomputed now, not the one stored at save time
-     */
-    public record Entry(JobInterest interest, Posting posting, MatchScore score) {
-
-        public boolean isDue(LocalDate today) {
-            return interest.isDue(today);
-        }
-
-        /** How far the score has moved since it was saved, or null. */
-        public Integer drift() {
-            if (score == null || interest.getScoreWhenSaved() == null) {
-                return null;
-            }
-            return score.score() - interest.getScoreWhenSaved();
-        }
     }
 
     // ------------------------------------------------------------------
@@ -87,50 +53,8 @@ public class PipelineService {
     // ------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public List<Column> board() {
-        Map<PipelineStage, List<Entry>> byStage = new LinkedHashMap<>();
-        for (JobInterest interest : interests.findAll()) {
-            byStage.computeIfAbsent(interest.getStage(), stage -> new ArrayList<>())
-                    .add(toEntry(interest));
-        }
-
-        List<Column> columns = new ArrayList<>();
-        for (PipelineStage stage : PipelineStage.values()) {
-            // A fresh list: getOrDefault returns the immutable List.of() for an
-            // empty column, and sorting that throws.
-            List<Entry> entries = new ArrayList<>(byStage.getOrDefault(stage, List.of()));
-            // Highest score first inside a column, then most recently touched.
-            // Sorting a column by date puts whatever was clicked last at the top,
-            // which is the least useful ordering available.
-            entries.sort((a, b) -> {
-                int byScore = Integer.compare(
-                        a.score() == null ? -1 : a.score().score(),
-                        b.score() == null ? -1 : b.score().score());
-                return byScore != 0 ? -byScore
-                        : b.interest().getUpdatedAt().compareTo(a.interest().getUpdatedAt());
-            });
-            columns.add(new Column(stage, List.copyOf(entries)));
-        }
-        return columns;
-    }
-
-    @Transactional(readOnly = true)
-    public List<Entry> dueReminders(LocalDate today) {
-        return interests.findByRemindOnLessThanEqualOrderByRemindOnAsc(today).stream()
-                .filter(interest -> !interest.getStage().isTerminal())
-                .map(this::toEntry)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
     public Optional<JobInterest> forPosting(Long postingId) {
         return interests.findByPostingId(postingId);
-    }
-
-    private Entry toEntry(JobInterest interest) {
-        Posting posting = interest.hasPosting()
-                ? postings.findById(interest.getPostingId()).orElse(null) : null;
-        return new Entry(interest, posting, posting == null ? null : scorer.score(posting));
     }
 
     // ------------------------------------------------------------------
@@ -149,7 +73,7 @@ public class PipelineService {
 
         return interests.save(new JobInterest(
                 postingId, companyOf(posting), posting.getTitle(), posting.getUrl(),
-                stage, scorer.score(posting).score()));
+                stage, null));
     }
 
     /**
@@ -267,6 +191,9 @@ public class PipelineService {
 
         int imported = 0;
         int refreshed = 0;
+        // Loaded lazily and once: matching a row reads every posting, and doing
+        // that per row made a thirty-row sheet read the table thirty times.
+        List<Posting> all = null;
         for (ExistingApplication row : sheets.readExistingApplications()) {
             if (row.company() == null || row.company().isBlank()) {
                 continue;
@@ -282,7 +209,10 @@ public class PipelineService {
                 }
                 continue;
             }
-            Optional<Posting> posting = findPosting(row);
+            if (all == null) {
+                all = postings.findAll();
+            }
+            Optional<Posting> posting = findPosting(row, all);
             if (posting.isPresent() && interests.existsByPostingId(posting.get().getId())) {
                 continue;
             }
@@ -294,7 +224,7 @@ public class PipelineService {
                             : row.role().trim(),
                     posting.map(Posting::getUrl).orElse(row.link()),
                     PipelineStage.fromTrackerStatus(row.status()),
-                    posting.map(p -> scorer.score(p).score()).orElse(null));
+                    null);
             interest.setTrackerRow(row.rowNumber());
             // The sheet's own Date Applied. Previously dropped on the floor, which
             // left every imported row looking like it was sent the day of the
@@ -314,12 +244,12 @@ public class PipelineService {
      * <p>Matched on company and title together, both normalised. Company alone
      * would attach an Amazon SDE row to whichever of 493 Amazon postings came
      * first, which is worse than leaving it unlinked - an unlinked entry is
-     * honestly a bare record, and a wrongly linked one claims a score and a
-     * description that belong to a different job.
+     * honestly a bare record, and a wrongly linked one claims a description that
+     * belongs to a different job.
      */
-    private Optional<Posting> findPosting(ExistingApplication row) {
+    private Optional<Posting> findPosting(ExistingApplication row, List<Posting> all) {
         if (row.link() != null && !row.link().isBlank()) {
-            Optional<Posting> byUrl = postings.findAll().stream()
+            Optional<Posting> byUrl = all.stream()
                     .filter(posting -> row.link().equals(posting.getUrl()))
                     .findFirst();
             if (byUrl.isPresent()) {
@@ -331,7 +261,7 @@ public class PipelineService {
         if (role.isBlank()) {
             return Optional.empty();
         }
-        return postings.findAll().stream()
+        return all.stream()
                 .filter(posting -> normalise(posting.getTitle()).equals(role))
                 .filter(posting -> normalise(companyOf(posting)).contains(company)
                         || company.contains(normalise(companyOf(posting))))
