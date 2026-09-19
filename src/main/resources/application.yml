@@ -298,7 +298,11 @@ job-radar:
       # Systems" in a job title, which made a Malmö role read as globally remote.
       # A remote marker has to be a word about working arrangements, not one that
       # also happens to be core software vocabulary.
-      remote-markers: [remote, work from home, work from anywhere, distributed team]
+      # "Home based" is Canonical's word for remote ("Home based - Worldwide").
+      # Without it 47 eligible roles read as onsite with no country and never
+      # reached a handoff file (found 2026-09-19).
+      remote-markers: [remote, work from home, work from anywhere, distributed team,
+                       home based, home-based]
 
       # LEGACY as of the country/work-mode phase, and still live. GeoFilter reads
       # this list and behaves exactly as it always has; screening no longer calls
