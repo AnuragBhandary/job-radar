@@ -61,15 +61,35 @@ class YearsExtractorTest {
         }
 
         @Test
-        @DisplayName("'degree, or N years of equivalent experience' adds no requirement here")
+        @DisplayName("'degree, or N years of equivalent experience' is no requirement")
         void anAlternativeToADegreeAddsNothing() {
-            // Amazon's and Google's phrasing, and an alternative to a degree rather
-            // than a bar. This rule must not be what rejects such a posting; the
-            // older whole-description minimum still reads it as N, which is a known
-            // conservative bias and is not changed by this phase.
+            // Google's phrasing: one or the other, and the degree is held.
             assertThat(extractor.extract("Good to Have: Bachelor's degree in Computer "
                     + "Science, or 4+ years of equivalent practical experience.")
-                    .minYears()).isEqualTo(4);
+                    .minYears()).isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("'degree OR minimum N years' is an alternative too")
+        void minimumYearsInsteadOfADegree() {
+            assertThat(minYears("Requirements: A bachelor's degree OR minimum 4 years of "
+                    + "experience with vocational education.")).isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("years that come with a degree are still a bar")
+        void yearsWithAMastersStillCount() {
+            // The real posting. The Master's route is the shorter one, and it is real.
+            assertThat(minYears("Requirements: Minimum 5 years of relevant experience with a "
+                    + "Bachelor's degree, or 3 years with a Master's degree, in data handling."))
+                    .isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("'degree plus N years' is a bar, not an alternative")
+        void degreePlusYearsIsARequirement() {
+            assertThat(minYears("Requirements: Bachelor's degree in Computer Science, or a "
+                    + "related field, plus 3 years of related work experience.")).isEqualTo(3);
         }
     }
 

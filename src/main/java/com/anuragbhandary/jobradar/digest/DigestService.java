@@ -1,42 +1,39 @@
 package com.anuragbhandary.jobradar.digest;
 
+import com.anuragbhandary.jobradar.config.AppProperties;
+import com.anuragbhandary.jobradar.domain.BoardToken;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Verdict;
-import com.anuragbhandary.jobradar.config.AppProperties;
-import com.anuragbhandary.jobradar.filter.ScreeningService;
-import com.anuragbhandary.jobradar.match.MatchProperties;
-import com.anuragbhandary.jobradar.match.MatchScore;
-import com.anuragbhandary.jobradar.match.MatchScorer;
+import com.anuragbhandary.jobradar.pipeline.JobInterest;
+import com.anuragbhandary.jobradar.pipeline.JobInterestRepository;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.anuragbhandary.jobradar.sheets.SheetsClient;
 import com.anuragbhandary.jobradar.strategy.StrategyOutcome;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Decides what goes in the digest. Formatting is {@link DigestWriter}'s job. */
+/** Decides what goes in a handoff file. Formatting is {@link DigestWriter}'s job. */
 @Service
 public class DigestService {
 
     /**
-     * Freshest first, then alphabetical to keep a company's roles together.
-     *
-     * <p>Alphabetical alone put a requisition open for 479 days above one posted
-     * yesterday, and nothing on the line said which was which. Age is the field
-     * that separates two otherwise identical postings, and it was being captured
-     * from the first milestone and never read.
+     * Freshest first, then by company to keep a company's roles together.
      *
      * <p>Postings with no date sort last rather than first: an absent date is not
      * evidence of freshness.
@@ -50,172 +47,126 @@ public class DigestService {
     private final PostingRepository postings;
     private final BoardTokenRepository boards;
     private final SheetsClient sheets;
+    private final JobInterestRepository interests;
     private final AppProperties.SalaryFloors floors;
-    private final MatchScorer scorer;
-    private final MatchProperties match;
-
-    /** How many ranked rows open the digest. A shortlist, not a second copy of the lists. */
-    static final int START_HERE = 5;
+    private final int staleDays;
 
     public DigestService(
             PostingRepository postings,
             BoardTokenRepository boards,
             SheetsClient sheets,
+            JobInterestRepository interests,
             AppProperties properties,
-            MatchScorer scorer,
-            MatchProperties match) {
+            @Value("${job-radar.match.stale-days:45}") int staleDays) {
         this.postings = postings;
         this.boards = boards;
         this.sheets = sheets;
+        this.interests = interests;
         this.floors = properties.salaryFloors();
-        this.scorer = scorer;
-        this.match = match;
+        this.staleDays = staleDays;
     }
 
+    /** Today's file: candidates that are new or changed since the last fetch. */
     @Transactional(readOnly = true)
     public Digest build(LocalDate date) {
-        // Only the statuses the digest can report on. Every list below filters to
-        // NEW, UPDATED or CLOSED anyway, so SEEN rows were being loaded to be
-        // discarded - and SEEN is what a posting becomes on the second day it
-        // exists, so on any mature database it is nearly all of them, each
-        // carrying a description text averaging six kilobytes.
-        List<Posting> all = postings.findByStatusIn(List.of(
+        // Only the statuses a daily file reports on. SEEN is what a posting becomes
+        // on its second day, so on a mature database it is nearly every row.
+        List<Posting> recent = postings.findByStatusIn(List.of(
                 PostingStatus.NEW, PostingStatus.UPDATED, PostingStatus.CLOSED));
-        List<com.anuragbhandary.jobradar.domain.BoardToken> activeBoards = boards.findByActiveTrue();
+        Predicate<Posting> fresh = p -> p.getStatus() == PostingStatus.NEW
+                || p.getStatus() == PostingStatus.UPDATED;
+        return assemble(date, null, recent, fresh);
+    }
 
-        // Companies already applied to. Empty when Sheets is unconfigured or
-        // unreachable, so losing the tracker costs the digest its suppression
-        // rather than its existence.
+    /**
+     * Every open candidate first seen on or after {@code since}.
+     *
+     * <p>A daily file lists only what the last fetch found new, so a missed day's
+     * postings are SEEN by the next morning and never appear in a daily file again.
+     * This is how they are caught up: by date, not by status.
+     */
+    @Transactional(readOnly = true)
+    public Digest buildSince(LocalDate date, LocalDate since) {
+        Instant from = since.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        List<Posting> window = postings.findByVerdict(Verdict.CANDIDATE).stream()
+                .filter(p -> p.getFirstSeen() != null && !p.getFirstSeen().isBefore(from))
+                .toList();
+        return assemble(date, since, window, p -> p.getStatus() != PostingStatus.CLOSED);
+    }
+
+    private Digest assemble(LocalDate date, LocalDate since, List<Posting> all,
+            Predicate<Posting> inScope) {
+        List<BoardToken> activeBoards = boards.findByActiveTrue();
+
+        // Companies already applied to, flagged on each entry. Empty when Sheets is
+        // unconfigured or unreachable, which costs the flag and nothing else.
         Set<String> applied = sheets.appliedCompanies();
         Map<String, String> labels = activeBoards.stream()
                 .filter(b -> b.getLabel() != null)
-                .collect(Collectors.toMap(
-                        com.anuragbhandary.jobradar.domain.BoardToken::getToken,
-                        com.anuragbhandary.jobradar.domain.BoardToken::getLabel, (a, b) -> a));
-        Predicate<Posting> notYetApplied = p -> !applied.contains(
+                .collect(Collectors.toMap(BoardToken::getToken, BoardToken::getLabel,
+                        (a, b) -> a));
+        Predicate<Posting> companyApplied = p -> applied.contains(
                 labels.getOrDefault(p.getBoardToken(), p.getBoardToken())
                         .toLowerCase(Locale.ROOT).trim());
 
-        Predicate<Posting> fresh = p -> p.getStatus() == PostingStatus.NEW
-                || p.getStatus() == PostingStatus.UPDATED;
-        // Eligible AND recommended. Screening now classifies and keeps every
-        // posting it can place instead of discarding whole countries, so a digest
-        // filtered on the verdict alone would open with American roles the
-        // strategy has been told not to recommend. A null outcome counts as
-        // recommended: that is what a row screened before this phase looks like,
-        // so an un-migrated database reads exactly as it always has.
+        // Marked applied, skipped or shortlisted. Any decision takes a posting out:
+        // the file is for postings nobody has looked at yet.
+        Set<Long> decided = interests.findAll().stream()
+                .map(JobInterest::getPostingId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Predicate<Posting> undecided = p -> !decided.contains(p.getId());
+
+        // Eligible AND recommended. A null outcome counts as recommended: that is
+        // what a row screened before the strategy columns existed looks like.
         Predicate<Posting> candidate = p -> p.getVerdict() == Verdict.CANDIDATE
                 && (p.getStrategyOutcome() == null
                         || p.getStrategyOutcome() == StrategyOutcome.RECOMMENDED);
 
-        // Open long enough to be stale: taken out of the three lists and counted.
-        // Never an eligibility decision - the row is untouched and still on /jobs.
-        // Guarded so a missing match config cannot make every posting stale.
-        Predicate<Posting> stale = p -> match != null && match.staleDays() > 0
-                && p.getPostedDate() != null
-                && ChronoUnit.DAYS.between(p.getPostedDate(), date) >= match.staleDays();
+        // Open long enough to be stale: taken out and counted, never re-judged.
+        Predicate<Posting> stale = p -> staleDays > 0 && p.getPostedDate() != null
+                && ChronoUnit.DAYS.between(p.getPostedDate(), date) >= staleDays;
 
-        // A candidate stating no years goes to review rather than to the
-        // candidate list, so the two sections do not report the same posting
-        // twice and the candidate list stays worth trusting.
-        long suppressed = all.stream()
-                .filter(fresh).filter(candidate)
-                .filter(notYetApplied.negate())
+        List<Posting> eligible = all.stream().filter(inScope).filter(candidate).toList();
+        List<Posting> open = eligible.stream().filter(undecided).toList();
+
+        List<Posting> raw = open.stream()
+                .filter(stale.negate())
+                .sorted(BY_RECENCY_THEN_COMPANY)
+                .toList();
+        List<Posting> deduped = dedupe(raw);
+
+        int staleSetAside = (int) open.stream().filter(stale)
+                .map(p -> p.getBoardToken() + " " + p.getTitle())
+                .distinct()
                 .count();
 
-        List<Posting> newCandidatesRaw = all.stream()
-                .filter(p -> p.getStatus() == PostingStatus.NEW)
-                .filter(candidate)
-                .filter(notYetApplied)
-                .filter(stale.negate())
-                .filter(p -> !ScreeningService.needsHumanReview(p))
-                .sorted(BY_RECENCY_THEN_COMPANY)
+        List<Digest.Entry> candidates = deduped.stream()
+                .map(p -> new Digest.Entry(p, p.getStatus() == PostingStatus.UPDATED,
+                        companyApplied.test(p)))
                 .toList();
-        List<Posting> newCandidates = dedupe(newCandidatesRaw);
 
-        // The same strategy predicate as the candidates. Without it this list
-        // printed every eligible onsite role in a country the strategy excludes
-        // or has no policy for - New York, San Francisco, Milan, Tokyo - which on
-        // 2026-09-15 was most of its sixty rows.
-        List<Posting> reviewRaw = all.stream()
-                .filter(fresh)
-                .filter(candidate)
-                .filter(ScreeningService::needsHumanReview)
-                .filter(notYetApplied)
-                .filter(stale.negate())
-                .sorted(BY_RECENCY_THEN_COMPANY)
-                .toList();
-        List<Posting> review = dedupe(reviewRaw);
-
-        List<Posting> updatedRaw = all.stream()
-                .filter(p -> p.getStatus() == PostingStatus.UPDATED)
-                .filter(candidate)
-                .filter(notYetApplied)
-                .filter(stale.negate())
-                .filter(p -> !ScreeningService.needsHumanReview(p))
-                .sorted(BY_RECENCY_THEN_COMPANY)
-                .toList();
-        List<Posting> updated = dedupe(updatedRaw);
-
-        List<Posting> closed = all.stream()
+        // Closures and rejections describe a fetch, so only the daily file has them.
+        List<Posting> closed = since != null ? List.of() : all.stream()
                 .filter(p -> p.getStatus() == PostingStatus.CLOSED)
                 .filter(candidate)
                 .sorted(BY_RECENCY_THEN_COMPANY)
                 .toList();
 
-        Map<String, Long> rejections = all.stream()
-                .filter(fresh)
+        Map<String, Long> rejections = since != null ? Map.of() : all.stream()
+                .filter(inScope)
                 .filter(p -> p.getVerdict() == Verdict.REJECTED)
-                .collect(Collectors.groupingBy(
-                        DigestService::category, Collectors.counting()))
+                .collect(Collectors.groupingBy(DigestService::category, Collectors.counting()))
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
                         (a, b) -> a, LinkedHashMap::new));
 
-        int collapsed = (newCandidatesRaw.size() - newCandidates.size())
-                + (reviewRaw.size() - review.size())
-                + (updatedRaw.size() - updated.size());
-
-        int staleSetAside = (int) all.stream()
-                .filter(fresh).filter(candidate).filter(notYetApplied).filter(stale)
-                .map(p -> p.getBoardToken() + " " + p.getTitle())
-                .distinct()
-                .count();
-
-        return new Digest(date, newCandidates, review, updated, closed, rejections,
-                activeBoards,
+        return new Digest(date, since, candidates, closed, rejections, activeBoards,
                 floors != null && floors.needsReverification(date),
-                (int) suppressed,
-                collapsed,
-                startHere(newCandidates, review, updated),
+                (int) eligible.stream().filter(undecided.negate()).count(),
+                raw.size() - deduped.size(),
                 staleSetAside);
-    }
-
-    /**
-     * The strongest few across all three lists, by match score; recency breaks ties.
-     *
-     * <p>Every list below this is dated, not ranked, so on a day with sixty rows the
-     * best role could sit ninth in one of them. The scorer is the one the jobs page
-     * already uses, so the digest and the page cannot disagree about what is strong.
-     */
-    private List<Digest.Pick> startHere(List<Posting> newCandidates, List<Posting> review,
-            List<Posting> updated) {
-        if (scorer == null) {
-            return List.of();
-        }
-        Map<String, Posting> byRole = new LinkedHashMap<>();
-        Stream.of(newCandidates, review, updated).flatMap(List::stream)
-                .forEach(p -> byRole.putIfAbsent(p.getBoardToken() + " " + p.getTitle(), p));
-        return byRole.values().stream()
-                .map(p -> {
-                    MatchScore score = scorer.score(p);
-                    return new Digest.Pick(p, score.score(), score.band().label());
-                })
-                .sorted(Comparator.comparingInt(Digest.Pick::score).reversed()
-                        .thenComparing(Digest.Pick::posting, BY_RECENCY_THEN_COMPANY))
-                .limit(START_HERE)
-                .toList();
     }
 
     private static String category(Posting posting) {
@@ -231,21 +182,15 @@ public class DigestService {
     /**
      * Collapses repeat listings of the same role at the same company.
      *
-     * <p>AWS advertises "Software Development Engineer, AWS Database Migration
-     * Service" in Dublin three times over, under three requisition ids. They are
-     * three vacancies and one application, so showing all three costs the reader
-     * attention and returns nothing. Ten of the eighty-seven candidates in the
-     * first real run were repeats of this kind.
-     *
-     * <p>Keyed on company and title rather than on the description, because the
-     * point is what a human would apply to, not what an ATS considers distinct.
-     * Input order is preserved, so the first listing of a role survives.
+     * <p>AWS advertises one Dublin role three times under three requisition ids:
+     * three vacancies, one application. Keyed on company and title, and input order
+     * is preserved, so the first listing of a role survives.
      */
     private static List<Posting> dedupe(List<Posting> postings) {
         Map<String, Posting> byRole = new LinkedHashMap<>();
         for (Posting posting : postings) {
             byRole.putIfAbsent(
-                    posting.getBoardToken() + "\u0000" + posting.getTitle(), posting);
+                    posting.getBoardToken() + " " + posting.getTitle(), posting);
         }
         return List.copyOf(byRole.values());
     }

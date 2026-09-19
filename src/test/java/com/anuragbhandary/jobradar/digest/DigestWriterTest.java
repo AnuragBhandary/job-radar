@@ -50,41 +50,74 @@ class DigestWriterTest {
         return p;
     }
 
-    private static Digest digest(List<Posting> newCandidates, List<Posting> review,
+    private static Digest digest(List<Posting> candidates,
             Map<String, Long> rejections, boolean reverify) {
         BoardToken board = new BoardToken(Source.GREENHOUSE, "stripe", "Stripe");
         board.recordSuccess(615, Instant.now());
-        return new Digest(TODAY, newCandidates, review, List.of(), List.of(),
-                rejections, List.of(board), reverify, 0, 0);
+        return new Digest(TODAY, null,
+                candidates.stream().map(p -> new Digest.Entry(p, false, false)).toList(),
+                List.of(), rejections, List.of(board), reverify, 0, 0, 0);
+    }
+
+    private static Digest withCounts(List<BoardToken> boards, int decided, int folded,
+            int stale) {
+        return new Digest(TODAY, null, List.of(), List.of(), Map.of(), boards, false,
+                decided, folded, stale);
     }
 
     @Test
     @DisplayName("a quiet day says so instead of padding")
     void quietDayIsExplicit() {
-        String out = writer.render(digest(List.of(), List.of(), Map.of(), false));
+        String out = writer.render(digest(List.of(), Map.of(), false));
 
-        assertThat(out).contains("# job-radar — 2026-09-06");
-        assertThat(out).contains("Nothing new today.");
-        // A digest that pads a quiet day with near-misses trains you to stop
-        // reading it.
-        assertThat(out).doesNotContain("## New candidates");
+        assertThat(out).contains("# job-radar handoff — 2026-09-06");
+        assertThat(out).contains("Nothing new to review.");
+        assertThat(out).doesNotContain("## Candidates");
     }
 
     @Test
-    @DisplayName("a candidate is rendered with company, years, signal, floor and link")
+    @DisplayName("a candidate carries its facts, floor, link and description")
     void rendersCandidate() {
-        String out = writer.render(digest(
-                List.of(candidate("stripe", "Software Engineer, New Grad", "Dublin",
-                        Country.IRELAND, 0, true)),
-                List.of(), Map.of(), false));
+        Posting p = candidate("stripe", "Software Engineer, New Grad", "Dublin",
+                Country.IRELAND, 0, true);
+        p.setCountryCode("IE");
+        p.setDescriptionText("Build payments APIs in Java.");
+        String out = writer.render(digest(List.of(p), Map.of(), false));
 
-        assertThat(out).contains("## New candidates (1)");
-        // The board token is "stripe"; the digest should show the label.
-        assertThat(out).contains("**Stripe** — Software Engineer, New Grad — Dublin");
+        assertThat(out).contains("## Candidates (1)");
+        // The board token is "stripe"; the file shows the label.
+        assertThat(out).contains("· Stripe · Software Engineer, New Grad");
+        assertThat(out).contains("Dublin · IE");
         assertThat(out).contains("Years: 0 (entry level)");
-        assertThat(out).contains("Graduate signal: yes");
+        assertThat(out).contains("graduate signal: yes");
         assertThat(out).contains("EUR 40.904").contains("CSEP");
         assertThat(out).contains("https://example.com/1");
+        assertThat(out).contains("Build payments APIs in Java.");
+    }
+
+    @Test
+    @DisplayName("nothing is ranked or scored")
+    void noRanking() {
+        String out = writer.render(digest(List.of(candidate("stripe", "Backend Engineer",
+                "Dublin", Country.IRELAND, 1, false)), Map.of(), false));
+        assertThat(out).doesNotContain("Start here").doesNotContain("/100");
+    }
+
+    @Test
+    @DisplayName("a changed description is flagged on the entry")
+    void flagsUpdated() {
+        Posting p = candidate("stripe", "Backend Engineer", "Dublin", Country.IRELAND, 1, false);
+        String out = writer.render(new Digest(TODAY, null, List.of(new Digest.Entry(p, true, false)),
+                List.of(), Map.of(), List.of(), false, 0, 0, 0));
+        assertThat(out).contains("_(description changed)_");
+    }
+
+    @Test
+    @DisplayName("an export names its window")
+    void exportNamesWindow() {
+        String out = writer.render(new Digest(TODAY, LocalDate.of(2026, 9, 1), List.of(),
+                List.of(), Map.of(), List.of(), false, 0, 0, 0));
+        assertThat(out).contains("(everything open since 2026-09-01)");
     }
 
     @Test
@@ -95,8 +128,8 @@ class DigestWriterTest {
         // so it is written by hand and pinned here.
         assertThat(SalaryFloorAdvisor.indianGrouping(new BigDecimal("700000")))
                 .isEqualTo("7,00,000");
-        assertThat(SalaryFloorAdvisor.indianGrouping(new BigDecimal("1400000")))
-                .isEqualTo("14,00,000");
+        assertThat(SalaryFloorAdvisor.indianGrouping(new BigDecimal("800000")))
+                .isEqualTo("8,00,000");
         assertThat(SalaryFloorAdvisor.indianGrouping(new BigDecimal("45000")))
                 .isEqualTo("45,000");
         assertThat(SalaryFloorAdvisor.indianGrouping(new BigDecimal("5000")))
@@ -112,59 +145,49 @@ class DigestWriterTest {
     void explainsIndianFloors() {
         String mumbai = writer.render(digest(List.of(
                 candidate("slice", "Backend Engineer", "Mumbai", Country.INDIA, 1, false)),
-                List.of(), Map.of(), false));
+                Map.of(), false));
         String bangalore = writer.render(digest(List.of(
                 candidate("slice", "Backend Engineer", "Bengaluru", Country.INDIA, 1, false)),
-                List.of(), Map.of(), false));
+                Map.of(), false));
 
         assertThat(mumbai).contains("Rs 7,00,000").contains("no rent");
         assertThat(bangalore).contains("Rs 8,00,000").contains("relocation");
     }
 
     @Test
-    @DisplayName("no-years candidates go to review, not into the candidate list")
-    void reviewSectionIsSeparate() {
-        String out = writer.render(digest(List.of(),
-                List.of(candidate("adyen", "Java Software Engineer", "Amsterdam",
-                        Country.NETHERLANDS, -1, false)),
-                Map.of(), false));
-
-        assertThat(out).contains("## Needs human review — no years stated (1)");
-        assertThat(out).contains("Years: none stated");
-        assertThat(out).doesNotContain("## New candidates");
+    @DisplayName("no years stated is said on the entry, not hidden in another section")
+    void noYearsStated() {
+        String out = writer.render(digest(List.of(candidate("adyen", "Java Software Engineer",
+                "Amsterdam", Country.NETHERLANDS, -1, false)), Map.of(), false));
+        assertThat(out).contains("## Candidates (1)").contains("Years: none stated");
     }
 
     @Test
     @DisplayName("rejections are collapsed to counts by reason")
     void collapsesRejections() {
-        String out = writer.render(digest(List.of(), List.of(),
+        String out = writer.render(digest(List.of(),
                 new java.util.LinkedHashMap<>(Map.of("country-locked remote", 585L)), false));
 
-        assertThat(out).contains("## Rejected (585)");
+        assertThat(out).contains("## Rejected on facts (585)");
         assertThat(out).contains("585 — country-locked remote");
     }
 
     @Test
-    @DisplayName("healthy boards are summarised, not listed one by one")
-    void summarisesHealthyBoards() {
-        String out = writer.render(digest(List.of(), List.of(), Map.of(), false));
-        assertThat(out).contains("All 1 boards healthy — 615 postings.");
+    @DisplayName("the header says when the data was fetched")
+    void saysWhenFetched() {
+        String out = writer.render(digest(List.of(), Map.of(), false));
+        assertThat(out).contains("- Last fetch: ").contains("- Boards: 1 active, 615 postings");
     }
 
     @Test
-    @DisplayName("a failing board is named, with its last known good count")
+    @DisplayName("a failing board is named, with its error")
     void namesFailingBoards() {
         BoardToken broken = new BoardToken(Source.GREENHOUSE, "celonis", "Celonis");
         broken.recordSuccess(274, Instant.now());
         broken.recordFailure("HTTP 404", Instant.now());
 
-        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(broken), false, 0, 0));
-
-        // "was 274 postings, now failing" is the useful statement. "0 postings"
-        // would read as a company that stopped hiring.
-        assertThat(out).contains("**celonis**").contains("was 274 postings")
-                .contains("HTTP 404");
+        String out = writer.render(withCounts(List.of(broken), 0, 0, 0));
+        assertThat(out).contains("failing: GREENHOUSE/celonis (HTTP 404)");
     }
 
     @Test
@@ -172,69 +195,35 @@ class DigestWriterTest {
     void namesEmptyBoards() {
         // SmartRecruiters answers HTTP 200 with totalFound 0 for a company it has
         // never heard of, so a dead token looks exactly like a company with no
-        // openings. Eight of the fourteen seeded tokens are in this state.
+        // openings.
         BoardToken empty = new BoardToken(Source.SMARTRECRUITERS, "Personio", "Personio");
         empty.recordSuccess(0, Instant.now());
 
-        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(empty), false, 0, 0));
-
+        String out = writer.render(withCounts(List.of(empty), 0, 0, 0));
         assertThat(out).contains("returned nothing").contains("SMARTRECRUITERS/Personio");
-        assertThat(out).doesNotContain("boards healthy");
     }
 
     @Test
-    @DisplayName("suppressed candidates are counted, not silently dropped")
-    void countsSuppressedCandidates() {
-        // A digest that quietly shrinks is one you stop trusting.
-        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(), false, 4, 0));
-
-        assertThat(out).contains("4 candidate(s) hidden — already applied");
+    @DisplayName("everything withheld is counted, not silently dropped")
+    void countsWithheld() {
+        // A file that quietly shrinks is one you stop trusting.
+        String out = writer.render(withCounts(List.of(), 3, 6, 7));
+        assertThat(out).contains("- Withheld: 3 already marked, 6 repeat listings folded, 7 stale");
     }
 
     @Test
-    @DisplayName("stale salary floors raise a warning in the digest")
+    @DisplayName("a company already applied to is flagged, not hidden")
+    void flagsCompanyApplied() {
+        Posting p = candidate("amazon", "SDE, S3", "Berlin", Country.GERMANY, 1, false);
+        String out = writer.render(new Digest(TODAY, null, List.of(new Digest.Entry(p, false, true)),
+                List.of(), Map.of(), List.of(), false, 0, 0, 0));
+        assertThat(out).contains("SDE, S3").contains("**Already applied to this company**");
+    }
+
+    @Test
+    @DisplayName("stale salary floors raise a warning")
     void warnsWhenFloorsNeedReverification() {
-        String out = writer.render(digest(List.of(), List.of(), Map.of(), true));
+        String out = writer.render(digest(List.of(), Map.of(), true));
         assertThat(out).contains("Salary floors need re-verification");
-    }
-
-    @Test
-    @DisplayName("folded repeat listings are reported, not silently dropped")
-    void reportsCollapsedDuplicates() {
-        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(), false, 0, 6));
-
-        assertThat(out).contains("6 repeat listing(s) folded");
-    }
-
-    @Test
-    @DisplayName("'Start here' ranks the strongest roles above every dated list")
-    void rendersStartHereFirst() {
-        Posting best = candidate("stripe", "Software Engineer, New Grad", "Dublin",
-                Country.IRELAND, 0, true);
-        String out = writer.render(new Digest(TODAY, List.of(best), List.of(), List.of(), List.of(),
-                Map.of(), List.of(), false, 0, 0, List.of(new Digest.Pick(best, 82, "strong")), 0));
-
-        assertThat(out).contains("## Start here")
-                .contains("1. **stripe** — Software Engineer, New Grad — Dublin — 82/100 strong");
-        assertThat(out.indexOf("## Start here")).isLessThan(out.indexOf("## New candidates"));
-    }
-
-    @Test
-    @DisplayName("no ranking means no empty 'Start here' heading")
-    void omitsEmptyStartHere() {
-        String out = writer.render(digest(List.of(), List.of(), Map.of(), false));
-        assertThat(out).doesNotContain("Start here");
-    }
-
-    @Test
-    @DisplayName("stale requisitions set aside are counted, not silently dropped")
-    void countsStaleSetAside() {
-        String out = writer.render(new Digest(TODAY, List.of(), List.of(), List.of(), List.of(),
-                Map.of(), List.of(), false, 0, 0, List.of(), 7));
-
-        assertThat(out).contains("7 stale requisition(s) set aside");
     }
 }

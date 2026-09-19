@@ -12,6 +12,7 @@ target/
 
 # Generated digests are local output, not source
 /digests/
+/inbox/
 
 # Secrets. The Google service-account key must never enter this repo.
 config/*.json

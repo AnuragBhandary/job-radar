@@ -230,7 +230,6 @@ class TitleFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "SAP Test Automation Engineer",
             "SW developer :Java",
             "Site Reliability Engineer",
             "Software Engineer - Java (x/f/m)",
@@ -239,6 +238,33 @@ class TitleFilterTest {
     })
     @DisplayName("software titles next to the new exclusions are still accepted")
     void newExclusionsAreNotGreedy(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "SAP Test Automation Engineer",
+            "Junior iOS Engineer - Payments",
+            "Android Engineer: Device Foundations",
+            "Salesforce Developer and Admin, ISS",
+            "Model-Based Design (MBD) Engineer_ECT",
+            "VM Brakes BSW Developer Indian OEM",
+            ".NET Developer",
+    })
+    @DisplayName("a platform outside the stack is excluded on the title")
+    void stackExclusions(String title) {
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Backend Engineer - Messaging (Kotlin/Java)",
+            "Software Engineer, Payments Platform",
+            "Python Engineer - Sapient Systems",
+            "Full Stack Engineer (React, Java)",
+    })
+    @DisplayName("stack exclusions do not fire on neighbouring words")
+    void stackExclusionsAreNotGreedy(String title) {
         assertThat(filter.screen(title).accepted()).isTrue();
     }
 }

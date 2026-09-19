@@ -41,6 +41,7 @@ public class JobRadarCli implements ApplicationRunner {
     private final LedgerCommand ledger;
     private final BenchRewriteCommand benchRewrite;
     private final EvidenceCommand evidence;
+    private final MarkCommand mark;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen,
             DigestCommand digest, RunCommand runCommand,
@@ -49,7 +50,7 @@ public class JobRadarCli implements ApplicationRunner {
             ApplyCommand apply, ApplicationsCommand applications,
             FollowUpCommand followUp, LearnCommand learn, InboxCommand inbox, LoginCommand login, UiCommand ui, PrepCommand prep, VariantsCommand variants, BoardCommand board,
             KnowledgeCommand knowledge, BenchLlmCommand benchLlm, LedgerCommand ledger,
-            BenchRewriteCommand benchRewrite, EvidenceCommand evidence) {
+            BenchRewriteCommand benchRewrite, EvidenceCommand evidence, MarkCommand mark) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -73,6 +74,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.ledger = ledger;
         this.benchRewrite = benchRewrite;
         this.evidence = evidence;
+        this.mark = mark;
     }
 
     @Override
@@ -92,6 +94,8 @@ public class JobRadarCli implements ApplicationRunner {
             case "fetch" -> fetch.run(options);
             case "screen" -> screen.run(options);
             case "digest" -> digest.run(options);
+            case "export" -> digest.export(options);
+            case "mark" -> mark.run(args, options);
             case "run" -> runCommand.run(options);
             case "sheet-append" -> sheetAppend.run(options);
             case "sheet-list" -> sheetList.run(options);
@@ -144,8 +148,12 @@ public class JobRadarCli implements ApplicationRunner {
                   fetch --source=GREENHOUSE               fetch one ATS
                   fetch --source=GREENHOUSE --token=stripe   fetch one board
                   screen                                  apply filters, set verdicts
-                  digest                                  write today's digest
+                  digest                                  write today's handoff file to inbox/
                   run                                     fetch + screen + digest
+                  export --since=YYYY-MM-DD               handoff file for every open candidate since a day
+                  mark <id> <decision> [--note="..."]     shortlist | skip | applied | screening |
+                                                          interview | offer | rejected | withdrawn;
+                                                          applied and later go to the tracker sheet
                   probe --tokens=a,b,c [--add]            test candidate tokens
                   serve                                   stay running for the daily schedule
                   sheet-list                              print the tracker (read-only)

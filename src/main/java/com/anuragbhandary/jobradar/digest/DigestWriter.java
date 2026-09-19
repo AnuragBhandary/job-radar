@@ -8,31 +8,38 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * Renders a digest as markdown and writes it to disk.
+ * Renders the handoff file and writes it to disk.
  *
- * <p>The brief is that a human scans it in under a minute, so it is short by
- * construction: candidates get three lines each, rejections are collapsed to
- * counts by reason, and boards are only named individually when something is
- * wrong with them.
+ * <p>The reader is a Claude session that judges each posting against the resume,
+ * so every entry carries its id (what {@code mark} takes), the facts screening
+ * worked from, and a trimmed description. The header comes first and says when
+ * the data was fetched: a file that is three days old should say so before
+ * anyone reads thirty postings from it.
  */
 @Component
 public class DigestWriter {
 
     /**
      * Past this, a posting is old enough to say so. Not a filter: an old
-     * requisition at a company worth applying to is still worth applying to, and
-     * this is the one field that says which of two identical-looking postings has
-     * been sitting there since spring.
+     * requisition at a company worth applying to is still worth applying to.
      */
     private static final int STALE_AFTER_DAYS = 60;
+
+    private static final DateTimeFormatter WHEN =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     private final AppProperties properties;
     private final SalaryFloorAdvisor salaries;
@@ -43,34 +50,37 @@ public class DigestWriter {
     }
 
     /**
-     * Writes {@code <output-dir>/YYYY-MM-DD.md}.
+     * Writes {@code <output-dir>/YYYY-MM-DD.md}, or
+     * {@code <output-dir>/since-YYYY-MM-DD.md} for an export.
      *
      * @return the file written
      */
     public Path write(Digest digest) throws IOException {
         Path dir = Path.of(properties.outputDir());
         Files.createDirectories(dir);
-        Path file = dir.resolve(digest.date() + ".md");
+        String name = digest.isExport()
+                ? "since-" + digest.since() + ".md"
+                : digest.date() + ".md";
+        Path file = dir.resolve(name);
         Files.writeString(file, render(digest), StandardCharsets.UTF_8);
         return file;
     }
 
     public String render(Digest digest) {
         // Board tokens are handles like "razorpaysoftwareprivatelimited". The
-        // seeder carries a readable label for each; use it where we have one.
+        // seeder carries a readable label for each; use it where there is one.
         Map<String, String> labels = digest.boards().stream()
                 .filter(b -> b.getLabel() != null)
                 .collect(Collectors.toMap(BoardToken::getToken, BoardToken::getLabel,
                         (a, b) -> a));
 
         StringBuilder out = new StringBuilder();
-        out.append("# job-radar — ").append(digest.date()).append('\n');
-
-        if (digest.isQuiet()) {
-            // Saying so plainly is the point. A digest that pads a quiet day
-            // with near-misses trains you to stop reading it.
-            out.append("\nNothing new today.\n");
+        out.append("# job-radar handoff — ").append(digest.date());
+        if (digest.isExport()) {
+            out.append(" (everything open since ").append(digest.since()).append(')');
         }
+        out.append("\n\n");
+        header(out, digest);
 
         if (digest.salaryFloorsNeedReverification()) {
             out.append("\n> **Salary floors need re-verification.** The Blue Card, CSEP and\n")
@@ -78,134 +88,136 @@ public class DigestWriter {
                     .append("> review date has passed. Check them at source before relying on them.\n");
         }
 
-        if (!digest.startHere().isEmpty()) {
-            // The one section that is ranked rather than dated. Everything below
-            // it is still there; this is what to open first on a busy morning.
-            out.append("\n## Start here\n\n");
-            int rank = 1;
-            for (Digest.Pick pick : digest.startHere()) {
-                Posting p = pick.posting();
-                out.append(rank++).append(". **").append(company(p, labels)).append("** — ")
-                        .append(p.getTitle()).append(" — ")
-                        .append(p.getLocation() == null ? "?" : p.getLocation())
-                        .append(" — ").append(pick.score()).append("/100 ").append(pick.band())
-                        .append('\n');
-                if (p.getUrl() != null) {
-                    out.append("   ").append(p.getUrl()).append('\n');
-                }
+        if (digest.isQuiet()) {
+            // Said plainly. A file that pads a quiet day with near-misses trains
+            // the reader to stop reading it.
+            out.append("\nNothing new to review.\n");
+        } else {
+            out.append("\n## Candidates (").append(digest.candidates().size()).append(")\n");
+            for (Digest.Entry entry : digest.candidates()) {
+                candidate(out, entry, labels, digest.date());
             }
         }
 
-        section(out, "New candidates", digest.newCandidates(), labels, digest.date());
-        section(out, "Updated postings", digest.updated(), labels, digest.date());
-        section(out, "Needs human review — no years stated", digest.needsHumanReview(), labels, digest.date());
-
         if (!digest.closed().isEmpty()) {
-            out.append("\n## Closed (").append(digest.closed().size()).append(")\n");
-            digest.closed().forEach(p -> out.append("- ").append(company(p, labels))
-                    .append(" — ").append(p.getTitle()).append('\n'));
+            out.append("\n## Closed since the last fetch (").append(digest.closed().size())
+                    .append(")\n");
+            digest.closed().forEach(p -> out.append("- ").append(p.getId()).append(" · ")
+                    .append(company(p, labels)).append(" · ").append(p.getTitle()).append('\n'));
         }
 
         if (!digest.rejections().isEmpty()) {
             long total = digest.rejections().values().stream().mapToLong(Long::longValue).sum();
-            out.append("\n## Rejected (").append(total).append(")\n");
+            out.append("\n## Rejected on facts (").append(total).append(")\n");
             digest.rejections().forEach((reason, count) ->
                     out.append("- ").append(count).append(" — ").append(reason).append('\n'));
-        }
-
-        if (digest.suppressedAlreadyApplied() > 0) {
-            out.append("\n_")
-                    .append(digest.suppressedAlreadyApplied())
-                    .append(" candidate(s) hidden — already applied to that company._\n");
-        }
-
-        if (digest.duplicatesCollapsed() > 0) {
-            out.append("\n_")
-                    .append(digest.duplicatesCollapsed())
-                    .append(" repeat listing(s) folded into a role already shown above._\n");
-        }
-
-        if (digest.staleSetAside() > 0) {
-            // Counted, not dropped, for the same reason as the two above. An old
-            // requisition at a company worth applying to is still on /jobs.
-            out.append("\n_")
-                    .append(digest.staleSetAside())
-                    .append(" stale requisition(s) set aside — still on /jobs under the freshness filter._\n");
-        }
-
-        out.append("\n## Board health\n");
-        boolean anyProblem = false;
-        for (BoardToken board : digest.boards()) {
-            if (board.getLastError() != null) {
-                anyProblem = true;
-                out.append("- **").append(board.getToken()).append("** — ")
-                        .append(board.getLastPostingCount() == null
-                                ? "never fetched successfully"
-                                : "was " + board.getLastPostingCount() + " postings")
-                        .append(", now failing: ").append(board.getLastError()).append('\n');
-            }
-        }
-        // An empty board is not an error, and that is the problem. SmartRecruiters
-        // answers HTTP 200 with totalFound 0 for a company it has never heard of,
-        // so a dead token and a company with no openings look identical to the
-        // fetcher. Naming them is the only way the difference reaches a human.
-        List<BoardToken> empty = digest.boards().stream()
-                .filter(b -> b.getLastError() == null)
-                .filter(b -> b.getLastPostingCount() != null && b.getLastPostingCount() == 0)
-                .toList();
-        if (!empty.isEmpty()) {
-            anyProblem = true;
-            out.append("- ").append(empty.size())
-                    .append(" boards returned nothing (token may be dead — verify by hand): ");
-            out.append(empty.stream().map(b -> b.getSource() + "/" + b.getToken())
-                    .collect(Collectors.joining(", "))).append('\n');
-        }
-        if (!anyProblem) {
-            int total = digest.boards().stream()
-                    .mapToInt(b -> b.getLastPostingCount() == null ? 0 : b.getLastPostingCount())
-                    .sum();
-            out.append("All ").append(digest.boards().size())
-                    .append(" boards healthy — ").append(total).append(" postings.\n");
         }
         return out.toString();
     }
 
-    private void section(StringBuilder out, String heading, List<Posting> postings,
-            Map<String, String> labels, LocalDate today) {
-        if (postings.isEmpty()) {
-            return;
+    /**
+     * When the data is from, what was set aside, and whether the boards are healthy.
+     *
+     * <p>Every count of something withheld is printed even when it is small: a file
+     * that quietly shrinks is one you stop trusting.
+     */
+    private static void header(StringBuilder out, Digest digest) {
+        Instant lastFetch = digest.boards().stream()
+                .map(BoardToken::getLastFetchedAt)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        out.append("- Last fetch: ").append(lastFetch == null ? "never" : WHEN.format(lastFetch));
+        if (lastFetch != null) {
+            long days = ChronoUnit.DAYS.between(
+                    lastFetch.atZone(ZoneId.systemDefault()).toLocalDate(), digest.date());
+            if (days > 0) {
+                out.append(" — **").append(days).append(" day(s) old; run `run` first**");
+            }
         }
-        out.append("\n## ").append(heading).append(" (").append(postings.size()).append(")\n\n");
-        for (Posting p : postings) {
-            out.append("- **").append(company(p, labels)).append("** — ").append(p.getTitle())
-                    .append(" — ").append(p.getLocation() == null ? "?" : p.getLocation())
-                    .append('\n');
-            out.append("  Years: ").append(years(p))
-                    .append(" | Graduate signal: ").append(p.isGraduateSignal() ? "yes" : "no")
-                    .append(" | ").append(age(p, today))
-                    .append('\n');
-            out.append("  Floor: ").append(salaries.floorFor(p)).append('\n');
-            if (p.getSalaryText() != null) {
-                out.append("  Stated: ").append(p.getSalaryText()).append('\n');
-            }
-            if (p.getSponsorshipSignal() != null) {
-                out.append("  Visa: ").append(p.getSponsorshipSignal()).append('\n');
-            }
-            if (p.getUrl() != null) {
-                out.append("  ").append(p.getUrl()).append('\n');
-            }
-            out.append('\n');
+        out.append('\n');
+
+        List<BoardToken> broken = digest.boards().stream().filter(BoardToken::isBroken).toList();
+        List<BoardToken> empty = digest.boards().stream()
+                .filter(b -> !b.isBroken())
+                .filter(b -> b.getLastPostingCount() != null && b.getLastPostingCount() == 0)
+                .toList();
+        int total = digest.boards().stream()
+                .mapToInt(b -> b.getLastPostingCount() == null ? 0 : b.getLastPostingCount())
+                .sum();
+        out.append("- Boards: ").append(digest.boards().size()).append(" active, ")
+                .append(total).append(" postings");
+        if (!broken.isEmpty()) {
+            out.append("; failing: ").append(broken.stream()
+                    .map(b -> b.getSource() + "/" + b.getToken() + " (" + b.getLastError() + ")")
+                    .collect(Collectors.joining(", ")));
+        }
+        if (!empty.isEmpty()) {
+            // SmartRecruiters answers HTTP 200 with nothing for a company it has
+            // never heard of, so a dead token and a company with no openings look
+            // identical. Naming them is the only way the difference reaches a human.
+            out.append("; returned nothing (token may be dead): ").append(empty.stream()
+                    .map(b -> b.getSource() + "/" + b.getToken())
+                    .collect(Collectors.joining(", ")));
+        }
+        out.append('\n');
+
+        StringBuilder withheld = new StringBuilder();
+        count(withheld, digest.alreadyDecided(), "already marked");
+        count(withheld, digest.duplicatesCollapsed(), "repeat listings folded");
+        count(withheld, digest.staleSetAside(), "stale");
+        if (!withheld.isEmpty()) {
+            out.append("- Withheld: ").append(withheld).append('\n');
         }
     }
 
-    /**
-     * How old the posting is, and whether that is old enough to matter.
-     *
-     * <p>{@code posted_date} was captured from the first milestone and never
-     * read. A requisition open since May is usually filled, on hold, or a
-     * permanent advertisement for a pipeline - and it looks identical to
-     * yesterday's in every other field.
-     */
+    private static void count(StringBuilder out, int n, String what) {
+        if (n <= 0) {
+            return;
+        }
+        if (!out.isEmpty()) {
+            out.append(", ");
+        }
+        out.append(n).append(' ').append(what);
+    }
+
+    private void candidate(StringBuilder out, Digest.Entry entry, Map<String, String> labels,
+            LocalDate today) {
+        Posting p = entry.posting();
+        out.append("\n### ").append(p.getId()).append(" · ").append(company(p, labels))
+                .append(" · ").append(p.getTitle());
+        if (entry.updated()) {
+            out.append(" _(description changed)_");
+        }
+        out.append('\n');
+        if (entry.companyApplied()) {
+            out.append("**Already applied to this company** (this role or another)\n");
+        }
+
+        out.append(p.getLocation() == null ? "?" : p.getLocation())
+                .append(" · ").append(orDash(p.getCountryCode()))
+                .append(" · ").append(p.getWorkMode() == null ? "work mode ?" : p.getWorkMode().name().toLowerCase(java.util.Locale.ROOT))
+                .append(" · remote from: ").append(orDash(p.getRemoteEligibleFrom()))
+                .append(" · lane: ").append(p.getStrategicClass() == null ? "-" : p.getStrategicClass().name())
+                .append('\n');
+        out.append("Years: ").append(years(p))
+                .append(" · graduate signal: ").append(p.isGraduateSignal() ? "yes" : "no")
+                .append(" · ").append(age(p, today))
+                .append('\n');
+        if (p.getSalaryText() != null) {
+            out.append("Stated pay: ").append(p.getSalaryText()).append('\n');
+        }
+        out.append("Floor: ").append(salaries.floorFor(p)).append('\n');
+        if (p.getSponsorshipSignal() != null) {
+            out.append("Visa: ").append(p.getSponsorshipSignal()).append('\n');
+        }
+        if (p.getUrl() != null) {
+            out.append(p.getUrl()).append('\n');
+        }
+        out.append("\n```text\n").append(DescriptionTrimmer.trim(p.getDescriptionText()))
+                .append("\n```\n");
+    }
+
     private static String age(Posting p, LocalDate today) {
         LocalDate posted = p.getPostedDate();
         if (posted == null || today == null) {
@@ -225,6 +237,10 @@ public class DigestWriter {
             return "none stated";
         }
         return minYears == 0 ? "0 (entry level)" : String.valueOf(minYears);
+    }
+
+    private static String orDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 
     /** Falls back to the raw token when the board has no label. */

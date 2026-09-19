@@ -41,7 +41,8 @@ job-radar:
     spreadsheet-id: ${JOB_RADAR_SHEET_ID:}
     sheet-name: Untitled
 
-  output-dir: ${JOB_RADAR_OUT:./digests}
+  # The daily handoff file, read in a Claude session. See CLAUDE.md.
+  output-dir: ${JOB_RADAR_OUT:./inbox}
 
   schedule:
     # Off unless asked for. Only the `serve` command keeps the process alive long
@@ -557,7 +558,15 @@ job-radar:
        # Variants of rules already above, found the same day: "mid level" with a
        # space, "leader" as a seniority word, and a network-infrastructure role
        # that "network engineer" missed by one word.
-       mid level, leader, network development engineer]
+       mid level, leader, network development engineer,
+       # Outside the stack (2026-09-19). Not judgement about fit, which is read
+       # per posting now: each of these is a platform with its own skill set that
+       # the resume does not have, so the role cannot be applied to honestly.
+       ios, android, flutter, react native, kotlin multiplatform,
+       salesforce, sap, abap, servicenow, dynamics 365, power platform, uipath, rpa,
+       citizen developer, mainframe, cobol,
+       bsw, autosar, mbd, model-based design, simulink, mes,
+       .net, c#, unity developer, game developer]
 
     # Whole boards whose roles are structurally unavailable, kept fetched rather
     # than deactivated: the postings still count towards board health, the
