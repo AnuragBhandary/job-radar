@@ -51,14 +51,6 @@ public class MarkCommand {
             usage();
             return;
         }
-        Long postingId;
-        try {
-            postingId = Long.valueOf(positional.get(1));
-        } catch (NumberFormatException e) {
-            System.out.println("Not a posting id: " + positional.get(1));
-            usage();
-            return;
-        }
         String decision = positional.get(2).toLowerCase(Locale.ROOT);
         PipelineStage stage = DECISIONS.get(decision);
         if (stage == null) {
@@ -66,6 +58,21 @@ public class MarkCommand {
             usage();
             return;
         }
+        // Several ids at once, so a whole review is one command. Each is marked
+        // on its own: one bad id does not stop the rest.
+        for (String raw : positional.get(1).split(",")) {
+            if (raw.isBlank()) {
+                continue;
+            }
+            try {
+                markOne(Long.valueOf(raw.trim()), decision, stage, options.get("note"));
+            } catch (NumberFormatException e) {
+                System.out.println("Not a posting id: " + raw);
+            }
+        }
+    }
+
+    private void markOne(Long postingId, String decision, PipelineStage stage, String note) {
         if (postings.findById(postingId).isEmpty()) {
             System.out.println("No posting with id " + postingId);
             return;
@@ -92,7 +99,6 @@ public class MarkCommand {
                     stage);
         }
 
-        String note = options.get("note");
         if (note != null && !note.isBlank()) {
             String before = interest.getNotes();
             interest.setNotes(before == null || before.isBlank() ? note : before + "\n" + note);
@@ -106,7 +112,7 @@ public class MarkCommand {
     }
 
     private static void usage() {
-        System.out.println("Usage: mark <posting-id> <decision> [--note=\"...\"]");
+        System.out.println("Usage: mark <posting-id>[,<posting-id>...] <decision> [--note=\"...\"]");
         System.out.println("  decisions: " + String.join(", ",
                 List.of("shortlist", "skip", "applied", "screening", "interview", "offer",
                         "rejected", "withdrawn")));

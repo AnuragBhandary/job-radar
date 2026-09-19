@@ -1,7 +1,8 @@
 # job-radar
 
-The mechanical half of a one-person job search. Every morning it reads about 120
-public ATS job boards and the Hacker News "Who is hiring?" thread, rejects what
+The mechanical half of a one-person job search. Every morning it reads about 130
+public ATS job boards, the Hacker News "Who is hiring?" thread and three job
+feeds (Jobicy, We Work Remotely, Arbeitnow), rejects what
 can be ruled out on facts, and writes one markdown file of what is left, with
 enough of each description to judge it. The judging (fit, order, what the resume
 leads with, the cover letter) happens in a Claude session reading that file. The
@@ -35,12 +36,13 @@ launchd 07:00 ─► run ─► fetch ─► screen ─► tracker sync ─► i
 ```
 
 - **fetch**: one fetcher per platform in `fetch/` (Greenhouse, Ashby, Lever,
-  SmartRecruiters, Workday, Recruitee, amazon.jobs, Hacker News). Change detection
+  SmartRecruiters, Workday, Recruitee, amazon.jobs, Hacker News, Jobicy, We Work
+  Remotely, Arbeitnow). Change detection
   compares a hash of the description, never the board's timestamp. A board that
   fails never closes its postings.
 - **screen**: rejects on facts only: seniority in the title, a stated years
   requirement above the bar, a platform outside the stack (iOS, SAP, Simulink and
-  the like), a location that cannot work. Anything uncertain passes, because a
+  the like), a location that cannot work, a stated service bond, German required. Anything uncertain passes, because a
   wrong rejection loses a job and a wrong pass costs one line of reading.
   Eligibility and priority are separate: `strategy:` in `application.yml` decides
   which countries are recommended, and relocation and remote work are separate
@@ -55,9 +57,11 @@ launchd 07:00 ─► run ─► fetch ─► screen ─► tracker sync ─► i
 ## Commands
 
 ```
+openings [--done]                    what became worth reviewing since the last review,
+                                     plus the shortlist; --done records the review
 run                                  fetch + screen + tracker sync + handoff file
 export --since=YYYY-MM-DD            handoff file for every open candidate since a day
-mark <id> <decision> [--note=...]    shortlist | skip | applied | screening | interview |
+mark <id>[,<id>] <decision> [--note] shortlist | skip | applied | screening | interview |
                                      offer | rejected | withdrawn
 resume --list                        every summary and bullet, with references
 resume --summary=ID --pick=e1.3,p2.1 render the resume in a chosen order (PDF)

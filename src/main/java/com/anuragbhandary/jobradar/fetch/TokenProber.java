@@ -95,7 +95,7 @@ public class TokenProber {
                 // None is probed this way: Amazon has no per-company board,
                 // Workday's search is a POST against a two-part tenant/site token,
                 // and Hacker News has one board.
-                case AMAZON, WORKDAY, HACKER_NEWS -> 0;
+                case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -128,7 +128,8 @@ public class TokenProber {
             // SmartRecruiters - an empty board here is a real one with no openings.
             case RECRUITEE -> "https://%s.recruitee.com/api/offers/".formatted(token);
             case AMAZON -> throw new IllegalArgumentException("Amazon is not probed by token");
-            case HACKER_NEWS -> throw new IllegalArgumentException("Hacker News has one board");
+            case HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW ->
+                    throw new IllegalArgumentException(platform + " has one board");
             // A Workday board is a tenant, a datacentre and a site, and its search
             // is a POST. Verify one by adding it and reading board health rather
             // than through probe: a wrong pair answers 404 or 422 immediately, so

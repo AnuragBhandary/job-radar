@@ -60,6 +60,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "screen" -> screen.run(options);
             case "digest" -> digest.run(options);
             case "export" -> digest.export(options);
+            case "openings" -> digest.openings(options);
             case "run" -> runCommand.run(options);
             case "mark" -> mark.run(args, options);
             case "resume" -> resume.run(options);
@@ -94,6 +95,9 @@ public class JobRadarCli implements ApplicationRunner {
                 job-radar - fetch and screen job boards; judging happens in chat (see CLAUDE.md)
 
                 Daily:
+                  openings [--since=YYYY-MM-DD]           what became worth reviewing since the last review,
+                                                          plus the shortlist not yet applied to
+                  openings --done                         record that review, so it is not shown again
                   run                                     fetch + screen + tracker sync + handoff file
                   fetch [--source=GREENHOUSE [--token=stripe]]   fetch all boards, one ATS, or one board
                   screen                                  apply the fact-based filters, set verdicts
@@ -101,7 +105,8 @@ public class JobRadarCli implements ApplicationRunner {
                   export --since=YYYY-MM-DD               handoff file for every open candidate since a day
 
                 Decisions:
-                  mark <id> <decision> [--note="..."]     shortlist | skip | applied | screening |
+                  mark <id>[,<id>...] <decision> [--note="..."]
+                                                          shortlist | skip | applied | screening |
                                                           interview | offer | rejected | withdrawn;
                                                           applied and later go to the tracker sheet
                   sheet-list                              print the tracker (read-only)

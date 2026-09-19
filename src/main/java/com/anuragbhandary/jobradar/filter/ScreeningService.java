@@ -138,6 +138,14 @@ public class ScreeningService {
     }
 
     private void screen(Posting posting, LocationProfile location, String employerCountry) {
+        boolean wasRecommended = posting.isRecommendedCandidate();
+        decide(posting, location, employerCountry);
+        if (!wasRecommended && posting.isRecommendedCandidate()) {
+            posting.setRecommendedSince(java.time.Instant.now());
+        }
+    }
+
+    private void decide(Posting posting, LocationProfile location, String employerCountry) {
         posting.setRejectReason(null);
         posting.setMinYears(null);
         posting.setGraduateSignal(false);
@@ -212,6 +220,12 @@ public class ScreeningService {
         var bond = BondDetector.find(posting.getDescriptionText());
         if (bond.isPresent()) {
             reject(posting, "service bond: \"" + bond.get() + "\"");
+            return;
+        }
+
+        var german = GermanRequirement.find(posting.getDescriptionText());
+        if (german.isPresent()) {
+            reject(posting, german.get());
             return;
         }
 

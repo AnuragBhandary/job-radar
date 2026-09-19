@@ -29,6 +29,9 @@ job-radar:
   # counted. Not an eligibility decision: the row is untouched.
   digest:
     stale-days: 45
+    # Employers that keep standing roles open for years; their posted dates say
+    # nothing about whether the role is live. Comma-separated board tokens.
+    stale-exempt-boards: canonical
 
   # ---------------------------------------------------------------------------
   # Country strategy.

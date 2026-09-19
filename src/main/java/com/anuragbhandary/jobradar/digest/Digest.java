@@ -2,6 +2,7 @@ package com.anuragbhandary.jobradar.digest;
 
 import com.anuragbhandary.jobradar.domain.BoardToken;
 import com.anuragbhandary.jobradar.domain.Posting;
+import com.anuragbhandary.jobradar.pipeline.JobInterest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,9 @@ import java.util.Map;
  *                         skipped or shortlisted
  * @param duplicatesCollapsed repeat listings of a role already listed, folded away
  * @param staleSetAside    open long enough to be stale, taken out and counted
+ * @param shortlisted      postings marked shortlist and not yet applied to, for
+ *                         {@code openings}: a shortlist nobody acts on is a list
+ *                         of jobs that close
  */
 public record Digest(
         LocalDate date,
@@ -37,7 +41,17 @@ public record Digest(
         boolean salaryFloorsNeedReverification,
         int alreadyDecided,
         int duplicatesCollapsed,
-        int staleSetAside) {
+        int staleSetAside,
+        List<JobInterest> shortlisted) {
+
+    /** Without a shortlist section: the daily file and the export. */
+    public Digest(LocalDate date, LocalDate since, List<Entry> candidates, List<Posting> closed,
+            Map<String, Long> rejections, List<BoardToken> boards,
+            boolean salaryFloorsNeedReverification, int alreadyDecided,
+            int duplicatesCollapsed, int staleSetAside) {
+        this(date, since, candidates, closed, rejections, boards, salaryFloorsNeedReverification,
+                alreadyDecided, duplicatesCollapsed, staleSetAside, List.of());
+    }
 
     /**
      * One candidate.
