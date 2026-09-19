@@ -592,7 +592,7 @@ job-radar:
   # ---------------------------------------------------------------------------
   salary-floors:
     mumbai-inr: 700000
-    india-other-inr: 1400000
+    india-other-inr: 800000
     germany-eur: 45934.20
     ireland-eur: 40904
     netherlands-eur: 52284
