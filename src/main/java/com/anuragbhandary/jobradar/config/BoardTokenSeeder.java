@@ -1,5 +1,6 @@
 package com.anuragbhandary.jobradar.config;
 
+import com.anuragbhandary.jobradar.fetch.HackerNewsFetcher;
 import com.anuragbhandary.jobradar.domain.BoardToken;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
@@ -56,6 +57,10 @@ public class BoardTokenSeeder {
      */
     private static final Map<String, String> WORKDAY = new LinkedHashMap<>();
 
+    /** One board: the current month's "Ask HN: Who is hiring?" thread. */
+    private static final Map<String, String> HACKER_NEWS =
+            Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
+
     static {
         WORKDAY.put("philips/wd3/jobs-and-careers", "Philips");
         WORKDAY.put("nxp/wd3/careers", "NXP Semiconductors");
@@ -66,7 +71,6 @@ public class BoardTokenSeeder {
         GREENHOUSE.put("n26", "N26");
         GREENHOUSE.put("razorpaysoftwareprivatelimited", "Razorpay");
         GREENHOUSE.put("groww", "Groww");
-        GREENHOUSE.put("postman", "Postman");
         GREENHOUSE.put("traderepublic", "Trade Republic");
         GREENHOUSE.put("getyourguide", "GetYourGuide");
         GREENHOUSE.put("contentful", "Contentful");
@@ -168,6 +172,22 @@ public class BoardTokenSeeder {
         RECRUITEE.put("vandebron", "Vandebron");
         RECRUITEE.put("nmbrs", "Nmbrs");
 
+        // Added 2026-09-19 for the lanes the list above barely reached: the Gulf,
+        // remote roles open worldwide, and Indian employers with Mumbai offices.
+        // Each was probed and its locations checked before it went in.
+        GREENHOUSE.put("careem", "Careem");
+        GREENHOUSE.put("tamara", "Tamara");
+        ASHBY.put("ziina", "Ziina");
+        RECRUITEE.put("unifonic", "Unifonic");
+        GREENHOUSE.put("canonical", "Canonical");
+        GREENHOUSE.put("wikimedia", "Wikimedia Foundation");
+        GREENHOUSE.put("netlify", "Netlify");
+        GREENHOUSE.put("druva", "Druva");
+        LEVER.put("epifi", "Epifi (Fi)");
+        LEVER.put("fampay", "FamPay");
+        LEVER.put("paytm", "Paytm");
+        SMARTRECRUITERS.put("ixigo", "ixigo");
+
         AMAZON.put("IND", "Amazon India");
         AMAZON.put("DEU", "Amazon Germany");
         AMAZON.put("IRL", "Amazon Ireland");
@@ -247,7 +267,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.SMARTRECRUITERS, SMARTRECRUITERS)
                 + seedSource(Source.AMAZON, AMAZON)
                 + seedSource(Source.WORKDAY, WORKDAY)
-                + seedSource(Source.RECRUITEE, RECRUITEE);
+                + seedSource(Source.RECRUITEE, RECRUITEE)
+                + seedSource(Source.HACKER_NEWS, HACKER_NEWS);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

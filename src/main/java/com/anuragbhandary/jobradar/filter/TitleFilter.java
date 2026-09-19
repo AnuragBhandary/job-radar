@@ -84,6 +84,14 @@ public class TitleFilter {
     }
 
     public FilterVerdict screen(String title) {
+        return screen(title, true);
+    }
+
+    /**
+     * @param requireRoleWord false where the title is free text that may not name
+     *                        a role at all; exclusions still apply
+     */
+    public FilterVerdict screen(String title, boolean requireRoleWord) {
         if (title == null || title.isBlank()) {
             return FilterVerdict.reject("no title");
         }
@@ -104,7 +112,7 @@ public class TitleFilter {
         }
 
         String included = firstMatch(normalised, screening.titleInclude());
-        if (included == null) {
+        if (included == null && requireRoleWord) {
             return FilterVerdict.reject("title is not a software role");
         }
         return FilterVerdict.accept();
