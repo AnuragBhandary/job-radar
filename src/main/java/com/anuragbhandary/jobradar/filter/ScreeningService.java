@@ -163,7 +163,11 @@ public class ScreeningService {
             return;
         }
 
-        FilterVerdict title = titleFilter.screen(posting.getTitle());
+        // A Hacker News header is "Company | Location | ..." and often names the
+        // roles only in the body, so the absence of a role word there is not a
+        // fact about the posting. Exclusions still apply to what it does say.
+        FilterVerdict title = titleFilter.screen(posting.getTitle(),
+                posting.getSource() != com.anuragbhandary.jobradar.domain.Source.HACKER_NEWS);
         if (!title.accepted()) {
             reject(posting, title.reason());
             return;

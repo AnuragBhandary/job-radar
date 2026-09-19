@@ -18,7 +18,12 @@ package com.anuragbhandary.jobradar.domain;
  *       Screening depends on the description, so the feed alone is not enough and
  *       the alternative is a browser per posting.</li>
  *   <li><b>Teamtailor</b> - no public JSON feed; its API needs a per-company key.</li>
+ *   <li><b>Remotive</b> - its free public API returned sixteen postings in
+ *       September 2026, none of them software roles open to India.</li>
  * </ul>
+ *
+ * <p>{@link #HACKER_NEWS} is not an ATS: it is the monthly "Who is hiring?"
+ * thread, one board whose postings are free-text comments.
  */
 public enum Source {
     GREENHOUSE,
@@ -27,5 +32,6 @@ public enum Source {
     SMARTRECRUITERS,
     AMAZON,
     WORKDAY,
-    RECRUITEE
+    RECRUITEE,
+    HACKER_NEWS
 }

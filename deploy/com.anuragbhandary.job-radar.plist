@@ -13,7 +13,12 @@
   Check:  launchctl list | grep job-radar
   Remove: launchctl unload ~/Library/LaunchAgents/com.anuragbhandary.job-radar.plist
 
-  Edit the paths and the spreadsheet id below before loading.
+  No environment variables: the spreadsheet id and key path come from
+  ~/.config/job-radar/secrets.yml, like every other run. Setting them here would
+  override that file.
+
+  It runs target/job-radar-1.0.0.jar, so `mvn clean` without a `package` after it
+  breaks the next run. The handoff file's "Last fetch" line shows that.
 -->
 <plist version="1.0">
 <dict>
@@ -31,14 +36,6 @@
     <key>WorkingDirectory</key>
     <string>/Users/anuragbhandary/Coding/job-radar</string>
 
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>JOB_RADAR_SHEET_ID</key>
-        <string>PUT_YOUR_SPREADSHEET_ID_HERE</string>
-        <key>JOB_RADAR_GOOGLE_KEY</key>
-        <string>/Users/anuragbhandary/.config/job-radar/google-key.json</string>
-    </dict>
-
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
@@ -48,9 +45,9 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/anuragbhandary/Coding/job-radar/digests/launchd.log</string>
+    <string>/Users/anuragbhandary/Coding/job-radar/inbox/launchd.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/anuragbhandary/Coding/job-radar/digests/launchd.log</string>
+    <string>/Users/anuragbhandary/Coding/job-radar/inbox/launchd.log</string>
 
     <key>RunAtLoad</key>
     <false/>
