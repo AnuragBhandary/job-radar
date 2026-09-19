@@ -192,7 +192,8 @@ public class YearsExtractor {
 
         Matcher m = YEARS.matcher(required);
         while (m.find()) {
-            if (isProgrammeDuration(required, m) || isDegreeAlternative(required, m)) {
+            if (isProgrammeDuration(required, m) || isDegreeAlternative(required, m)
+                    || isUpperBound(required, m)) {
                 continue;
             }
             int years = Integer.parseInt(m.group(1));
@@ -218,7 +219,7 @@ public class YearsExtractor {
         Matcher tail = YEARS.matcher(description);
         while (tail.find()) {
             if (isProgrammeDuration(description, tail) || isOptional(description, tail)
-                    || isDegreeAlternative(description, tail)
+                    || isDegreeAlternative(description, tail) || isUpperBound(description, tail)
                     || !isQualification(description, tail)) {
                 continue;
             }
@@ -337,6 +338,27 @@ public class YearsExtractor {
      */
     private static final Pattern ALTERNATIVE_TO_A_DEGREE =
             Pattern.compile("\\bor\\b[^.;\\n]{0,20}$", Pattern.CASE_INSENSITIVE);
+
+    /** A ceiling rather than a floor: "up to 3 years", "at most 2 years". */
+    private static final Pattern UPPER_BOUND_BEFORE = Pattern.compile(
+            "\\b(?:up\\s*to|upto|maximum(?:\\s+of)?|max\\.?|at\\s+most|less\\s+than"
+                    + "|fewer\\s+than|under|no\\s+more\\s+than|not\\s+more\\s+than|within)\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * A number that caps something rather than requiring it.
+     *
+     * <p>Two real misses, both from 2026-09-19. HackerRank's L1 role asks for "an
+     * early-career engineer with up to 3 years of relevant experience. Strong
+     * freshers..." and was rejected as a three-year role. And a privacy footer,
+     * "Your data is kept for up to 2 years in our candidate pool", rejected three
+     * data and SRE roles in Germany and France as two-year roles.
+     */
+    private static boolean isUpperBound(String text, Matcher m) {
+        String before = text.substring(Math.max(0, m.start() - 25), m.start())
+                .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
+        return UPPER_BOUND_BEFORE.matcher(before).find();
+    }
 
     /** A degree, then "or", then the number: "Bachelor's degree, or 4+ years". */
     private static final Pattern DEGREE_THEN_OR = Pattern.compile(

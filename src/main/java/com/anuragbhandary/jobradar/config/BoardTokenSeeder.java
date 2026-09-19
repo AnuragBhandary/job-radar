@@ -187,6 +187,15 @@ public class BoardTokenSeeder {
         LEVER.put("fampay", "FamPay");
         LEVER.put("paytm", "Paytm");
         SMARTRECRUITERS.put("ixigo", "ixigo");
+        // India, added the same day after a 160-company probe. Most Indian
+        // companies, and nearly every Mumbai one tried, are on none of the
+        // platforms this tool reads. Unacademy and InterviewBit answered on
+        // SmartRecruiters too, but with placeholder postings ("lorem ipsum"), so
+        // they are not boards.
+        GREENHOUSE.put("glance", "Glance");
+        GREENHOUSE.put("highradius", "HighRadius");
+        GREENHOUSE.put("hackerrank", "HackerRank");
+        SMARTRECRUITERS.put("Lendingkart", "Lendingkart");
 
         AMAZON.put("IND", "Amazon India");
         AMAZON.put("DEU", "Amazon Germany");

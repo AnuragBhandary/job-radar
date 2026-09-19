@@ -94,6 +94,34 @@ class YearsExtractorTest {
     }
 
     @Nested
+    @DisplayName("a ceiling is not a requirement")
+    class UpperBounds {
+
+        @Test
+        @DisplayName("HackerRank L1: 'up to 3 years ... Strong freshers' states no minimum")
+        void upToIsACeiling() {
+            assertThat(minYears("Who you are: an early-career engineer with up to 3 years of "
+                    + "relevant experience. Strong freshers are encouraged to apply."))
+                    .isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("a privacy footer keeping data 'for up to 2 years' is not experience")
+        void privacyFooterIsIgnored() {
+            assertThat(extractor.extract("Requirements: Python and SQL. Your data is kept for "
+                    + "up to 2 years in our candidate pool.").minYears())
+                    .isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("a real minimum next to a ceiling still counts")
+        void realMinimumStillCounts() {
+            assertThat(minYears("Requirements: 2+ years of backend experience. Data is kept for "
+                    + "up to 1 year.")).isEqualTo(2);
+        }
+    }
+
+    @Nested
     @DisplayName("an optional number is not the bar")
     class OptionalCases {
 
