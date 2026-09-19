@@ -65,7 +65,8 @@ job-radar:
         relocation-tier: PRIMARY
         salary-floor: 45934.20
         currency: EUR
-        salary-floor-basis: "Blue Card shortage-occupation threshold"
+        salary-floor-basis: "Blue Card shortage-occupation threshold (IT is a shortage
+          occupation); no prior work experience needed"
         verify-by: 2027-01-01
       - country-code: IE
         relocation-tier: PRIMARY
@@ -89,29 +90,52 @@ job-radar:
       # not here, so a Doha new-grad role resolved to UNKNOWN and fell out of
       # the feed. No floor is recorded: an invented threshold would be quoted
       # back later as though it had been checked.
+      # 2026-09-19 re-ranking, for settling long-term rather than for the fastest
+      # savings: Ireland, Germany, Netherlands, then Australia, then Canada. The
+      # Gulf is a savings stint with no route to permanent residence, so it drops
+      # to SECONDARY and carries a floor below which Europe saves as much.
       - country-code: AE
-        relocation-tier: PRIMARY
+        relocation-tier: SECONDARY
+        salary-floor: 144000
+        currency: AED
+        salary-floor-basis: "AED 12,000/month; below this a Dublin or Berlin offer
+          saves as much and also leads to permanent residence"
       - country-code: SA
-        relocation-tier: PRIMARY
+        relocation-tier: SECONDARY
       - country-code: QA
-        relocation-tier: PRIMARY
+        relocation-tier: SECONDARY
 
       # --- secondary ---------------------------------------------------------
       # No floor recorded for any of these. Unknown is stored as unknown: a
       # fabricated threshold would be quoted back later as though it had been
       # checked, which is the failure the verify-by dates above exist for.
+      # Employer sponsorship (subclass 482) needs a year of paid experience at the
+      # time of application; the Work and Holiday ballot needs none. Off the daily
+      # list until mid-2027, when the one-year date is close. Raise to PRIMARY then,
+      # or at once if the ballot draws.
       - country-code: AU
-        relocation-tier: SECONDARY
+        relocation-tier: OPPORTUNISTIC
+        salary-floor: 79499
+        currency: AUD
+        salary-floor-basis: "Skills in Demand Core Skills Income Threshold from 1 July 2026"
+        verify-by: 2027-07-01
+      # The Skilled Worker salary threshold is high for a junior role, and
+      # settlement is proposed to move from 5 to 10 years.
       - country-code: GB
-        relocation-tier: SECONDARY
+        relocation-tier: LOW
       - country-code: FI
         relocation-tier: SECONDARY
 
       # --- opportunistic -----------------------------------------------------
       - country-code: AT
         relocation-tier: OPPORTUNISTIC
+      # Express Entry no longer gives points for a job offer, so a Canadian posting
+      # needing relocation does not help that route. Remote roles from Canadian
+      # employers still count.
       - country-code: CA
-        relocation-tier: OPPORTUNISTIC
+        relocation-tier: EXCLUDED
+        relocation-enabled: false
+        remote-enabled: true
       - country-code: NZ
         relocation-tier: OPPORTUNISTIC
       - country-code: SG
