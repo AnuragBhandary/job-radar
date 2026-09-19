@@ -20,14 +20,14 @@ class CountryStrategyTest {
             "DE | PRIMARY",
             "IE | PRIMARY",
             "NL | PRIMARY",
-            "AE | PRIMARY",
-            "SA | PRIMARY",
-            "QA | PRIMARY",
-            "AU | SECONDARY",
-            "GB | SECONDARY",
+            "AE | SECONDARY",
+            "SA | SECONDARY",
+            "QA | SECONDARY",
+            "AU | OPPORTUNISTIC",
+            "GB | LOW",
             "FI | SECONDARY",
             "AT | OPPORTUNISTIC",
-            "CA | OPPORTUNISTIC",
+            "CA | EXCLUDED",
             "NZ | OPPORTUNISTIC",
             "SG | OPPORTUNISTIC",
             "SE | OPPORTUNISTIC",
@@ -85,10 +85,12 @@ class CountryStrategyTest {
     }
 
     @Test
-    @DisplayName("Canada is selective for relocation and fully open for remote")
-    void canadaIsSelective() {
+    @DisplayName("Canada is excluded for relocation and fully open for remote")
+    void canadaIsRemoteOnly() {
+        // Express Entry gives no points for a job offer, so a Canadian posting
+        // that needs relocation does not lead anywhere; a remote one does.
         assertThat(strategy.outcomeFor(StrategicClass.INTERNATIONAL_RELOCATION, "CA", null))
-                .isEqualTo(StrategyOutcome.CONSIDER);
+                .isEqualTo(StrategyOutcome.EXCLUDED);
         assertThat(strategy.outcomeFor(StrategicClass.INTERNATIONAL_REMOTE, "CA", "CA"))
                 .isEqualTo(StrategyOutcome.RECOMMENDED);
     }
@@ -132,11 +134,12 @@ class CountryStrategyTest {
         assertThat(germany.salaryFloorBasis()).contains("Blue Card");
         assertThat(germany.verifyBy()).isEqualTo(LocalDate.of(2027, 1, 1));
 
-        // No threshold has been established for Australia, and none is invented.
+        // No threshold has been established for Finland, and none is invented.
         // A fabricated figure would be quoted back later as though it had been
         // checked at source.
-        assertThat(strategy.policyFor("AU").hasSalaryFloor()).isFalse();
-        assertThat(strategy.policyFor("AU").salaryFloor()).isNull();
+        assertThat(strategy.policyFor("FI").hasSalaryFloor()).isFalse();
+        assertThat(strategy.policyFor("FI").salaryFloor()).isNull();
+        assertThat(strategy.policyFor("AU").salaryFloorBasis()).contains("Skills in Demand");
     }
 
     @Test
@@ -146,7 +149,7 @@ class CountryStrategyTest {
         assertThat(germany.isStale(LocalDate.of(2026, 12, 31))).isFalse();
         assertThat(germany.isStale(LocalDate.of(2027, 1, 1))).isTrue();
         // A policy with no date makes no claim and cannot go stale.
-        assertThat(strategy.policyFor("AU").isStale(LocalDate.of(2030, 1, 1))).isFalse();
+        assertThat(strategy.policyFor("FI").isStale(LocalDate.of(2030, 1, 1))).isFalse();
     }
 
     @Test

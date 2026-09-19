@@ -91,10 +91,10 @@ class StrategicClassifierTest {
     }
 
     @Test
-    @DisplayName("Canada onsite is a relocation the strategy will consider, not recommend")
-    void canadaOnsiteIsOpportunistic() {
+    @DisplayName("Canada onsite is a relocation the strategy excludes")
+    void canadaOnsiteIsExcluded() {
         assertThat(lane("Toronto")).isEqualTo(StrategicClass.INTERNATIONAL_RELOCATION);
-        assertThat(outcome("Toronto", null, null)).isEqualTo(StrategyOutcome.CONSIDER);
+        assertThat(outcome("Toronto", null, null)).isEqualTo(StrategyOutcome.EXCLUDED);
     }
 
     @Test

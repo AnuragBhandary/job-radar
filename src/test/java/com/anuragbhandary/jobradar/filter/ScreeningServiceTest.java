@@ -175,25 +175,27 @@ class ScreeningServiceTest {
     }
 
     @Test
-    @DisplayName("a newly admitted country is eligible and recommended")
+    @DisplayName("a secondary-tier country is eligible and recommended")
     void secondaryTierIsRecommended() {
-        // Sydney used to be rejected on the strength of appearing in
-        // excluded-locations. It is now a secondary-tier relocation.
-        Posting p = posting("Backend Engineer", "Sydney, Australia",
+        Posting p = posting("Backend Engineer", "Dubai, United Arab Emirates",
                 "0-2 years of experience.");
 
         assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
-        assertThat(p.getCountryCode()).isEqualTo("AU");
+        assertThat(p.getCountryCode()).isEqualTo("AE");
         assertThat(p.getStrategyOutcome()).isEqualTo(StrategyOutcome.RECOMMENDED);
     }
 
     @Test
     @DisplayName("an opportunistic country is eligible but stays out of the default feed")
     void opportunisticTierIsConsidered() {
-        Posting p = posting("Backend Engineer", "Toronto, Canada",
+        // Sydney used to be rejected outright for appearing in excluded-locations.
+        // It is eligible; Australia is simply off the daily list until the
+        // sponsorship route opens.
+        Posting p = posting("Backend Engineer", "Sydney, Australia",
                 "0-2 years of experience.");
 
         assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getCountryCode()).isEqualTo("AU");
         assertThat(p.getStrategyOutcome()).isEqualTo(StrategyOutcome.CONSIDER);
     }
 
