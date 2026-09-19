@@ -207,6 +207,14 @@ public class ScreeningService {
             return;
         }
 
+        // A bond would stop a move abroad before it runs out, and the whole plan
+        // depends on being free to move after a year.
+        var bond = BondDetector.find(posting.getDescriptionText());
+        if (bond.isPresent()) {
+            reject(posting, "service bond: \"" + bond.get() + "\"");
+            return;
+        }
+
         posting.setVerdict(Verdict.CANDIDATE);
     }
 
