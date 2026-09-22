@@ -90,7 +90,7 @@ class DigestWriterTest {
         assertThat(out).contains("Dublin · IE");
         assertThat(out).contains("Years: 0 (entry level)");
         assertThat(out).contains("graduate signal: yes");
-        assertThat(out).contains("EUR 40.904").contains("CSEP");
+        assertThat(out).contains("EUR 40,904").contains("CSEP");
         assertThat(out).contains("https://example.com/1");
         assertThat(out).contains("Build payments APIs in Java.");
     }

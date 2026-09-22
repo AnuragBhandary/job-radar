@@ -34,7 +34,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class SalaryFloorAdvisor {
 
-    private static final NumberFormat GROUPED = NumberFormat.getInstance(Locale.GERMANY);
+    /**
+     * English grouping for every currency but the rupee. This was Locale.GERMANY,
+     * which printed the Blue Card floor as "EUR 45.934,2": German separators on
+     * every currency, and the trailing zero of the cents dropped.
+     */
+    private static String grouped(BigDecimal amount) {
+        NumberFormat format = NumberFormat.getInstance(Locale.UK);
+        int cents = amount.stripTrailingZeros().scale() > 0 ? 2 : 0;
+        format.setMinimumFractionDigits(cents);
+        format.setMaximumFractionDigits(cents);
+        return format.format(amount);
+    }
 
     private final AppProperties.SalaryFloors floors;
     private final CountryStrategy strategy;
@@ -103,7 +114,7 @@ public class SalaryFloorAdvisor {
     private static String amount(CountryPolicy policy) {
         return "INR".equalsIgnoreCase(policy.currency())
                 ? inr(policy.salaryFloor())
-                : policy.currency() + " " + GROUPED.format(policy.salaryFloor());
+                : policy.currency() + " " + grouped(policy.salaryFloor());
     }
 
     /**
@@ -176,6 +187,6 @@ public class SalaryFloorAdvisor {
     }
 
     private static String eur(BigDecimal amount) {
-        return amount == null ? "?" : "EUR " + GROUPED.format(amount);
+        return amount == null ? "?" : "EUR " + grouped(amount);
     }
 }

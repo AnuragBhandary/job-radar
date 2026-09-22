@@ -241,4 +241,43 @@ class ScreeningServiceTest {
         assertThat(posting("Backend Engineer", "Toronto", "1 year.").getCountry())
                 .isEqualTo(Country.OTHER);
     }
+
+    @Test
+    @DisplayName("a stated refusal to sponsor rejects a relocation role")
+    void refusalRejectsRelocation() {
+        Posting p = posting("Backend Engineer", "Amsterdam, Netherlands",
+                "0-2 years of experience. We are not able to provide visa sponsorship for this role.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getRejectReason()).startsWith("no sponsorship for a move");
+    }
+
+    @Test
+    @DisplayName("the same refusal leaves an Indian role alone: no visa is involved")
+    void refusalDoesNotTouchIndia() {
+        Posting p = posting("Backend Engineer", "Bengaluru, India",
+                "0-1 years of experience. We do not offer visa sponsorship.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getSponsorshipSignal()).startsWith("blocked:");
+    }
+
+    @Test
+    @DisplayName("a role abroad for existing residents only is rejected")
+    void residencyLockRejectsAbroad() {
+        Posting p = posting("Backend Developer", "Berlin, Germany",
+                "Applicants should already be based in Germany. Python and Postgres.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getRejectReason()).startsWith("residency required");
+    }
+
+    @Test
+    @DisplayName("an Indian role asking for a local resident is asking for him")
+    void residencyLockIgnoredInIndia() {
+        Posting p = posting("Backend Developer", "Pune, India",
+                "Candidates must currently reside in Pune. Java and Spring Boot.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+    }
 }

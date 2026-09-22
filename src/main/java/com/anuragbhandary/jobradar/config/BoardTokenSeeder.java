@@ -47,11 +47,12 @@ public class BoardTokenSeeder {
     private static final Map<String, String> AMAZON = new LinkedHashMap<>();
 
     /**
-     * Workday boards, keyed {@code tenant/wdN/site}.
+     * Workday boards, keyed {@code tenant/wdN/site}, with an optional fourth
+     * part that becomes the site search.
      *
      * <p>Three parts because a Workday board is a tenant, the datacentre it lives
      * in and a site, and none of the three is derivable from the company name.
-     * Both of these were confirmed against the live API by hand; guessing the
+     * Every one was confirmed against the live API by hand; guessing the
      * triple has a very low hit rate, which is why so few are seeded and why the
      * list is worth growing deliberately rather than by script.
      */
@@ -72,6 +73,17 @@ public class BoardTokenSeeder {
     static {
         WORKDAY.put("philips/wd3/jobs-and-careers", "Philips");
         WORKDAY.put("nxp/wd3/careers", "NXP Semiconductors");
+        // India's GCCs (2026-09-22). US companies running one global site each,
+        // read through Workday's own search so the crawl limit is spent on the
+        // India desks. All seven answered the public API that day; Walmart's
+        // WalmartExternal site did not and is left out until its real site is known.
+        WORKDAY.put("mastercard/wd1/CorporateCareers/india", "Mastercard");
+        WORKDAY.put("target/wd5/targetcareers/india", "Target");
+        WORKDAY.put("wf/wd1/WellsFargoJobs/india", "Wells Fargo");
+        WORKDAY.put("adobe/wd5/external_experienced/india", "Adobe");
+        WORKDAY.put("paypal/wd1/jobs/india", "PayPal");
+        WORKDAY.put("nvidia/wd5/NVIDIAExternalCareerSite/india", "NVIDIA");
+        WORKDAY.put("intel/wd1/External/india", "Intel");
 
         GREENHOUSE.put("stripe", "Stripe");
         GREENHOUSE.put("intercom", "Intercom");

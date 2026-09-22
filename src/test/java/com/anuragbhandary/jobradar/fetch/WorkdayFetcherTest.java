@@ -104,4 +104,26 @@ class WorkdayFetcherTest {
                 .hasMessageContaining("tenant/wdN/site");
         assertThat(client.listed).isEmpty();
     }
+
+    @Test
+    @DisplayName("a fourth token part becomes Workday's search, so a global site can be read for India")
+    void searchPartIsSent() throws Exception {
+        fetcher.fetch("mastercard/wd1/CorporateCareers/india");
+        assertThat(client.listed.get(0)).contains("\"searchText\":\"india\"");
+    }
+
+    @Test
+    @DisplayName("a three-part token still sends an empty search")
+    void noSearchPartSendsEmpty() throws Exception {
+        fetcher.fetch("nxp/wd3/careers");
+        assertThat(client.listed.get(0)).contains("\"searchText\":\"\"");
+    }
+
+    @Test
+    @DisplayName("a search that would need JSON escaping is refused")
+    void unsafeSearchIsRefused() {
+        assertThatThrownBy(() -> fetcher.fetch("mastercard/wd1/CorporateCareers/in\"dia"))
+                .isInstanceOf(FetchException.class);
+        assertThat(client.listed).isEmpty();
+    }
 }

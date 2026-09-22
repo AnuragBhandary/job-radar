@@ -41,7 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>the work cannot be done from India and cannot be moved to: remote locked
  *       to a country or a region the applicant cannot be in. The expensive
  *       mistake the original filter existed to prevent, preserved exactly;</li>
- *   <li>the title or the years requirement rules it out.</li>
+ *   <li>the title or the years requirement rules it out;</li>
+ *   <li>the text states a fact that closes it: a bond, German, or - abroad only -
+ *       a refusal to sponsor a move or a requirement to live there already.</li>
  * </ol>
  *
  * <p>Everything else is eligible. Whether it is <em>recommended</em> is a
@@ -227,6 +229,25 @@ public class ScreeningService {
         if (german.isPresent()) {
             reject(posting, german.get());
             return;
+        }
+
+        // Only abroad do these decide anything. Remote into India needs no visa,
+        // and an Indian job asking for an Indian resident is asking for him.
+        StrategicClass lane = posting.getStrategicClass();
+        if (lane == StrategicClass.INTERNATIONAL_RELOCATION
+                && posting.getSponsorshipSignal() != null
+                && posting.getSponsorshipSignal().startsWith("blocked:")) {
+            reject(posting, "no sponsorship for a move: \""
+                    + posting.getSponsorshipSignal().substring("blocked: ".length()) + "\"");
+            return;
+        }
+        if (lane == StrategicClass.INTERNATIONAL_RELOCATION
+                || lane == StrategicClass.INTERNATIONAL_REMOTE) {
+            var residency = ResidencyRequirement.find(posting.getDescriptionText());
+            if (residency.isPresent()) {
+                reject(posting, residency.get());
+                return;
+            }
         }
 
         posting.setVerdict(Verdict.CANDIDATE);

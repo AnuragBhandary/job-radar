@@ -267,4 +267,22 @@ class TitleFilterTest {
     void stackExclusionsAreNotGreedy(String title) {
         assertThat(filter.screen(title).accepted()).isTrue();
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            // Real Hacker News headers, screened without the role-word check.
+            "Greywatch | Co-Founder & CEO | REMOTE",
+            "Acme | Founder in residence | Remote",
+            "Learning Content Developer-MRI",
+    })
+    @DisplayName("founder calls and content writing are not software jobs")
+    void rejectsFounderAndContentTitles(String title) {
+        assertThat(filter.screen(title, false).accepted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a founding engineer is still an engineer")
+    void keepsFoundingEngineer() {
+        assertThat(filter.screen("Stealth | Founding Engineer | Remote", false).accepted()).isTrue();
+    }
 }
