@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
  * decide more than the years requirement does: whether the employer will sponsor
  * a visa, and what the job actually pays.
  *
- * <p>Both are reported, never used to reject. Absence means nothing here - most
- * postings say neither - so a filter built on them would discard the whole board.
+ * <p>Both are reported, and absence is never used to reject: most postings say
+ * neither, so a filter built on silence would discard the whole board. The one
+ * exception is a stated refusal on a relocation-lane posting, which
+ * {@link ScreeningService} rejects, because there the refusal is the answer.
  * Measured on the corpus before being built: of 1,428 postings in the target
  * geographies, 55 mention sponsorship, 218 mention relocation and 306 state a
  * figure. That is a fifth of the list carrying information the digest was
@@ -27,11 +29,19 @@ public class SignalExtractor {
      * sponsor still might not; a posting that says it will not has answered.
      */
     private static final List<Pattern> BLOCKING = List.of(
+            // "be" and "able to" are separate: "not able to provide visa
+            // sponsorship" has the second without the first, and up to two words
+            // may sit before "sponsor" ("provide visa sponsorship", "offer any
+            // work sponsorship"). Both shapes read as supportive until 2026-09-22.
             compile("(?:not|unable to|cannot|can't|do not|does not|won't|will not)"
-                    + "\\s+(?:be\\s+able\\s+to\\s+)?(?:offer\\s+|provide\\s+)?sponsor"),
+                    + "\\s+(?:be\\s+)?(?:able\\s+to\\s+)?(?:(?:offer|provide|support)\\s+)?"
+                    + "(?:(?:any|a|visa|work|immigration|employment)\\s+){0,2}sponsor"),
             compile("no\\s+(?:visa\\s+)?sponsorship"),
             compile("without\\s+(?:visa\\s+)?sponsorship"),
-            compile("sponsorship\\s+is\\s+not\\s+(?:available|offered|provided)"),
+            // "Visa sponsorship and relocation support are not available": the
+            // negation comes after a compound subject, so allow a short gap.
+            compile("sponsorship[^.]{0,40}?\\s+(?:is|are)\\s+not\\s+"
+                    + "(?:available|offered|provided|possible)"),
             compile("must\\s+(?:already\\s+)?(?:have|hold|possess)[^.]{0,40}"
                     + "(?:right\\s+to\\s+work|work\\s+authoris?z?ation|work\\s+permit)"),
             compile("(?:existing|current|valid)\\s+right\\s+to\\s+work"),

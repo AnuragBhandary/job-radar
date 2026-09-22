@@ -58,7 +58,12 @@ openings" and similar from any directory. In short:
 - Rejections that are facts, not judgement: seniority and stack in the title, a
   stated minimum above 1 year ("up to N years" is a ceiling), Amazon's
   non-internship rule, a stated service bond, and German being required or the
-  posting being written in German.
+  posting being written in German. Abroad only: a stated refusal to sponsor on a
+  relocation role, and a requirement to live in the country already.
+- `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
+  `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
+  that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big
+  global sites need it, or the page limit stops before the India desks.
 
 ## Where things are
 

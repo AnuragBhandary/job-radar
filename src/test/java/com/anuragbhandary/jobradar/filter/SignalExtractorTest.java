@@ -28,6 +28,11 @@ class SignalExtractorTest {
                 "Candidates must already have the right to work in Ireland.",
                 "Applicants require an existing right to work in the EU.",
                 "This position requires an active security clearance.",
+                // Both read as supportive until 2026-09-22; the real sentences.
+                "We are not able to provide visa sponsorship for this position at this time.",
+                "As a result, visa sponsorship and relocation support are not available.",
+                "We do not offer visa sponsorship.",
+                "We cannot provide any work sponsorship.",
         })
         @DisplayName("phrases that answer the question with 'not you' are blocking")
         void detectsBlocking(String text) {
@@ -40,6 +45,7 @@ class SignalExtractorTest {
                 "We offer relocation assistance to new employees.",
                 "Visa sponsorship is available for this role.",
                 "We sponsor candidates from outside the EU.",
+                "Visa sponsorship is available, and we do not require you to relocate before starting.",
         })
         @DisplayName("phrases that offer help are supportive")
         void detectsSupportive(String text) {

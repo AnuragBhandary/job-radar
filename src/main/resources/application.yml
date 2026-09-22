@@ -454,7 +454,14 @@ job-radar:
        salesforce, sap, abap, servicenow, dynamics 365, power platform, uipath, rpa,
        citizen developer, mainframe, cobol,
        bsw, autosar, mbd, model-based design, simulink, mes,
-       .net, c#, unity developer, game developer]
+       .net, c#, unity developer, game developer,
+       # Hacker News headers skip the role-word check, so a company's call for a
+       # co-founder or CEO reached the handoff file as a job (2026-09-22). And
+       # Philips's "Learning Content Developer-MRI" writes training material.
+       co-founder, cofounder, founder, ceo, cto, content developer,
+       # From the first GCC Workday run: a plant role at Target and chip power
+       # design at NVIDIA, both arriving on the "engineer" include token.
+       industrial engineer, power architecture]
 
     # Whole boards whose roles are structurally unavailable, kept fetched rather
     # than deactivated: the postings still count towards board health, the

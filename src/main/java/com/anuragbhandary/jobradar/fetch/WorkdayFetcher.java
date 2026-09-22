@@ -31,6 +31,12 @@ import org.springframework.stereotype.Component;
  * than guessed. A wrong triple answers 404 or 422 immediately, which makes
  * Workday the opposite of SmartRecruiters: here an empty board really is empty.
  *
+ * <p>An optional fourth part is a search, {@code mastercard/wd1/CorporateCareers/india}.
+ * The US banks and retailers behind India's GCCs run one global site each, several
+ * thousand postings long, and {@link #MAX_PAGES} would stop the crawl before most
+ * of the Indian ones. Workday's own search matches location text, so "india"
+ * returns the India desks and nothing else needs to change.
+ *
  * <p><b>The search is a POST.</b> Paging is a JSON body, not a query string,
  * which is why {@link HttpFetchClient} learned to post.
  *
@@ -70,16 +76,21 @@ public class WorkdayFetcher implements AtsFetcher {
         return Source.WORKDAY;
     }
 
-    /** {@code tenant/wdN/site}, as seeded. */
-    record Board(String tenant, String datacentre, String site) {
+    /** {@code tenant/wdN/site[/search]}, as seeded. The search is "" when absent. */
+    record Board(String tenant, String datacentre, String site, String search) {
 
         static Board parse(String token) throws FetchException {
             String[] parts = token == null ? new String[0] : token.split("/");
-            if (parts.length != 3 || parts[0].isBlank() || parts[2].isBlank()) {
+            if (parts.length < 3 || parts.length > 4 || parts[0].isBlank() || parts[2].isBlank()) {
                 throw new FetchException(
-                        "Workday token must be tenant/wdN/site, got: " + token);
+                        "Workday token must be tenant/wdN/site[/search], got: " + token);
             }
-            return new Board(parts[0], parts[1], parts[2]);
+            String search = parts.length == 4 ? parts[3] : "";
+            // It goes into a JSON body verbatim, so nothing that would need escaping.
+            if (!search.matches("[A-Za-z0-9 ]*")) {
+                throw new FetchException("Workday search must be letters, digits and spaces, got: " + search);
+            }
+            return new Board(parts[0], parts[1], parts[2], search);
         }
 
         String base() {
@@ -106,8 +117,8 @@ public class WorkdayFetcher implements AtsFetcher {
             String body = http.post(
                     board.base() + "/jobs",
                     """
-                    {"appliedFacets":{},"limit":%d,"offset":%d,"searchText":""}"""
-                            .formatted(PAGE_SIZE, offset),
+                    {"appliedFacets":{},"limit":%d,"offset":%d,"searchText":"%s"}"""
+                            .formatted(PAGE_SIZE, offset, board.search()),
                     page == 0 ? "workday-" + board.tenant() + "-" + board.site() : null);
 
             JsonNode root = read(body, boardToken);
