@@ -53,9 +53,15 @@ public record AppProperties(
     /**
      * Screening rules, applied in order: geography, then title, then years.
      *
-     * @param maxMinYears the highest "minimum years" still acceptable. 1, because
-     *                    a year of internship reads onto "1-3 years" but not onto
-     *                    "2+ years professional".
+     * @param maxMinYears the highest "minimum years" still acceptable at most
+     *                    employers.
+     * @param bigTechBoards employers that verify experience formally (board
+     *                    tokens, the part of a Workday token before the first
+     *                    slash, or a source name such as {@code amazon}). They
+     *                    get {@code bigTechMaxMinYears} instead, and a stated
+     *                    non-internship or full-time experience requirement
+     *                    rejects.
+     * @param bigTechMaxMinYears the years cap for {@code bigTechBoards}.
      */
     public record Screening(
             Geo geo,
@@ -63,7 +69,29 @@ public record AppProperties(
             List<String> titleExclude,
             List<String> graduateSignals,
             java.util.Map<String, String> excludedBoards,
-            int maxMinYears) {
+            int maxMinYears,
+            List<String> bigTechBoards,
+            int bigTechMaxMinYears) {
+
+        /** Whether this posting's employer is on the big-tech list. */
+        public boolean isBigTech(com.anuragbhandary.jobradar.domain.Posting posting) {
+            if (bigTechBoards == null || bigTechBoards.isEmpty()) {
+                return false;
+            }
+            String token = posting.getBoardToken() == null
+                    ? "" : posting.getBoardToken().toLowerCase(java.util.Locale.ROOT);
+            int slash = token.indexOf('/');
+            String tenant = slash < 0 ? token : token.substring(0, slash);
+            String source = posting.getSource() == null
+                    ? "" : posting.getSource().name().toLowerCase(java.util.Locale.ROOT);
+            for (String board : bigTechBoards) {
+                String b = board.toLowerCase(java.util.Locale.ROOT);
+                if (b.equals(token) || b.equals(tenant) || b.equals(source)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**

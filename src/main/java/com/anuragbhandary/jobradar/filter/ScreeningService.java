@@ -204,16 +204,22 @@ public class ScreeningService {
         }
         posting.setMinYears(years.minYears());
 
-        if (years.hasNonInternshipRequirement()) {
-            // Amazon's phrasing excludes internship time explicitly, which is the
-            // whole of the experience being screened for. Disqualifying on its
-            // own, whatever the extracted minimum works out to.
-            reject(posting, "non-internship experience required: \"" + years.nonInternship() + "\"");
+        // Employers on the big-tech list verify experience formally, so there
+        // the bar is stricter: a posting insisting on non-internship or
+        // full-time experience is out, and the years cap is lower. Everywhere
+        // else that wording is not a filter.
+        boolean bigTech = screening.isBigTech(posting);
+        if (bigTech && years.hasNonInternshipRequirement()) {
+            reject(posting, "big tech, non-internship or full-time experience required: \""
+                    + years.nonInternship() + "\"");
             return;
         }
 
-        if (!years.isNoneStated() && years.minYears() > screening.maxMinYears()) {
-            reject(posting, years.minYears() + " years required: \"" + years.evidence() + "\"");
+        int maxYears = bigTech ? screening.bigTechMaxMinYears() : screening.maxMinYears();
+        if (!years.isNoneStated() && years.minYears() > maxYears) {
+            reject(posting, years.minYears() + " years required"
+                    + (bigTech ? " (big tech cap " + maxYears + ")" : "")
+                    + ": \"" + years.evidence() + "\"");
             return;
         }
 

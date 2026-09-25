@@ -56,9 +56,11 @@ openings" and similar from any directory. In short:
   Check a hit's locations and a few descriptions before trusting it: SmartRecruiters
   answers for unknown companies, and some boards hold only placeholder postings.
 - Rejections that are facts, not judgement: seniority and stack in the title, a
-  stated minimum above 1 year ("up to N years" is a ceiling), Amazon's
-  non-internship rule, a stated service bond, and German being required or the
-  posting being written in German. Abroad only: a stated refusal to sponsor on a
+  stated minimum above 2 years ("up to N years" is a ceiling), a stated service bond, and German being required or the
+  posting being written in German. At the employers in `big-tech-boards`
+  (formal background checks) the cap is 1 year, and a stated non-internship or
+  full-time experience requirement rejects; elsewhere that wording is ignored.
+  Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part

@@ -29,7 +29,12 @@ class ScreeningServiceTest {
             properties);
 
     private Posting posting(String title, String location, String description) {
-        Posting p = new Posting(Source.GREENHOUSE, "test", "1", title);
+        return posting(Source.GREENHOUSE, "test", title, location, description);
+    }
+
+    private Posting posting(Source source, String board, String title, String location,
+            String description) {
+        Posting p = new Posting(source, board, "1", title);
         p.setLocation(location);
         p.setDescriptionText(description);
         screening.screen(p);
@@ -105,13 +110,48 @@ class ScreeningServiceTest {
     }
 
     @Test
-    @DisplayName("Amazon's non-internship wording disqualifies on its own")
-    void rejectsNonInternshipWording() {
-        Posting p = posting("Software Development Engineer", "Dublin, Ireland",
+    @DisplayName("at big tech, non-internship wording disqualifies on its own")
+    void rejectsNonInternshipWordingAtBigTech() {
+        Posting p = posting(Source.AMAZON, "IRL", "Software Development Engineer",
+                "Dublin, Ireland",
                 "1+ years of non-internship professional software development experience.");
 
         assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
-        assertThat(p.getRejectReason()).contains("non-internship");
+        assertThat(p.getRejectReason()).contains("big tech").contains("non-internship");
+    }
+
+    @Test
+    @DisplayName("at big tech, full-time experience wording disqualifies too")
+    void rejectsFullTimeWordingAtBigTech() {
+        Posting p = posting(Source.WORKDAY, "nvidia/wd5/NVIDIAExternalCareerSite/india",
+                "Software Engineer", "Bengaluru, India",
+                "Requirements: 1+ years of full-time software engineering experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(p.getRejectReason()).contains("big tech");
+    }
+
+    @Test
+    @DisplayName("at big tech, one plain year counts and two do not")
+    void bigTechCapsAtOneYear() {
+        Posting one = posting(Source.AMAZON, "IND", "Software Development Engineer",
+                "Bengaluru, India", "Basic qualifications: 1+ years of software development experience.");
+        Posting two = posting(Source.AMAZON, "IND", "Software Development Engineer",
+                "Bengaluru, India", "Basic qualifications: 2+ years of software development experience.");
+
+        assertThat(one.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(two.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(two.getRejectReason()).contains("big tech cap 1");
+    }
+
+    @Test
+    @DisplayName("elsewhere, non-internship wording is ignored and two years is allowed")
+    void smallerCompaniesTakeTheResumeAsWritten() {
+        Posting p = posting("Backend Engineer", "Bengaluru, India",
+                "2+ years of non-internship professional software development experience.");
+
+        assertThat(p.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(p.getMinYears()).isEqualTo(2);
     }
 
     @Test
