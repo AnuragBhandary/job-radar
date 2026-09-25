@@ -72,7 +72,14 @@ public class YearsExtractor {
      */
     private static final Pattern NON_INTERNSHIP = Pattern.compile(
             "(?:professional|experience)[^.]{0,40}?non-?\\s?internship"
-                    + "|non-?\\s?internship[^.]{0,40}?(?:professional|experience)",
+                    + "|non-?\\s?internship[^.]{0,40}?(?:professional|experience)"
+                    // "2+ years of full-time software engineering experience",
+                    // "experience (full-time)". The word right before
+                    // "experience" is the test, so "a full-time role; experience
+                    // with Kafka" does not count.
+                    + "|full[-\\s]?time\\s+(?:professional\\s+|industry\\s+|work\\s+|software\\s+"
+                    + "|engineering\\s+|development\\s+|paid\\s+){0,3}experience"
+                    + "|experience\\s*\\(full[-\\s]?time\\)",
             Pattern.CASE_INSENSITIVE);
 
     /**

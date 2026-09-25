@@ -239,6 +239,15 @@ class YearsExtractorTest {
         }
 
         @Test
+        @DisplayName("full-time experience wording is caught, a full-time role is not")
+        void detectsFullTimeExperience() {
+            assertThat(extractor.extract("2+ years of full-time software engineering experience")
+                    .hasNonInternshipRequirement()).isTrue();
+            assertThat(extractor.extract("This is a full-time role. Experience with Kafka is a plus.")
+                    .hasNonInternshipRequirement()).isFalse();
+        }
+
+        @Test
         @DisplayName("'non-internship' with no number attached is not a requirement")
         void ignoresNonInternshipWithoutYears() {
             assertThat(extractor.extract("Internship and non-internship candidates welcome")
