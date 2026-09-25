@@ -27,10 +27,12 @@ public class JobRadarCli implements ApplicationRunner {
     private final SheetAppendCommand sheetAppend;
     private final SheetListCommand sheetList;
     private final ProbeCommand probe;
+    private final NotifyCommand notify;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
-            SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe) {
+            SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
+            NotifyCommand notify) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -40,6 +42,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.sheetAppend = sheetAppend;
         this.sheetList = sheetList;
         this.probe = probe;
+        this.notify = notify;
     }
 
     @Override
@@ -67,6 +70,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "sheet-append" -> sheetAppend.run(options);
             case "sheet-list" -> sheetList.run(options);
             case "probe" -> probe.run(options);
+            case "notify" -> notify.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -103,6 +107,9 @@ public class JobRadarCli implements ApplicationRunner {
                   screen                                  apply the fact-based filters, set verdicts
                   digest                                  write today's handoff file to inbox/
                   export --since=YYYY-MM-DD               handoff file for every open candidate since a day
+
+                  notify [--ids=a,b,c] [--dry-run]        post the shortlist (or these ids, in order)
+                                                          to the Discord webhook in secrets.yml
 
                 Decisions:
                   mark <id>[,<id>...] <decision> [--note="..."]
