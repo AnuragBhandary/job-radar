@@ -118,6 +118,17 @@ public class TitleFilter {
         return FilterVerdict.accept();
     }
 
+    /** The first of {@code words} found in the title as a whole word, or null. */
+    public String firstMatchIn(String title, List<String> words) {
+        if (title == null) {
+            return null;
+        }
+        String normalised = GENDER_TAG.matcher(
+                        title.toLowerCase(Locale.ROOT).replace('_', ' '))
+                .replaceAll(" ");
+        return firstMatch(normalised, words);
+    }
+
     /** True if the title carries an explicit graduate or early-career signal. */
     public boolean hasGraduateSignal(String title, String description) {
         String haystack = ((title == null ? "" : title) + " "

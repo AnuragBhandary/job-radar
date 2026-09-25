@@ -62,6 +62,8 @@ public record AppProperties(
      *                    non-internship or full-time experience requirement
      *                    rejects.
      * @param bigTechMaxMinYears the years cap for {@code bigTechBoards}.
+     * @param fullStackExclude title words for full-stack and frontend roles,
+     *                    rejected everywhere except Amazon.
      */
     public record Screening(
             Geo geo,
@@ -71,7 +73,8 @@ public record AppProperties(
             java.util.Map<String, String> excludedBoards,
             int maxMinYears,
             List<String> bigTechBoards,
-            int bigTechMaxMinYears) {
+            int bigTechMaxMinYears,
+            List<String> fullStackExclude) {
 
         /** Whether this posting's employer is on the big-tech list. */
         public boolean isBigTech(com.anuragbhandary.jobradar.domain.Posting posting) {

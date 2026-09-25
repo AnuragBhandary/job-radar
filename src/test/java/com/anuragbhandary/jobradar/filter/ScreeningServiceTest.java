@@ -145,6 +145,18 @@ class ScreeningServiceTest {
     }
 
     @Test
+    @DisplayName("full-stack titles are rejected except at Amazon")
+    void fullStackOnlyAtAmazon() {
+        Posting startup = posting("Full-Stack Engineer", "Bengaluru, India", "Build features.");
+        Posting amazon = posting(Source.AMAZON, "IND", "Software Development Engineer, Full Stack",
+                "Bengaluru, India", "Build features.");
+
+        assertThat(startup.getVerdict()).isEqualTo(Verdict.REJECTED);
+        assertThat(startup.getRejectReason()).contains("full-stack");
+        assertThat(amazon.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+    }
+
+    @Test
     @DisplayName("elsewhere, non-internship wording is ignored and two years is allowed")
     void smallerCompaniesTakeTheResumeAsWritten() {
         Posting p = posting("Backend Engineer", "Bengaluru, India",
