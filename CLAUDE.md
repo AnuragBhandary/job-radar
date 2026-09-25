@@ -29,6 +29,10 @@ openings" and similar from any directory. In short:
    to the tracker Google Sheet, so never run it speculatively. Later stages:
    `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
 6. `export --since=YYYY-MM-DD` remains for looking back over a date range.
+7. `notify --ids=<picks in ranked order>` posts the picks to the user's Discord
+   channel as cards (webhook in `secrets.yml` as `job-radar.notify.discord-webhook`).
+   The last line of each posting's `--note` is the card text, and its first word
+   sets the colour: "Apply" green, "Stretch" amber. `--dry-run` prints the JSON.
 
 ## Preparing an application
 
