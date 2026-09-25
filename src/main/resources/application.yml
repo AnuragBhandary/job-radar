@@ -498,6 +498,13 @@ job-radar:
                       scaleai, BoschGroup, elastic, gitlab]
     big-tech-max-min-years: 1
 
+    # Full-stack and frontend titles, rejected at every employer except Amazon
+    # (2026-09-25). Title only: a "Software Engineer" whose description turns out
+    # to be full-stack is caught in review.
+    full-stack-exclude: [full stack, full-stack, fullstack, frontend, front-end,
+                         front end, ui engineer, ui developer, react developer,
+                         web developer]
+
   # ---------------------------------------------------------------------------
   # Salary floors. See AppProperties.SalaryFloors for why these numbers are
   # shaped the way they are - they look wrong without the reasoning.

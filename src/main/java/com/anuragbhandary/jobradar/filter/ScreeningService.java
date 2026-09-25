@@ -150,6 +150,24 @@ public class ScreeningService {
     private void decide(Posting posting, LocationProfile location, String employerCountry) {
         posting.setRejectReason(null);
         posting.setMinYears(null);
+        // Full-stack and frontend roles are out, except at Amazon, where the
+        // title says full stack but the interview is the same SDE loop.
+        // A Hacker News header can list several roles ("Backend, Full Stack"),
+        // and the backend one is still wanted.
+        boolean multiRoleWithBackend = posting.getSource()
+                == com.anuragbhandary.jobradar.domain.Source.HACKER_NEWS
+                && titleFilter.firstMatchIn(posting.getTitle(),
+                        java.util.List.of("backend", "back-end", "back end")) != null;
+        if (posting.getSource() != com.anuragbhandary.jobradar.domain.Source.AMAZON
+                && !multiRoleWithBackend) {
+            String fullStack = titleFilter.firstMatchIn(posting.getTitle(),
+                    screening.fullStackExclude());
+            if (fullStack != null) {
+                reject(posting, "full-stack or frontend title: '" + fullStack + "'");
+                return;
+            }
+        }
+
         posting.setGraduateSignal(false);
         posting.setSponsorshipSignal(null);
         posting.setSalaryText(null);

@@ -64,6 +64,8 @@ openings" and similar from any directory. In short:
   posting being written in German. At the employers in `big-tech-boards`
   (formal background checks) the cap is 1 year, and a stated non-internship or
   full-time experience requirement rejects; elsewhere that wording is ignored.
+  Full-stack and frontend titles are rejected everywhere except Amazon
+  (`full-stack-exclude`); a Hacker News header that also lists backend is kept.
   Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
