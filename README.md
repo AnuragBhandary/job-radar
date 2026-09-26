@@ -28,7 +28,7 @@ the code. That version is kept at the tag
 ## The daily loop
 
 ```
-launchd 07:00 ─► run ─► fetch ─► screen ─► tracker sync ─► inbox/YYYY-MM-DD.md
+on demand ─► run ─► fetch ─► screen ─► tracker sync ─► inbox/YYYY-MM-DD.md
                                                                    │
                          Claude session: judge, rank, draft ◄──────┘
                                    │
@@ -88,10 +88,11 @@ id and service-account key path go in `~/.config/job-radar/secrets.yml`; without
 them everything works except the tracker. Chromium downloads itself the first time
 `resume` prints a PDF.
 
-**Scheduling.** `deploy/com.anuragbhandary.job-radar.plist` is a launchd agent that
-runs `run` at 07:00, and on wake if the Mac was asleep then. Install with
-`cp deploy/*.plist ~/Library/LaunchAgents/` and
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.anuragbhandary.job-radar.plist`.
+**Scheduling.** Run on demand: `run` at the start of each review. A scheduled
+07:00 run was tried and removed (2026-09-26): an idle sleep mid-fetch could leave
+it frozen for hours. `deploy/com.anuragbhandary.job-radar.plist` is kept as an
+optional launchd agent (install with `cp deploy/*.plist ~/Library/LaunchAgents/`
+and `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.anuragbhandary.job-radar.plist`).
 
 ## Testing
 

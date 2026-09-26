@@ -16,8 +16,9 @@ The full routine, including how to judge and rank, is the personal skill
 `~/.claude/skills/job-openings/SKILL.md`, which triggers on "get me today's
 openings" and similar from any directory. In short:
 
-1. If the last fetch (header of the newest `inbox/` file, or `inbox/launchd.log`)
-   is more than ~20 hours old, run `run` first.
+1. There is no scheduled run. If the last fetch (the `Last fetch:` line of the
+   newest `inbox/` file) is more than a few hours old, run `run` first (about 5
+   minutes).
 2. `openings` writes `inbox/openings-<time>.md`: every posting that became a
    recommended candidate since the last review, dated by when it became one (so a
    rule change that makes an old posting eligible still shows up), plus the
