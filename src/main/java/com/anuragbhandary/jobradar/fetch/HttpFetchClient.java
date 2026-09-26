@@ -101,8 +101,26 @@ public class HttpFetchClient {
                             .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
                 }
 
-                HttpResponse<String> response =
-                        http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+                // The request timeout only runs until the response headers
+                // arrive. A body that stalls after them (seen on Lever, after
+                // the Mac slept mid-run) blocked send() for hours and froze the
+                // whole daily run, so the full exchange gets a hard deadline.
+                HttpResponse<String> response;
+                java.util.concurrent.CompletableFuture<HttpResponse<String>> pending =
+                        http.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString());
+                try {
+                    response = pending.get(config.timeoutSeconds() * 3L,
+                            java.util.concurrent.TimeUnit.SECONDS);
+                } catch (java.util.concurrent.TimeoutException e) {
+                    pending.cancel(true);
+                    throw new IOException("no complete response within "
+                            + config.timeoutSeconds() * 3 + "s");
+                } catch (java.util.concurrent.ExecutionException e) {
+                    if (e.getCause() instanceof IOException io) {
+                        throw io;
+                    }
+                    throw new IOException(e.getCause());
+                }
 
                 int status = response.statusCode();
                 if (status >= 200 && status < 300) {
