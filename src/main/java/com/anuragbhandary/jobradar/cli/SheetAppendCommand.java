@@ -124,4 +124,30 @@ public class SheetAppendCommand {
             System.out.println("Could not update row " + row + ": " + e.getMessage());
         }
     }
+
+    /**
+     * {@code sheet-add --company=.. --role=.. --city=.. --link=.. [--date=YYYY-MM-DD]
+     * [--notes=..]} - append a row for an application job-radar never saw, such
+     * as a role found on a company's own site.
+     */
+    public void add(Map<String, String> options) {
+        String company = options.get("company");
+        String role = options.get("role");
+        if (company == null || role == null) {
+            System.out.println("Usage: sheet-add --company=... --role=... [--city=...] "
+                    + "[--link=...] [--date=YYYY-MM-DD] [--notes=...]");
+            return;
+        }
+        LocalDate applied = options.containsKey("date")
+                ? LocalDate.parse(options.get("date")) : LocalDate.now();
+        ApplicationRow row = new ApplicationRow(company, role, options.get("city"), applied,
+                ApplicationRow.STATUS_APPLIED, null, "not recorded", options.get("link"),
+                options.getOrDefault("notes", "added by hand"));
+        try {
+            int written = sheets.appendApplication(row);
+            System.out.println("Appended " + company + " · " + role + " as tracker row " + written + ".");
+        } catch (IOException | RuntimeException e) {
+            System.out.println("Could not append: " + e.getMessage());
+        }
+    }
 }
