@@ -157,7 +157,13 @@ public class DigestService {
                 .map(JobInterest::getPostingId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Predicate<Posting> undecided = p -> !decided.contains(p.getId());
+        // A decision covers the role, not just the row: a relisted copy of a role
+        // already applied to or skipped (new id, other board) is decided too.
+        Set<String> decidedRoles = postings.findAllById(decided).stream()
+                .map(p -> roleKey(p, labels))
+                .collect(Collectors.toSet());
+        Predicate<Posting> undecided = p -> !decided.contains(p.getId())
+                && !decidedRoles.contains(roleKey(p, labels));
 
         // Eligible AND recommended. A null outcome counts as recommended: that is
         // what a row screened before the strategy columns existed looks like.
@@ -179,7 +185,7 @@ public class DigestService {
                 .filter(stale.negate())
                 .sorted(BY_RECENCY_THEN_COMPANY)
                 .toList();
-        List<Posting> deduped = dedupe(raw);
+        List<Posting> deduped = dedupe(raw, labels);
 
         int staleSetAside = (int) open.stream().filter(stale)
                 .map(p -> p.getBoardToken() + " " + p.getTitle())
@@ -231,12 +237,36 @@ public class DigestService {
      * three vacancies, one application. Keyed on company and title, and input order
      * is preserved, so the first listing of a role survives.
      */
-    private static List<Posting> dedupe(List<Posting> postings) {
+    private static List<Posting> dedupe(List<Posting> postings, Map<String, String> labels) {
         Map<String, Posting> byRole = new LinkedHashMap<>();
         for (Posting posting : postings) {
-            byRole.putIfAbsent(
-                    posting.getBoardToken() + " " + posting.getTitle(), posting);
+            // A direct board's copy wins over an aggregator's, whichever came first:
+            // it carries the employer's own link.
+            String key = roleKey(posting, labels);
+            Posting kept = byRole.get(key);
+            if (kept == null || (isAggregator(kept) && !isAggregator(posting))) {
+                byRole.put(key, posting);
+            }
         }
         return List.copyOf(byRole.values());
+    }
+
+    private static String roleKey(Posting posting, Map<String, String> labels) {
+        String key = com.anuragbhandary.jobradar.domain.Employer.roleKey(
+                labels.getOrDefault(posting.getBoardToken(), posting.getBoardToken()),
+                posting.getSource(), posting.getTitle());
+        // "Software Engineer" at a large employer is many different jobs. Short,
+        // generic titles only count as the same role in the same country.
+        String title = key.substring(key.indexOf('|') + 1);
+        return title.split(" ").length <= 3
+                ? key + "|" + posting.getCountryCode()
+                : key;
+    }
+
+    private static boolean isAggregator(Posting posting) {
+        return switch (posting.getSource()) {
+            case ARBEITNOW, JOBICY, WE_WORK_REMOTELY, HACKER_NEWS -> true;
+            default -> false;
+        };
     }
 }

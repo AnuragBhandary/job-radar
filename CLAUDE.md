@@ -23,6 +23,10 @@ openings" and similar from any directory. In short:
    recommended candidate since the last review, dated by when it became one (so a
    rule change that makes an old posting eligible still shows up), plus the
    shortlist not yet applied to.
+   Relisted copies of a role already decided (same employer and title on any
+   board; short generic titles also need the same country) are withheld, and
+   cross-board duplicates fold to the direct board's copy. A candidate whose
+   description names several frontend technologies is flagged.
 3. Judge each against the resume (`resume --list`), rank, reply briefly.
 4. Record every decision: `mark <id>,<id>,... shortlist|skip --note="..."`, then
    `openings --done`, which closes the window at the moment the file was written.
@@ -30,7 +34,14 @@ openings" and similar from any directory. In short:
    to the tracker Google Sheet, so never run it speculatively. Later stages:
    `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
 6. `export --since=YYYY-MM-DD` remains for looking back over a date range.
-7. `notify --ids=<picks in ranked order>` posts the picks to the user's Discord
+7. `links --ids=<picks>` finds the employer's own page for aggregator postings
+   (Arbeitnow, Jobicy, We Work Remotely, HN) across Greenhouse, Lever, Ashby,
+   SmartRecruiters, Recruitee, Workable and Personio, adds that employer's board
+   when job-radar can fetch it, and checks every link (LIVE / DEAD / UNKNOWN;
+   Workday maintenance is UNKNOWN, never dead). `notify` runs the same check and
+   drops dead links. When nothing is found, search the careers site by hand and
+   record it with `mark <id> shortlist --url=<link>`.
+8. `notify --ids=<picks in ranked order>` posts the picks to the user's Discord
    channel as cards (webhook in `secrets.yml` as `job-radar.notify.discord-webhook`).
    The last line of each posting's `--note` is the card text, and its first word
    sets the colour: "Apply" green, "Stretch" amber. `--dry-run` prints the JSON.

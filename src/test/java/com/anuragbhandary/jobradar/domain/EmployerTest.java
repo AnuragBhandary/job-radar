@@ -36,4 +36,16 @@ class EmployerTest {
         assertThat(Employer.split("Target", Source.WORKDAY, "Engineer"))
                 .containsExactly("Target", "Engineer");
     }
+
+    @Test
+    @DisplayName("a relisted role keys the same across boards and gender tags")
+    void roleKeyMatchesRelists() {
+        String viaArbeitnow = Employer.roleKey("Arbeitnow", Source.ARBEITNOW,
+                "Software Engineer, Infrastructure - Self Managed Experience (SMX) @ Camunda");
+        String direct = Employer.roleKey("Camunda", Source.ASHBY,
+                "Software Engineer, Infrastructure - Self Managed Experience (SMX)");
+        assertThat(viaArbeitnow).isEqualTo(direct);
+        assertThat(Employer.roleKey("Arbeitnow", Source.ARBEITNOW, "AI Agent Engineer (f/m/d) @ Manex AI GmbH"))
+                .isEqualTo(Employer.roleKey("Arbeitnow", Source.ARBEITNOW, "AI Agent Engineer (m/w/d) @ Manex AI"));
+    }
 }

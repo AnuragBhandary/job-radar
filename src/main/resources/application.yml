@@ -495,7 +495,8 @@ job-radar:
     # (the part before the first slash), or a source name ("amazon").
     big-tech-boards: [amazon, adobe, intel, mastercard, nvidia, paypal, target, wf,
                       nxp, philips, stripe, databricks, openai, datadog, mongodb,
-                      scaleai, BoschGroup, elastic, gitlab]
+                      scaleai, BoschGroup, elastic, gitlab, coinbase, rubrik,
+                      salesforce, hp, workday, motorolasolutions, citi]
     big-tech-max-min-years: 1
 
     # Full-stack and frontend titles, rejected at every employer except Amazon

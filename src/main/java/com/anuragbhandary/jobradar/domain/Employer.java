@@ -62,4 +62,32 @@ public final class Employer {
     public static String company(String boardLabel, Source source, String title) {
         return split(boardLabel, source, title)[0];
     }
+
+    /**
+     * The same role at the same employer, whichever board carried it and however
+     * often it was relisted: normalised employer plus normalised role title.
+     *
+     * <p>Arbeitnow relists roles under new ids and even a new domain (.com and
+     * .co.uk), and Canonical's roles arrive through Jobicy as well as its own
+     * board. Keyed on posting id or board token, each copy looked new.
+     */
+    public static String roleKey(String boardLabel, Source source, String title) {
+        String[] parts = split(boardLabel, source, title);
+        return normaliseCompany(parts[0]) + "|" + normaliseTitle(parts[1]);
+    }
+
+    static String normaliseCompany(String company) {
+        String c = company == null ? "" : company.toLowerCase(Locale.ROOT);
+        c = c.replaceAll("\\(.*?\\)", " ");
+        c = c.replaceAll("\\b(gmbh|ag|se|inc|ltd|llc|limited|b\\.?v|pvt|private|co|corp|"
+                + "corporation|company|group|technologies|technology|deutschland)\\b\\.?", " ");
+        return c.replaceAll("[^\\p{L}\\p{N}]+", "");
+    }
+
+    static String normaliseTitle(String title) {
+        String t = title == null ? "" : title.toLowerCase(Locale.ROOT);
+        // Gender tags: (f/m/d), (m/w/d), (all genders), (gn), (d/f/m)...
+        t = t.replaceAll("\\((?:[mwfdx]\\s*/\\s*){1,3}[mwfdx]\\)|\\(all genders\\)|\\(gn\\)|\\(m/f/x\\)", " ");
+        return t.replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+    }
 }

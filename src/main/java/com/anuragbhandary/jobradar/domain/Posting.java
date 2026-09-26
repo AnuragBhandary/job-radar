@@ -86,6 +86,14 @@ public class Posting {
     @Column(length = 1024)
     private String url;
 
+    /**
+     * The employer's own page for this role, when {@link #url} is an aggregator's
+     * (Arbeitnow, Jobicy, We Work Remotely, Hacker News). Found by
+     * {@code DirectLinkResolver}; null until resolved or when nothing was found.
+     */
+    @Column(name = "direct_url", length = 1024)
+    private String directUrl;
+
     /** Nullable - many boards do not publish one. */
     @Column(name = "posted_date")
     private LocalDate postedDate;
@@ -523,5 +531,13 @@ public class Posting {
     @Override
     public String toString() {
         return "Posting[" + source + "/" + boardToken + "/" + externalId + " " + title + "]";
+    }
+
+    public String getDirectUrl() {
+        return directUrl;
+    }
+
+    public void setDirectUrl(String directUrl) {
+        this.directUrl = directUrl;
     }
 }

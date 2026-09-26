@@ -84,6 +84,12 @@ public class BoardTokenSeeder {
         WORKDAY.put("paypal/wd1/jobs/india", "PayPal");
         WORKDAY.put("nvidia/wd5/NVIDIAExternalCareerSite/india", "NVIDIA");
         WORKDAY.put("intel/wd1/External/india", "Intel");
+        // 2026-09-26: tech centres in India with junior-to-mid software roles.
+        WORKDAY.put("salesforce/wd12/External_Career_Site/india", "Salesforce");
+        WORKDAY.put("hp/wd5/ExternalCareerSite/india", "HP");
+        WORKDAY.put("workday/wd5/Workday/india", "Workday");
+        WORKDAY.put("motorolasolutions/wd5/Careers/india", "Motorola Solutions");
+        WORKDAY.put("citi/wd5/2/india", "Citi");
 
         GREENHOUSE.put("stripe", "Stripe");
         GREENHOUSE.put("intercom", "Intercom");

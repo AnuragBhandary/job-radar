@@ -46,7 +46,7 @@ public record ApplicationRow(
                 STATUS_APPLIED,
                 posting.getPostedDate(),
                 experienceWording(posting),
-                posting.getUrl(),
+                posting.getDirectUrl() != null ? posting.getDirectUrl() : posting.getUrl(),
                 "");
     }
 

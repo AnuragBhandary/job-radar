@@ -231,6 +231,11 @@ public class DigestWriter {
         if (entry.companyApplied()) {
             out.append("**Already applied to this company** (this role or another)\n");
         }
+        String frontend = frontendSignal(p.getDescriptionText());
+        if (frontend != null) {
+            out.append("**Frontend in the description:** ").append(frontend)
+                    .append(" (full-stack titles are filtered; this one is not titled so)\n");
+        }
 
         out.append(p.getLocation() == null ? "?" : p.getLocation())
                 .append(" · ").append(orDash(p.getCountryCode()))
@@ -284,5 +289,30 @@ public class DigestWriter {
     /** Falls back to the raw token when the board has no label. */
     private static String company(Posting p, Map<String, String> labels) {
         return labels.getOrDefault(p.getBoardToken(), p.getBoardToken());
+    }
+
+    private static final java.util.List<String> FRONTEND_TERMS = java.util.List.of(
+            "react", "angular", "vue", "next.js", "nextjs", "svelte", "typescript",
+            "frontend", "front-end", "front end", "full-stack", "full stack", "fullstack",
+            "css", "tailwind");
+
+    /**
+     * Frontend technologies a description names, when there are enough of them to
+     * suggest a full-stack role under a plain "Software Engineer" title. One
+     * passing mention (a React client somewhere) is not a signal; two terms are.
+     */
+    static String frontendSignal(String description) {
+        if (description == null) {
+            return null;
+        }
+        String text = description.toLowerCase(java.util.Locale.ROOT);
+        java.util.List<String> hits = new java.util.ArrayList<>();
+        for (String term : FRONTEND_TERMS) {
+            if (java.util.regex.Pattern.compile("(?<![\\p{L}\\p{N}])" + java.util.regex.Pattern.quote(term)
+                    + "(?![\\p{L}\\p{N}])").matcher(text).find()) {
+                hits.add(term);
+            }
+        }
+        return hits.size() >= 2 ? String.join(", ", hits) : null;
     }
 }

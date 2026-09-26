@@ -28,11 +28,12 @@ public class JobRadarCli implements ApplicationRunner {
     private final SheetListCommand sheetList;
     private final ProbeCommand probe;
     private final NotifyCommand notify;
+    private final LinksCommand links;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
-            NotifyCommand notify) {
+            NotifyCommand notify, LinksCommand links) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -43,6 +44,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.sheetList = sheetList;
         this.probe = probe;
         this.notify = notify;
+        this.links = links;
     }
 
     @Override
@@ -73,6 +75,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "sheet-add" -> sheetAppend.add(options);
             case "probe" -> probe.run(options);
             case "notify" -> notify.run(options);
+            case "links" -> links.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -110,11 +113,12 @@ public class JobRadarCli implements ApplicationRunner {
                   digest                                  write today's handoff file to inbox/
                   export --since=YYYY-MM-DD               handoff file for every open candidate since a day
 
+                  links --ids=a,b,c                       employer's own link for each, and whether it is open
                   notify [--ids=a,b,c] [--dry-run]        post the shortlist (or these ids, in order)
                                                           to the Discord webhook in secrets.yml
 
                 Decisions:
-                  mark <id>[,<id>...] <decision> [--note="..."]
+                  mark <id>[,<id>...] <decision> [--note="..."] [--url=<employer's own page>]
                                                           shortlist | skip | applied | screening |
                                                           interview | offer | rejected | withdrawn;
                                                           applied and later go to the tracker sheet

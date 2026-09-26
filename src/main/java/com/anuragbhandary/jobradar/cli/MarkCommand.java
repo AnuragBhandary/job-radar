@@ -65,17 +65,27 @@ public class MarkCommand {
                 continue;
             }
             try {
-                markOne(Long.valueOf(raw.trim()), decision, stage, options.get("note"));
+                markOne(Long.valueOf(raw.trim()), decision, stage, options.get("note"),
+                        options.get("url"));
             } catch (NumberFormatException e) {
                 System.out.println("Not a posting id: " + raw);
             }
         }
     }
 
-    private void markOne(Long postingId, String decision, PipelineStage stage, String note) {
+    private void markOne(Long postingId, String decision, PipelineStage stage, String note,
+            String url) {
         if (postings.findById(postingId).isEmpty()) {
             System.out.println("No posting with id " + postingId);
             return;
+        }
+        // --url records the employer's own page for the role, found by hand when
+        // the resolver could not. Set before any move, so an "applied" row in
+        // the tracker carries it.
+        if (url != null && url.startsWith("http")) {
+            var posting = postings.findById(postingId).get();
+            posting.setDirectUrl(url);
+            postings.save(posting);
         }
 
         Optional<JobInterest> existing = interests.findByPostingId(postingId);
@@ -102,6 +112,9 @@ public class MarkCommand {
         if (note != null && !note.isBlank()) {
             String before = interest.getNotes();
             interest.setNotes(before == null || before.isBlank() ? note : before + "\n" + note);
+        }
+        if (url != null && url.startsWith("http")) {
+            interest.setUrl(url);
         }
         interest = interests.save(interest);
 

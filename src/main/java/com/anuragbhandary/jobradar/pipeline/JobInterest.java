@@ -228,4 +228,8 @@ public class JobInterest {
     public boolean isDue(LocalDate today) {
         return remindOn != null && !remindOn.isAfter(today);
     }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
 }

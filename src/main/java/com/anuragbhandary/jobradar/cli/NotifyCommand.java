@@ -49,10 +49,13 @@ public class NotifyCommand {
     private final HttpClient http;
     private final ObjectMapper json;
     private final String webhook;
+    private final com.anuragbhandary.jobradar.pipeline.LinkService links;
 
     public NotifyCommand(JobInterestRepository interests, PostingRepository postings,
             HttpClient http, ObjectMapper json,
-            @Value("${job-radar.notify.discord-webhook:}") String webhook) {
+            @Value("${job-radar.notify.discord-webhook:}") String webhook,
+            com.anuragbhandary.jobradar.pipeline.LinkService links) {
+        this.links = links;
         this.interests = interests;
         this.postings = postings;
         this.http = http;
@@ -74,9 +77,41 @@ public class NotifyCommand {
             return;
         }
 
+        // Every link is checked before it is sent, and aggregator links are
+        // swapped for the employer's own page. A dead one never reaches the phone.
+        boolean check = !options.containsKey("no-check");
         List<Map<String, Object>> cards = new ArrayList<>();
         for (JobInterest row : rows) {
-            cards.add(card(row));
+            String warning = null;
+            Posting posting = row.getPostingId() == null
+                    ? null : postings.findById(row.getPostingId()).orElse(null);
+            if (check && posting != null) {
+                com.anuragbhandary.jobradar.pipeline.LinkService.Link link = links.forPosting(posting);
+                if (link.check().dead()) {
+                    System.out.println("Dropped " + row.getPostingId() + " (" + row.getCompany()
+                            + "): " + link.check().reason());
+                    row.setStage(PipelineStage.DROPPED);
+                    row.setNotes((row.getNotes() == null ? "" : row.getNotes() + "\n")
+                            + LocalDate.now() + ": link dead, " + link.check().reason());
+                    interests.save(row);
+                    continue;
+                }
+                if (link.url() != null) {
+                    row.setUrl(link.url());
+                    interests.save(row);
+                } else {
+                    warning = "⚠️ Employer page not found automatically: search their careers site.";
+                }
+            }
+            Map<String, Object> card = card(row);
+            if (warning != null) {
+                card.put("description", card.get("description") + "\n" + warning);
+            }
+            cards.add(card);
+        }
+        if (cards.isEmpty()) {
+            System.out.println("Nothing left to send: every link was dead.");
+            return;
         }
 
         String title = options.getOrDefault("title",
