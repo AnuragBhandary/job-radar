@@ -39,7 +39,8 @@ public record ApplicationRow(
     public static ApplicationRow from(Posting posting, String company, LocalDate appliedOn) {
         return new ApplicationRow(
                 company,
-                posting.getTitle(),
+                com.anuragbhandary.jobradar.domain.Employer.split(
+                        company, posting.getSource(), posting.getTitle())[1],
                 posting.getLocation(),
                 appliedOn,
                 STATUS_APPLIED,

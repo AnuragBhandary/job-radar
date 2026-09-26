@@ -187,6 +187,32 @@ public class SheetsClient {
         log.info("Set status of row {} to {}", rowNumber, status);
     }
 
+    /**
+     * Overwrites named cells in one existing data row, for correcting a row
+     * that was written wrong. Columns are sheet letters (A = Company, B = Role,
+     * H = Official Link).
+     */
+    public void updateCells(int rowNumber, java.util.Map<String, String> byColumn)
+            throws IOException {
+        if (rowNumber < FALLBACK_FIRST_DATA_ROW) {
+            throw new IllegalArgumentException(
+                    "Row " + rowNumber + " is not a data row; data starts at row "
+                            + FALLBACK_FIRST_DATA_ROW);
+        }
+        for (var entry : byColumn.entrySet()) {
+            String column = entry.getKey().toUpperCase(Locale.ROOT);
+            if (!column.matches("[A-I]")) {
+                throw new IllegalArgumentException("Column " + column + " is outside A:I");
+            }
+            factory.sheets().spreadsheets().values()
+                    .update(config.spreadsheetId(), range(column + rowNumber),
+                            new ValueRange().setValues(List.of(List.of(entry.getValue()))))
+                    .setValueInputOption("RAW")
+                    .execute();
+        }
+        log.info("Updated row {} columns {}", rowNumber, byColumn.keySet());
+    }
+
     private String range(String cells) {
         String sheetName = config.sheetName();
         return sheetName == null || sheetName.isBlank()

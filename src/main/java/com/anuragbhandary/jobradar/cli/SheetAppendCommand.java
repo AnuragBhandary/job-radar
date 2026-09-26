@@ -55,9 +55,11 @@ public class SheetAppendCommand {
         }
         Posting posting = found.get();
 
-        String company = boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
+        String company = com.anuragbhandary.jobradar.domain.Employer.company(
+                boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
                 .map(b -> b.getLabel() == null ? b.getToken() : b.getLabel())
-                .orElse(posting.getBoardToken());
+                .orElse(posting.getBoardToken()),
+                posting.getSource(), posting.getTitle());
 
         ApplicationRow row = ApplicationRow.from(posting, company, LocalDate.now())
                 .withNotes(options.getOrDefault("notes", ""));
@@ -88,6 +90,38 @@ public class SheetAppendCommand {
         } catch (RuntimeException e) {
             // No console, e.g. running from a scheduler. Refusing is the safe default.
             return false;
+        }
+    }
+
+    /**
+     * {@code sheet-set --row=N [--company=..] [--role=..] [--link=..]} - correct
+     * cells in one tracker row. Nothing else in the row is touched.
+     */
+    public void set(Map<String, String> options) {
+        String row = options.get("row");
+        if (row == null) {
+            System.out.println("Usage: sheet-set --row=N [--company=...] [--role=...] [--link=...]");
+            return;
+        }
+        Map<String, String> cells = new java.util.LinkedHashMap<>();
+        if (options.containsKey("company")) {
+            cells.put("A", options.get("company"));
+        }
+        if (options.containsKey("role")) {
+            cells.put("B", options.get("role"));
+        }
+        if (options.containsKey("link")) {
+            cells.put("H", options.get("link"));
+        }
+        if (cells.isEmpty()) {
+            System.out.println("Nothing to set.");
+            return;
+        }
+        try {
+            sheets.updateCells(Integer.parseInt(row), cells);
+            System.out.println("Row " + row + " updated: " + cells.keySet());
+        } catch (IOException | RuntimeException e) {
+            System.out.println("Could not update row " + row + ": " + e.getMessage());
         }
     }
 }
