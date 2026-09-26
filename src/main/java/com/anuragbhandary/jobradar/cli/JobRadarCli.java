@@ -69,6 +69,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "resume" -> resume.run(options);
             case "sheet-append" -> sheetAppend.run(options);
             case "sheet-list" -> sheetList.run(options);
+            case "sheet-set" -> sheetAppend.set(options);
             case "probe" -> probe.run(options);
             case "notify" -> notify.run(options);
             default -> {

@@ -146,7 +146,9 @@ public class DigestService {
                 .collect(Collectors.toMap(BoardToken::getToken, BoardToken::getLabel,
                         (a, b) -> a));
         Predicate<Posting> companyApplied = p -> applied.contains(
-                labels.getOrDefault(p.getBoardToken(), p.getBoardToken())
+                com.anuragbhandary.jobradar.domain.Employer.company(
+                                labels.getOrDefault(p.getBoardToken(), p.getBoardToken()),
+                                p.getSource(), p.getTitle())
                         .toLowerCase(Locale.ROOT).trim());
 
         // Marked applied, skipped or shortlisted. Any decision takes a posting out:

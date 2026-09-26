@@ -269,9 +269,11 @@ public class PipelineService {
     }
 
     private String companyOf(Posting posting) {
-        return boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
+        String label = boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken())
                 .map(board -> board.getLabel() == null ? board.getToken() : board.getLabel())
                 .orElse(posting.getBoardToken());
+        return com.anuragbhandary.jobradar.domain.Employer.company(
+                label, posting.getSource(), posting.getTitle());
     }
 
     private static String normalise(String value) {
