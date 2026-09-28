@@ -381,7 +381,10 @@ job-radar:
     title-include:
       [software, backend, back-end, back end, full-stack, fullstack, full stack,
        developer, engineer, data scientist, machine learning, platform, sde,
-       python, java, distributed systems, ai engineer, genai, data engineer]
+       python, java, distributed systems, ai engineer, genai, data engineer,
+       # Abbreviations Indian boards use: Epifi's "Ai Engg Intern" and "DS/ML
+       # Intern" (2026-09-28).
+       engg, ml]
 
     # "ii" and "iii" are matched as whole words elsewhere; listing them here
     # would also reject "Engineer II" spelled inside another word.
