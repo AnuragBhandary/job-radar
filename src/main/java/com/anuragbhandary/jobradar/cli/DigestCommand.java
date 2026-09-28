@@ -36,11 +36,15 @@ public class DigestCommand {
     private final DigestWriter writer;
     private final String outputDir;
 
+    private final com.anuragbhandary.jobradar.digest.BrowserWatch watch;
+
     public DigestCommand(DigestService service, DigestWriter writer,
-            com.anuragbhandary.jobradar.config.AppProperties properties) {
+            com.anuragbhandary.jobradar.config.AppProperties properties,
+            com.anuragbhandary.jobradar.digest.BrowserWatch watch) {
         this.service = service;
         this.writer = writer;
         this.outputDir = properties.outputDir();
+        this.watch = watch;
     }
 
     public void run(Map<String, String> options) {
@@ -80,6 +84,8 @@ public class DigestCommand {
             String name = "openings-" + STAMP.format(now) + ".md";
             Path file = writer.write(digest, name,
                     "job-radar openings — new since " + STAMP_READABLE.format(since));
+            Files.writeString(file, watch.render(), StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.APPEND);
             Files.writeString(pending, now.toString(), StandardCharsets.UTF_8);
             System.out.printf("%n%d new candidate(s) since %s, %d shortlisted not yet applied.%n",
                     digest.candidates().size(), STAMP_READABLE.format(since),

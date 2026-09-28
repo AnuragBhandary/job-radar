@@ -32,7 +32,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         // Personal data, imported from ~/.config/job-radar/applicant.yml rather
         // than living in application.yml - see the spring.config.import block.
         ResumeSource.class,
-        Applicant.class})
+        Applicant.class,
+        // Careers pages read in a browser during review, not fetched.
+        com.anuragbhandary.jobradar.digest.BrowserWatch.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {

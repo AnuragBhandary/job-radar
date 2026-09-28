@@ -52,6 +52,12 @@ openings" and similar from any directory. In short:
    A review with no picks sends `notify --quiet-day --note="..."` instead: one
    plain message that the review ran, with the shortlist still waiting.
 
+9. The openings file ends with "Check in the browser": Darwinbox careers pages
+   (`browser-watch` in application.yml). Darwinbox serves jobs from an API behind
+   Cloudflare's bot check, so job-radar does not fetch them and must not try to.
+   Read them in a browser during the review; record an application from one with
+   `sheet-add`.
+
 ## Preparing an application
 
 - Resume: `resume --summary=<id> --pick=e1.3,e1.1,p2.1,... --out=resumes/<company>.pdf`.

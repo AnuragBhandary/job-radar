@@ -33,6 +33,37 @@ job-radar:
     # nothing about whether the role is live. Comma-separated board tokens.
     stale-exempt-boards: canonical
 
+  # Careers pages read in a browser during review, because they cannot be
+  # fetched (see BrowserWatch). Each was opened on 2026-09-28 and answered with a
+  # public job list. Not listed, because the page needs a login: Games24x7,
+  # Groww (storyboard), Udaan. TheMathCompany's page did not render.
+  browser-watch:
+    pages:
+      - company: Upstox
+        city: Mumbai
+        url: https://upstox.darwinbox.in/ms/candidatev2/main/careers/allJobs
+      - company: Tata 1mg
+        city: Gurugram
+        url: https://1mg.darwinbox.in/ms/candidatev2/main/careers/allJobs
+      - company: Perfios
+        city: Bengaluru, Mumbai
+        url: https://perfios.darwinbox.in/ms/candidatev2/main/careers/allJobs
+      - company: Darwinbox
+        city: Hyderabad
+        url: https://dbx.darwinbox.in/ms/candidatev2/main/careers/allJobs
+      - company: smallcase
+        city: Bengaluru
+        url: https://smallcase.darwinbox.in/ms/candidatev2/main/careers/allJobs
+        note: "0 open jobs on 2026-09-28"
+      - company: PhysicsWallah
+        city: Noida
+        url: https://pwhr.darwinbox.in/ms/candidatev2/main/careers/allJobs
+        note: "0 open jobs on 2026-09-28"
+      - company: Unacademy
+        city: Bengaluru
+        url: https://unacademy.darwinbox.in/ms/candidatev2/main/careers/allJobs
+        note: "business roles only on 2026-09-28"
+
   # ---------------------------------------------------------------------------
   # Country strategy.
   #
