@@ -397,7 +397,10 @@ job-radar:
     title-exclude:
       [senior, staff, principal, lead, manager, director, sales, account,
        marketing, recruiter, vp, head of, solution consultant, support, field,
-       customer success, intern, working student, werkstudent, praktikum,
+       # "intern" and "internship" were here until 2026-09-28. Internships are now
+       # screened by Internship (India only, open to graduates); the German
+       # student-contract words below stay, as they are enrolment by definition.
+       customer success, working student, werkstudent, praktikum,
        mid-level, midlevel, intermediate, architect, sr., sr ,
        value engineer, solution engineer, solutions engineer, presales,
        pre-sales, escalations, technical services, onboarding engineer,
@@ -436,7 +439,7 @@ job-radar:
        # Found in the 2026-09-15 digest. Exclusions match whole words, so
        # "praktikum" never fired inside "Pflichtpraktikum" and "intern" never
        # fired inside "Internship": student-only programmes need their own tokens.
-       internship, pflichtpraktikum, praktikant, premaster, abschlussarbeit,
+       pflichtpraktikum, praktikant, premaster, abschlussarbeit,
        masterarbeit, bachelorarbeit, thesis,
        # Plant and manufacturing roles that arrive on the "engineer" include token
        # from industrial boards (Bosch, Philips). A different discipline.
@@ -503,7 +506,15 @@ job-radar:
     big-tech-boards: [amazon, adobe, intel, mastercard, nvidia, paypal, target, wf,
                       nxp, philips, stripe, databricks, openai, datadog, mongodb,
                       scaleai, BoschGroup, elastic, gitlab, coinbase, rubrik,
-                      salesforce, hp, workday, motorolasolutions, citi]
+                      salesforce, hp, workday, motorolasolutions, citi,
+                      # Banks and financial firms (2026-09-28): formal background
+                      # verification, the same reason as the rest of this list.
+                      blackrock, ms, db, barclays, statestreet, fmr, morningstar,
+                      lseg, equifax,
+                      # Large employers added the same day. They were treated as
+                      # big tech by a bug (any Workday board matched "workday");
+                      # listed so the fix changes nothing for them.
+                      cisco, autodesk, crowdstrike, amat, kla]
     big-tech-max-min-years: 1
 
     # Full-stack and frontend titles, rejected at every employer except Amazon

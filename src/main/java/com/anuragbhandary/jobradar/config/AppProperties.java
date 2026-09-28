@@ -85,8 +85,11 @@ public record AppProperties(
                     ? "" : posting.getBoardToken().toLowerCase(java.util.Locale.ROOT);
             int slash = token.indexOf('/');
             String tenant = slash < 0 ? token : token.substring(0, slash);
-            String source = posting.getSource() == null
-                    ? "" : posting.getSource().name().toLowerCase(java.util.Locale.ROOT);
+            // A source name counts only for a source that is one employer. Matching
+            // it for every source made "workday" (the company) put every Workday
+            // tenant on the list, until 2026-09-28.
+            String source = posting.getSource() == com.anuragbhandary.jobradar.domain.Source.AMAZON
+                    ? "amazon" : "";
             for (String board : bigTechBoards) {
                 String b = board.toLowerCase(java.util.Locale.ROOT);
                 if (b.equals(token) || b.equals(tenant) || b.equals(source)) {

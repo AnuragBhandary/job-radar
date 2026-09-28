@@ -201,6 +201,22 @@ public class ScreeningService {
             return;
         }
 
+        // Internships: only in India or remote into it, and only when a graduate
+        // may apply. See Internship for why they are wanted at all.
+        if (Internship.isInternship(posting.getTitle())) {
+            StrategicClass where = posting.getStrategicClass();
+            if (where != StrategicClass.INDIA_HOME && where != StrategicClass.INDIA_OTHER
+                    && where != StrategicClass.INTERNATIONAL_REMOTE) {
+                reject(posting, "internship outside India (would need a student visa)");
+                return;
+            }
+            var studentOnly = Internship.studentOnly(posting.getDescriptionText());
+            if (studentOnly.isPresent()) {
+                reject(posting, "internship for enrolled students: \"" + studentOnly.get() + "\"");
+                return;
+            }
+        }
+
         posting.setGraduateSignal(
                 titleFilter.hasGraduateSignal(posting.getTitle(), posting.getDescriptionText()));
 

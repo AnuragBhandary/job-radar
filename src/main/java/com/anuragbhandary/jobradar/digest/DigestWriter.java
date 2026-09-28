@@ -238,6 +238,16 @@ public class DigestWriter {
             out.append("**Frontend in the description:** ").append(frontend)
                     .append(" (full-stack titles are filtered; this one is not titled so)\n");
         }
+        if (com.anuragbhandary.jobradar.filter.Internship.isInternship(p.getTitle())) {
+            out.append("**Internship** · converts to full time: ")
+                    .append(com.anuragbhandary.jobradar.filter.Internship
+                            .conversion(p.getDescriptionText()).map(s -> "\"" + s + "\"")
+                            .orElse("not stated"))
+                    .append(" · length: ")
+                    .append(com.anuragbhandary.jobradar.filter.Internship
+                            .duration(p.getDescriptionText()).orElse("not stated"))
+                    .append('\n');
+        }
 
         out.append(p.getLocation() == null ? "?" : p.getLocation())
                 .append(" · ").append(orDash(p.getCountryCode()))

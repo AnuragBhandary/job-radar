@@ -40,7 +40,6 @@ class TitleFilterTest {
             "Solutions Architect",
             "Customer Success Manager",
             "Technical Support Engineer",
-            "Software Engineering Intern",
             "Werkstudent Software Engineering",
             "Marketing Manager",
     })
@@ -188,15 +187,15 @@ class TitleFilterTest {
     @ValueSource(strings = {
             "Pflichtpraktikum Software Development für datenbasierte Anwendungen im industriellen Umfeld",
             "Pflichtpraktikum im Bereich Softwareentwicklung (Full-Stack)",
-            "Internship in Software Testing - Bosch eBike Systems",
             "PreMaster Programm – Full Stack Entwicklung im Bereich Business Excellence",
             "Masterarbeit Software Engineering",
             "Thesis: Machine Learning for Predictive Maintenance",
     })
     @DisplayName("student-only programmes are rejected, though their token sits inside a longer word")
     void rejectsStudentOnlyProgrammes(String title) {
-        // "praktikum" and "intern" were already excluded, as whole words, so
-        // neither ever fired inside "Pflichtpraktikum" or "Internship".
+        // "praktikum" was already excluded, as a whole word, so it never fired
+        // inside "Pflichtpraktikum". Internships pass the title since 2026-09-28
+        // and are screened by Internship instead (India only, graduates welcome).
         assertThat(filter.screen(title).accepted()).isFalse();
     }
 
@@ -261,6 +260,13 @@ class TitleFilterTest {
     })
     @DisplayName("entry grades and look-alike words are kept")
     void entryGradesAreKept(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Software Engineering Intern", "SDE Intern", "Backend Developer Internship"})
+    @DisplayName("software internships pass the title; screening decides them")
+    void internshipsPassTheTitle(String title) {
         assertThat(filter.screen(title).accepted()).isTrue();
     }
 

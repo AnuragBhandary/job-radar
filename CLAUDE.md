@@ -88,6 +88,10 @@ openings" and similar from any directory. In short:
   (`full-stack-exclude`); a Hacker News header that also lists backend is kept.
   Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
+  Internships: only in India or remote into India, and not when the text
+  limits them to enrolled students (`Internship`); the candidate block shows
+  whether one converts to full time and how long it runs. Big tech also
+  includes the banks and large India offices (`big-tech-boards`).
   Not software: a title with no software word (and not a bare "Engineer") whose
   full description names fewer than two software tools (`SoftwareSignal`).
   Hacker News is exempt. The candidate block also flags stated pay below the
