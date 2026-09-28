@@ -365,4 +365,45 @@ class YearsExtractorTest {
         assertThat(minYears("Preferred qualifications: 5+ years of experience")).isEqualTo(5);
     }
 
+    /** Wells Fargo, 2026-09-28: boilerplate "Requirements:" near the end won. */
+    @Test
+    void aLaterBoilerplateHeadingDoesNotHideTheRealOne() {
+        assertThat(minYears("Required Qualifications: 2+ years of software engineering experience."
+                + " Desired Qualifications: Kubernetes. " + "About us and our benefits. ".repeat(20)
+                + "Export Control Requirements: this role needs access to controlled data."))
+                .isEqualTo(2);
+    }
+
+    /** Planet Labs, 2026-09-28: the years sit above the only recognised heading. */
+    @Test
+    void yearsAboveTheOnlyHeadingCount() {
+        assertThat(minYears("What You Bring: 2+ years of relevant experience. Python. "
+                + "Export Control Requirements: access to controlled information is required."))
+                .isEqualTo(2);
+    }
+
+    /** BlackRock, 2026-09-28: a narrow no-break space between the number and "years". */
+    @Test
+    void unicodeSpacesAreSpaces() {
+        assertThat(minYears("B.E. in Computer Science. 4+\u202Fyears of proven experience in QA."))
+                .isEqualTo(4);
+    }
+
+    /** State Street, 2026-09-28: this heading lists the required degree and years. */
+    @Test
+    void educationAndPreferredQualificationsIsNotAWishlist() {
+        assertThat(minYears("Responsibilities: tune databases and troubleshoot queries. "
+                + "Education & Preferred Qualifications Bachelor\u2019s degree in computer science"
+                + " (or a related technical field) 8+ years of experience with MS SQL Server."))
+                .isEqualTo(8);
+    }
+
+    /** Scale AI new grad, 2026-09-28: company history above the headings is not a bar. */
+    @Test
+    void companyHistoryAboveTheHeadingsIsNotARequirement() {
+        assertThat(minYears("For 10 years, Scale has powered the most important decisions. "
+                + "Over the next 3 years we will grow. Requirements: a degree in computer science. "
+                + "Export Control Requirements: access to controlled data."))
+                .isEqualTo(-1);
+    }
 }

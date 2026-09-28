@@ -1,5 +1,7 @@
 package com.anuragbhandary.jobradar.filter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -97,7 +99,11 @@ public class YearsExtractor {
      * candidates were affected.
      */
     private static final Pattern PREFERRED_SECTION = Pattern.compile(
-            "\\b(?:preferred\\s+qualifications|preferred\\s+skills|preferred\\s*:"
+            // Not "Education & Preferred Qualifications": State Street's heading
+            // for its required degree and years (2026-09-28, "8+ years" read as
+            // a wish, and an eight-year role reached review as entry level).
+            "(?<!education\\s{0,3}(?:&|and)\\s{0,3})"
+                    + "\\b(?:preferred\\s+qualifications|preferred\\s+skills|preferred\\s*:"
                     + "|nice[\\s-]to[\\s-]have|bonus\\s+points|good\\s+to\\s+have"
                     + "|desired\\s+qualifications)",
             Pattern.CASE_INSENSITIVE);
@@ -151,6 +157,7 @@ public class YearsExtractor {
         if (title == null || title.isBlank()) {
             return YearsExtraction.none();
         }
+        title = normaliseSpaces(title);
         int min = YearsExtraction.NONE_STATED;
         Matcher m = YEARS.matcher(title);
         while (m.find()) {
@@ -175,6 +182,7 @@ public class YearsExtractor {
         if (description == null || description.isBlank()) {
             return YearsExtraction.none();
         }
+        description = normaliseSpaces(description);
 
         // Searched across the whole description: Amazon states it in the basic
         // qualifications, but a posting that excludes internship experience
@@ -254,12 +262,59 @@ public class YearsExtractor {
      * bullets - everything before the first wishlist heading is taken instead.
      */
     private static String requiredSection(String description) {
-        int start = 0;
+        // The top of the description is tried last: Rubrik's "Experience You'll
+        // Need: 2+ years" and Planet's "What You Bring: 2+ years" sit above the
+        // only heading this recognises.
+        List<Integer> headings = new ArrayList<>();
+        headings.add(0);
         Matcher required = REQUIRED_SECTION.matcher(description);
         while (required.find()) {
-            start = required.start();
+            if (required.start() > 0) {
+                headings.add(required.start());
+            }
         }
 
+        // The last heading wins, unless its span states no years at all and an
+        // earlier one does. Boilerplate near the end ("Export Control
+        // Requirements:", a drug-policy "Requirements:") used to win and hide the
+        // real line: Wells Fargo, Rubrik and Planet each stated "2+ years" under
+        // an earlier heading and read as stating nothing (2026-09-28).
+        String fallback = null;
+        for (int i = headings.size() - 1; i >= 0; i--) {
+            String span = spanFrom(description, headings.get(i));
+            if (fallback == null) {
+                fallback = span;
+            }
+            // Above every heading is where the company talks about itself ("For 10
+            // years, Scale has...", "Over the next 3 years, Twilio is..."). There a
+            // number counts only when it is plainly about experience; the first
+            // version of this fallback rejected a Scale AI new-grad role on it.
+            boolean aboveHeadings = i == 0 && headings.size() > 1;
+            if (aboveHeadings ? statesExperience(span) : YEARS.matcher(span).find()) {
+                return span;
+            }
+        }
+        return fallback;
+    }
+
+    private static final Pattern EXPERIENCE_AFTER = Pattern.compile(
+            "^[^.;\\n]{0,40}\\b(?:experience|exp|hands-on|professional|industry)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /** A years statement followed closely by the word it is about: experience. */
+    private static boolean statesExperience(String text) {
+        Matcher m = YEARS.matcher(text);
+        while (m.find()) {
+            String after = text.substring(m.end(), Math.min(text.length(), m.end() + 60));
+            if (EXPERIENCE_AFTER.matcher(after).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** From a heading to the first wishlist heading after it. */
+    private static String spanFrom(String description, int start) {
         Matcher preferred = PREFERRED_SECTION.matcher(description);
         int end = description.length();
         if (preferred.find(start)) {
@@ -272,6 +327,15 @@ public class YearsExtractor {
         return end - start >= MIN_REQUIRED_LENGTH
                 ? description.substring(start, end)
                 : description;
+    }
+
+    /**
+     * Unicode spaces as plain ones. BlackRock writes "4+ years" with a
+     * narrow no-break space, which {@code \s} does not match, so a four-year
+     * role read as stating nothing (2026-09-28).
+     */
+    private static String normaliseSpaces(String text) {
+        return text.replaceAll("[\\u00A0\\u2007\\u2009\\u200A\\u202F\\u205F\\u3000]", " ");
     }
 
     /**

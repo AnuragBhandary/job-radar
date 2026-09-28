@@ -243,6 +243,29 @@ class TitleFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "Dir, Software Engrg Mgmt",
+            "Data Scientist / AI Engineer, AVP",
+            "Azure Database Performance Engineer, Officer",
+            "Software Engineer, Vice President",
+    })
+    @DisplayName("bank grades and abbreviated seniority are excluded (2026-09-28)")
+    void bankGrades(String title) {
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Software Engineer, Portfolio Management Group, Analyst",
+            "Associate Software Engineer",
+            "Software Engineer - Directory Services",
+    })
+    @DisplayName("entry grades and look-alike words are kept")
+    void entryGradesAreKept(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "SAP Test Automation Engineer",
             "Junior iOS Engineer - Payments",
             "Android Engineer: Device Foundations",

@@ -447,6 +447,13 @@ job-radar:
        # space, "leader" as a seniority word, and a network-infrastructure role
        # that "network engineer" missed by one word.
        mid level, leader, network development engineer,
+       # Bank grades and abbreviations (2026-09-28, from the first India GCC run):
+       # ServiceNow's "Dir, Software Engrg Mgmt" and Deutsche Bank's "Data
+       # Scientist / AI Engineer, AVP" passed because only the spelled-out words
+       # were listed. "Officer" is the grade above Analyst at Citi and State
+       # Street, a few years in; "Analyst" and "Associate" stay, as at BlackRock
+       # and elsewhere they are the entry grades.
+       dir, avp, svp, evp, vice president, officer, mgmt,
        # Outside the stack (2026-09-19). Not judgement about fit, which is read
        # per posting now: each of these is a platform with its own skill set that
        # the resume does not have, so the role cannot be applied to honestly.
