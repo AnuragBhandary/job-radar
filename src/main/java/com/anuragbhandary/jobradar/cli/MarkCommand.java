@@ -66,7 +66,7 @@ public class MarkCommand {
             }
             try {
                 markOne(Long.valueOf(raw.trim()), decision, stage, options.get("note"),
-                        options.get("url"));
+                        options.get("url"), options.containsKey("replace-note"));
             } catch (NumberFormatException e) {
                 System.out.println("Not a posting id: " + raw);
             }
@@ -74,7 +74,7 @@ public class MarkCommand {
     }
 
     private void markOne(Long postingId, String decision, PipelineStage stage, String note,
-            String url) {
+            String url, boolean replaceNote) {
         if (postings.findById(postingId).isEmpty()) {
             System.out.println("No posting with id " + postingId);
             return;
@@ -110,8 +110,11 @@ public class MarkCommand {
         }
 
         if (note != null && !note.isBlank()) {
-            String before = interest.getNotes();
-            interest.setNotes(before == null || before.isBlank() ? note : before + "\n" + note);
+            if (replaceNote) {
+                interest.setNotes(note);
+            } else {
+                interest.addNote(note);
+            }
         }
         if (url != null && url.startsWith("http")) {
             interest.setUrl(url);
@@ -125,7 +128,9 @@ public class MarkCommand {
     }
 
     private static void usage() {
-        System.out.println("Usage: mark <posting-id>[,<posting-id>...] <decision> [--note=\"...\"]");
+        System.out.println("Usage: mark <posting-id>[,<posting-id>...] <decision> [--note=\"...\"]"
+                + " [--replace-note] [--url=<employer link>]");
+        System.out.println("  --note adds a line to the notes; with --replace-note it becomes the only one.");
         System.out.println("  decisions: " + String.join(", ",
                 List.of("shortlist", "skip", "applied", "screening", "interview", "offer",
                         "rejected", "withdrawn")));

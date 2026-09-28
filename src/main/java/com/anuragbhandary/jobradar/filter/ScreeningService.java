@@ -255,6 +255,15 @@ public class ScreeningService {
             return;
         }
 
+        // Not on Hacker News, whose "title" is a header of company and places.
+        var notSoftware = posting.getSource() == com.anuragbhandary.jobradar.domain.Source.HACKER_NEWS
+                ? java.util.Optional.<String>empty()
+                : SoftwareSignal.missing(posting.getTitle(), posting.getDescriptionText());
+        if (notSoftware.isPresent()) {
+            reject(posting, notSoftware.get());
+            return;
+        }
+
         // Only abroad do these decide anything. Remote into India needs no visa,
         // and an Indian job asking for an Indian resident is asking for him.
         StrategicClass lane = posting.getStrategicClass();

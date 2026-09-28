@@ -72,7 +72,41 @@ public class LinkService {
         }
         LinkChecker.Result result = checker.checkListing(posting.getSource(),
                 posting.getBoardToken(), posting.getExternalId(), posting.getUrl());
+        if (result.state() == LinkChecker.State.UNKNOWN) {
+            result = absentFromBoard(posting).orElse(result);
+        }
         return new Link(posting.getUrl(), true, result, null);
+    }
+
+    /** Two fetches a day apart, both without the posting, before it counts as gone. */
+    static final java.time.Duration ABSENT_FOR = java.time.Duration.ofHours(36);
+
+    /**
+     * What the fetch already knows, for when the page itself is inconclusive.
+     *
+     * <p>On 2026-09-28 Target's Workday page answered 403 and was reported as
+     * "often weekend maintenance" on a Monday, while the database showed the
+     * posting missing from four days of successful fetches of that board. A
+     * board that answers but no longer lists the role is evidence the role is
+     * gone. Only consulted after an UNKNOWN: a page that answers LIVE wins.
+     */
+    Optional<LinkChecker.Result> absentFromBoard(Posting posting) {
+        if (posting.getLastSeen() == null) {
+            return Optional.empty();
+        }
+        Optional<BoardToken> board =
+                boards.findBySourceAndToken(posting.getSource(), posting.getBoardToken());
+        if (board.isEmpty() || board.get().isBroken() || board.get().getLastFetchedAt() == null) {
+            return Optional.empty();
+        }
+        java.time.Instant fetched = board.get().getLastFetchedAt();
+        if (java.time.Duration.between(posting.getLastSeen(), fetched).compareTo(ABSENT_FOR) < 0) {
+            return Optional.empty();
+        }
+        java.time.LocalDate lastSeen =
+                posting.getLastSeen().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        return Optional.of(new LinkChecker.Result(LinkChecker.State.DEAD,
+                "no longer on the employer's board (last seen " + lastSeen + ")"));
     }
 
     private String addBoard(DirectLinkResolver.Found found, String company) {

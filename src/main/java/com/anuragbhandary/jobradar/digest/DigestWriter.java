@@ -130,8 +130,10 @@ public class DigestWriter {
                 out.append("- ").append(i.getPostingId()).append(" · ").append(i.getCompany())
                         .append(" · ").append(i.getRole()).append(" · saved ").append(days)
                         .append("d ago");
-                if (i.getNotes() != null && !i.getNotes().isBlank()) {
-                    out.append(" · ").append(i.getNotes().replace('\n', ' '));
+                // Only the latest line: the earlier ones are history, and printing
+                // them all repeated "Apply now." once per re-mark.
+                if (!i.latestNote().isEmpty()) {
+                    out.append(" · ").append(i.latestNote());
                 }
                 out.append('\n');
             }
@@ -251,6 +253,10 @@ public class DigestWriter {
             out.append("Stated pay: ").append(p.getSalaryText()).append('\n');
         }
         out.append("Floor: ").append(salaries.floorFor(p)).append('\n');
+        String belowFloor = salaries.belowFloorWarning(p);
+        if (belowFloor != null) {
+            out.append("**Pay below floor:** ").append(belowFloor).append('\n');
+        }
         if (p.getSponsorshipSignal() != null) {
             out.append("Visa: ").append(p.getSponsorshipSignal()).append('\n');
         }

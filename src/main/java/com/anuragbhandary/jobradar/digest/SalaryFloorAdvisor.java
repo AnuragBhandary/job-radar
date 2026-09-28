@@ -146,6 +146,72 @@ public class SalaryFloorAdvisor {
         };
     }
 
+    /**
+     * A warning when the posting's own stated pay starts below the relocation
+     * floor, or null. Only compared in the floor's currency, and only against
+     * annual-sized figures: a monthly figure or a currency conversion would be a
+     * guess, and this class does not guess.
+     */
+    public String belowFloorWarning(Posting posting) {
+        if (posting.getStrategicClass() != StrategicClass.INTERNATIONAL_RELOCATION
+                || posting.getSalaryText() == null) {
+            return null;
+        }
+        CountryPolicy policy = strategy.policyFor(posting.getCountryCode());
+        if (!policy.hasSalaryFloor() || policy.currency() == null) {
+            return null;
+        }
+        BigDecimal lowest = lowestStatedAmount(posting.getSalaryText(), policy.currency());
+        if (lowest == null || lowest.compareTo(policy.salaryFloor()) >= 0) {
+            return null;
+        }
+        return "stated pay starts at " + policy.currency() + " " + grouped(lowest)
+                + ", below the " + amount(policy) + " floor";
+    }
+
+    /** Figures under this are monthly or hourly, not a year's salary. */
+    private static final BigDecimal ANNUAL_MINIMUM = BigDecimal.valueOf(10_000);
+
+    private static final java.util.regex.Pattern NUMBER = java.util.regex.Pattern.compile(
+            "(\\d{1,3}(?:[.,\\s]\\d{3})+|\\d+)(?:[.,]\\d{1,2})?\\s*([kK])?(?![\\p{L}\\p{N}])");
+
+    /**
+     * The smallest annual-sized amount written next to the currency (its code or
+     * symbol, before or after the number) in a stated-pay snippet.
+     */
+    static BigDecimal lowestStatedAmount(String text, String currency) {
+        String code = currency.toUpperCase(Locale.ROOT);
+        String symbol = switch (code) {
+            case "EUR" -> "€";
+            case "GBP" -> "£";
+            case "USD" -> "$";
+            case "INR" -> "₹";
+            default -> code;
+        };
+        BigDecimal lowest = null;
+        java.util.regex.Matcher m = NUMBER.matcher(text);
+        while (m.find()) {
+            String before = text.substring(Math.max(0, m.start() - 5), m.start())
+                    .toUpperCase(Locale.ROOT);
+            String after = text.substring(m.end(), Math.min(text.length(), m.end() + 5))
+                    .toUpperCase(Locale.ROOT);
+            boolean marked = before.contains(symbol) || before.contains(code)
+                    || after.contains(symbol) || after.contains(code);
+            if (!marked) {
+                continue;
+            }
+            BigDecimal value = new BigDecimal(m.group(1).replaceAll("[.,\\s]", ""));
+            if (m.group(2) != null) {
+                value = value.multiply(BigDecimal.valueOf(1000));
+            }
+            if (value.compareTo(ANNUAL_MINIMUM) >= 0
+                    && (lowest == null || value.compareTo(lowest) < 0)) {
+                lowest = value;
+            }
+        }
+        return lowest;
+    }
+
     /** True when this posting's country has a figure that needs re-checking. */
     public boolean isStale(Posting posting, LocalDate today) {
         String code = posting.getCountryCode() != null

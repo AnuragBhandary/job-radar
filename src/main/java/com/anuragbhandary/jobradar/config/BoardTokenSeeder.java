@@ -90,7 +90,34 @@ public class BoardTokenSeeder {
         WORKDAY.put("workday/wd5/Workday/india", "Workday");
         WORKDAY.put("motorolasolutions/wd5/Careers/india", "Motorola Solutions");
         WORKDAY.put("citi/wd5/2/india", "Citi");
+        // 2026-09-28: India had supplied 12 new postings in two days against
+        // Arbeitnow's 850. Each of these answered the public API that day with
+        // India desks in its "india" search; the first five are mostly Mumbai.
+        WORKDAY.put("morningstar/wd5/Americas/india", "Morningstar");
+        WORKDAY.put("blackrock/wd1/BlackRock_Professional/india", "BlackRock");
+        WORKDAY.put("ms/wd5/External/india", "Morgan Stanley");
+        WORKDAY.put("db/wd3/DBWebSite/india", "Deutsche Bank");
+        WORKDAY.put("barclays/wd3/External_Career_Site_Barclays/india", "Barclays");
+        WORKDAY.put("statestreet/wd1/Global/india", "State Street");
+        WORKDAY.put("autodesk/wd1/Ext/india", "Autodesk");
+        WORKDAY.put("cisco/wd5/Cisco_Careers/india", "Cisco");
+        WORKDAY.put("lseg/wd3/Careers/india", "LSEG");
+        WORKDAY.put("equifax/wd5/External/india", "Equifax");
+        WORKDAY.put("crowdstrike/wd5/crowdstrikecareers/india", "CrowdStrike");
+        WORKDAY.put("amat/wd1/External/india", "Applied Materials");
+        WORKDAY.put("kla/wd1/Search/india", "KLA");
+        WORKDAY.put("fmr/wd1/FidelityCareers/india", "Fidelity");
 
+        // 2026-09-28: probed and counted; each had India engineering roles that day
+        // (Okta 73, Zscaler 41, PubMatic 29, Commvault 9, Twilio 8, ChargePoint 6,
+        // Sigmoid 5).
+        GREENHOUSE.put("okta", "Okta");
+        GREENHOUSE.put("zscaler", "Zscaler");
+        GREENHOUSE.put("pubmatic", "PubMatic");
+        GREENHOUSE.put("commvault", "Commvault");
+        GREENHOUSE.put("twilio", "Twilio");
+        GREENHOUSE.put("chargepoint", "ChargePoint");
+        GREENHOUSE.put("sigmoid", "Sigmoid");
         GREENHOUSE.put("stripe", "Stripe");
         GREENHOUSE.put("intercom", "Intercom");
         GREENHOUSE.put("celonis", "Celonis");
@@ -171,6 +198,8 @@ public class BoardTokenSeeder {
         LEVER.put("porter", "Porter");
 
         SMARTRECRUITERS.put("PHONEPELIMITED", "PhonePe");
+        // 2026-09-28: 69 postings in India that day, most in Hyderabad.
+        SMARTRECRUITERS.put("servicenow", "ServiceNow");
         SMARTRECRUITERS.put("DeliveryHero", "Delivery Hero");
         SMARTRECRUITERS.put("Personio", "Personio");
         SMARTRECRUITERS.put("Siemens", "Siemens");

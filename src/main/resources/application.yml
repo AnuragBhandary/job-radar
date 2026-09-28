@@ -558,6 +558,9 @@ spring:
 
 logging:
   level:
+    # Spring, Hibernate and Hikari print ~20 lines of startup chatter on every
+    # command, burying the one line the command exists to print.
+    root: WARN
     com.anuragbhandary.jobradar: INFO
   pattern:
     console: "%d{HH:mm:ss} %-5level %msg%n"

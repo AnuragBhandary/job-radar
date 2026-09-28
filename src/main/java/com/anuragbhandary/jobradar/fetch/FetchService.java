@@ -6,12 +6,20 @@ import com.anuragbhandary.jobradar.diff.ChangeDetector;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.repo.BoardTokenRepository;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,10 +30,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Runs fetchers over boards and writes the results to the database.
  *
- * <p>Boards are fetched sequentially. That is not an oversight: the throttle in
- * {@link HttpFetchClient} is global, so running four threads against a 500ms
- * inter-request delay would produce exactly the same wall-clock time with four
- * times the ways to go wrong.
+ * <p>The network half runs concurrently, one virtual thread per board; the
+ * database half runs on the calling thread, one board at a time, as fetches
+ * finish. Concurrency is safe for the servers because {@link HttpFetchClient}
+ * keeps its delay per site: the twelve Workday boards still reach Workday one
+ * request at a time, but no longer wait behind Greenhouse. It is safe for the
+ * database because SQLite has one writer, and only this thread writes.
  *
  * <p>Each board commits in its own transaction, so one board failing halfway
  * cannot roll back the boards that already succeeded.
@@ -79,12 +89,26 @@ public class FetchService {
         return fetch(List.of(board.get()));
     }
 
+    /** What one board's network half produced: a batch, or the reason there is none. */
+    private record Fetched(BoardToken board, FetchBatch batch, String error, Duration took) {
+    }
+
     private List<FetchResult> fetch(List<BoardToken> targets) {
         List<FetchResult> results = new ArrayList<>(targets.size());
-        for (BoardToken board : targets) {
-            results.add(transaction.execute(status -> fetchBoard(board)));
-            log.info("{}", results.getLast());
+        List<Fetched> timings = new ArrayList<>(targets.size());
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            CompletionService<Fetched> done = new ExecutorCompletionService<>(pool);
+            for (BoardToken board : targets) {
+                done.submit(() -> download(board));
+            }
+            for (int i = 0; i < targets.size(); i++) {
+                Fetched fetched = take(done);
+                results.add(transaction.execute(status -> store(fetched)));
+                timings.add(fetched);
+                log.info("{} in {}s", results.getLast(), fetched.took().toSeconds());
+            }
         }
+        logSlowest(timings);
 
         // Only boards that actually answered may have their postings closed. A
         // board that failed makes all of its postings look absent, and closing
@@ -100,23 +124,60 @@ public class FetchService {
         return results;
     }
 
-    /** One board's work. Always invoked inside {@link #transaction}. */
-    private FetchResult fetchBoard(BoardToken board) {
+    /** The network half of one board. Runs on its own virtual thread; touches no database. */
+    private Fetched download(BoardToken board) {
+        long start = System.nanoTime();
         AtsFetcher fetcher = fetchers.get(board.getSource());
-        Instant now = Instant.now();
-
         if (fetcher == null) {
             // A source with a seeded token but no implementation yet. Expected
             // between milestones; recorded rather than thrown.
-            return recordFailure(board, "no fetcher implemented for " + board.getSource(), now);
+            return new Fetched(board, null, "no fetcher implemented for " + board.getSource(),
+                    Duration.ZERO);
         }
-
-        FetchBatch batch;
         try {
-            batch = fetcher.fetch(board.getToken());
-        } catch (FetchException e) {
-            return recordFailure(board, e.getMessage(), now);
+            return new Fetched(board, fetcher.fetch(board.getToken()), null,
+                    Duration.ofNanos(System.nanoTime() - start));
+        } catch (FetchException | RuntimeException e) {
+            // A RuntimeException too: on a worker thread an unexpected one would
+            // otherwise surface only as an ExecutionException, and lose the board.
+            return new Fetched(board, null, String.valueOf(e.getMessage()),
+                    Duration.ofNanos(System.nanoTime() - start));
         }
+    }
+
+    private static Fetched take(CompletionService<Fetched> done) {
+        try {
+            return done.take().get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while fetching boards", e);
+        } catch (ExecutionException e) {
+            // download() catches everything it can; this is an Error.
+            throw new IllegalStateException(e.getCause());
+        }
+    }
+
+    /** The slowest boards, so the ones that cost the most time are visible. */
+    private static void logSlowest(List<Fetched> timings) {
+        String slowest = timings.stream()
+                .sorted(Comparator.comparing(Fetched::took).reversed())
+                .limit(5)
+                .map(f -> f.board().getSource() + "/" + f.board().getToken() + " "
+                        + f.took().toSeconds() + "s")
+                .collect(Collectors.joining(", "));
+        if (!slowest.isEmpty()) {
+            log.info("Slowest boards: {}", slowest);
+        }
+    }
+
+    /** The database half of one board. Always invoked inside {@link #transaction}. */
+    private FetchResult store(Fetched fetched) {
+        BoardToken board = boards.findById(fetched.board().getId()).orElse(fetched.board());
+        Instant now = Instant.now();
+        if (fetched.error() != null) {
+            return recordFailure(board, fetched.error(), now);
+        }
+        FetchBatch batch = fetched.batch();
 
         int created = 0;
         int updated = 0;

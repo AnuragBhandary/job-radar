@@ -29,11 +29,12 @@ public class JobRadarCli implements ApplicationRunner {
     private final ProbeCommand probe;
     private final NotifyCommand notify;
     private final LinksCommand links;
+    private final BoardsCommand boards;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
-            NotifyCommand notify, LinksCommand links) {
+            NotifyCommand notify, LinksCommand links, BoardsCommand boards) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -45,6 +46,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.probe = probe;
         this.notify = notify;
         this.links = links;
+        this.boards = boards;
     }
 
     @Override
@@ -76,6 +78,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "probe" -> probe.run(options);
             case "notify" -> notify.run(options);
             case "links" -> links.run(options);
+            case "boards" -> boards.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -118,7 +121,7 @@ public class JobRadarCli implements ApplicationRunner {
                                                           to the Discord webhook in secrets.yml
 
                 Decisions:
-                  mark <id>[,<id>...] <decision> [--note="..."] [--url=<employer's own page>]
+                  mark <id>[,<id>...] <decision> [--note="..."] [--replace-note] [--url=<employer's own page>]
                                                           shortlist | skip | applied | screening |
                                                           interview | offer | rejected | withdrawn;
                                                           applied and later go to the tracker sheet
@@ -132,6 +135,8 @@ public class JobRadarCli implements ApplicationRunner {
 
                 Boards:
                   probe --tokens=a,b,c [--add]            test candidate tokens on every ATS; --add saves hits
+                  boards [--idle]                         what each board has yielded; --idle only the dead weight
+                  boards --disable=SOURCE/token,...       stop fetching a board (--enable= to undo)
                 """);
     }
 }

@@ -189,6 +189,35 @@ public class JobInterest {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * Adds a note as a new line, keeping the earlier ones as history. A note equal
+     * to the latest one is not added again.
+     */
+    public void addNote(String note) {
+        if (note == null || note.isBlank() || note.strip().equals(latestNote(notes))) {
+            return;
+        }
+        setNotes(notes == null || notes.isBlank() ? note : notes + "\n" + note);
+    }
+
+    /** The current reading of this row: the last non-blank line of its notes. */
+    public String latestNote() {
+        return latestNote(notes);
+    }
+
+    public static String latestNote(String notes) {
+        if (notes == null) {
+            return "";
+        }
+        String latest = "";
+        for (String line : notes.split("\\R")) {
+            if (!line.isBlank()) {
+                latest = line.strip();
+            }
+        }
+        return latest;
+    }
+
     public LocalDate getRemindOn() {
         return remindOn;
     }

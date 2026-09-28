@@ -91,8 +91,7 @@ public class NotifyCommand {
                     System.out.println("Dropped " + row.getPostingId() + " (" + row.getCompany()
                             + "): " + link.check().reason());
                     row.setStage(PipelineStage.DROPPED);
-                    row.setNotes((row.getNotes() == null ? "" : row.getNotes() + "\n")
-                            + LocalDate.now() + ": link dead, " + link.check().reason());
+                    row.addNote(LocalDate.now() + ": link dead, " + link.check().reason());
                     interests.save(row);
                     continue;
                 }
@@ -233,16 +232,7 @@ public class NotifyCommand {
      * the current one.
      */
     static String latestNote(String notes) {
-        if (notes == null) {
-            return "";
-        }
-        String latest = "";
-        for (String line : notes.split("\\R")) {
-            if (!line.isBlank()) {
-                latest = line.strip();
-            }
-        }
-        return latest;
+        return JobInterest.latestNote(notes);
     }
 
     private static int colour(String note) {

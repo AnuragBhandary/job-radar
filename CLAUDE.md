@@ -17,8 +17,9 @@ The full routine, including how to judge and rank, is the personal skill
 openings" and similar from any directory. In short:
 
 1. There is no scheduled run. If the last fetch (the `Last fetch:` line of the
-   newest `inbox/` file) is more than a few hours old, run `run` first (about 5
-   minutes).
+   newest `inbox/` file) is more than a few hours old, run `run` first (a few
+   minutes; boards are fetched in parallel, one request at a time per site, and
+   the log ends with the five slowest boards).
 2. `openings` writes `inbox/openings-<time>.md`: every posting that became a
    recommended candidate since the last review, dated by when it became one (so a
    rule change that makes an old posting eligible still shows up), plus the
@@ -30,6 +31,8 @@ openings" and similar from any directory. In short:
 3. Judge each against the resume (`resume --list`), rank, reply briefly.
 4. Record every decision: `mark <id>,<id>,... shortlist|skip --note="..."`, then
    `openings --done`, which closes the window at the moment the file was written.
+   A note is added as a new line (history is kept, a repeat is not added);
+   `--replace-note` makes it the only one. The handoff file shows the latest line.
 5. Only after the user says they applied: `mark <id> applied`. This appends a row
    to the tracker Google Sheet, so never run it speculatively. Later stages:
    `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
@@ -38,7 +41,8 @@ openings" and similar from any directory. In short:
    (Arbeitnow, Jobicy, We Work Remotely, HN) across Greenhouse, Lever, Ashby,
    SmartRecruiters, Recruitee, Workable and Personio, adds that employer's board
    when job-radar can fetch it, and checks every link (LIVE / DEAD / UNKNOWN;
-   Workday maintenance is UNKNOWN, never dead). `notify` runs the same check and
+   Workday maintenance is UNKNOWN, never dead). An UNKNOWN on a company board
+   becomes DEAD when that board has fetched fine for 36 hours without the posting. `notify` runs the same check and
    drops dead links. When nothing is found, search the careers site by hand and
    record it with `mark <id> shortlist --url=<link>`.
 8. `notify --ids=<picks in ranked order>` posts the picks to the user's Discord
@@ -69,6 +73,8 @@ openings" and similar from any directory. In short:
   once hidden a rule that fired on nothing in the real data.
   `JOB_RADAR_DB=jdbc:sqlite:<copy> ... screen`
 - Adding a board: `probe --tokens=a,b,c` tries every supported ATS; `--add` saves hits.
+  `boards` shows what each board has yielded (`--idle`: stored 20+, never
+  recommended); `boards --disable=SOURCE/token` stops fetching one.
   Check a hit's locations and a few descriptions before trusting it: SmartRecruiters
   answers for unknown companies, and some boards hold only placeholder postings.
 - Rejections that are facts, not judgement: seniority and stack in the title, a
@@ -80,6 +86,10 @@ openings" and similar from any directory. In short:
   (`full-stack-exclude`); a Hacker News header that also lists backend is kept.
   Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
+  Not software: a title with no software word (and not a bare "Engineer") whose
+  full description names fewer than two software tools (`SoftwareSignal`).
+  Hacker News is exempt. The candidate block also flags stated pay below the
+  relocation floor, in the floor's currency only.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
   that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big
