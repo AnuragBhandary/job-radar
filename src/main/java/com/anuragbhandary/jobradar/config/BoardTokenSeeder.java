@@ -111,6 +111,14 @@ public class BoardTokenSeeder {
         // 2026-09-28: probed and counted; each had India engineering roles that day
         // (Okta 73, Zscaler 41, PubMatic 29, Commvault 9, Twilio 8, ChargePoint 6,
         // Sigmoid 5).
+        // 2026-09-28: companies with India engineering roles on this platform,
+        // found by searching the platform itself (brand names rarely match the
+        // board token) and counted that day.
+        GREENHOUSE.put("blenheimchalcotindia", "Blenheim Chalcot India");
+        GREENHOUSE.put("gleanwork", "Glean");
+        GREENHOUSE.put("instawork", "Instawork");
+        GREENHOUSE.put("dialpad", "Dialpad");
+        GREENHOUSE.put("cloudflare", "Cloudflare");
         GREENHOUSE.put("okta", "Okta");
         GREENHOUSE.put("zscaler", "Zscaler");
         GREENHOUSE.put("pubmatic", "PubMatic");
@@ -166,6 +174,15 @@ public class BoardTokenSeeder {
         GREENHOUSE.put("inmobi", "InMobi");
 
 
+        // 2026-09-28: companies with India engineering roles on this platform,
+        // found by searching the platform itself (brand names rarely match the
+        // board token) and counted that day.
+        ASHBY.put("signoz", "SigNoz");
+        ASHBY.put("granica", "Granica");
+        ASHBY.put("aiprise", "AiPrise");
+        ASHBY.put("broccoli", "Broccoli AI");
+        ASHBY.put("bidgely-inc", "Bidgely");
+        ASHBY.put("certifyos", "CertifyOS");
         ASHBY.put("confluent", "Confluent");
         ASHBY.put("notion", "Notion");
         ASHBY.put("openai", "OpenAI");
@@ -187,6 +204,18 @@ public class BoardTokenSeeder {
         ASHBY.put("wayflyer", "Wayflyer");
         ASHBY.put("miro", "Miro");
 
+        // 2026-09-28: companies with India engineering roles on this platform,
+        // found by searching the platform itself (brand names rarely match the
+        // board token) and counted that day.
+        LEVER.put("nium", "Nium");
+        LEVER.put("acceldata", "Acceldata");
+        LEVER.put("saviynt", "Saviynt");
+        LEVER.put("safe", "Safe Security");
+        LEVER.put("neuron7", "Neuron7");
+        LEVER.put("zimperium", "Zimperium");
+        LEVER.put("kobie", "Kobie");
+        LEVER.put("stable-money1", "Stable Money");
+        LEVER.put("portcast", "Portcast");
         LEVER.put("zeta", "Zeta");
         LEVER.put("meesho", "Meesho");
         LEVER.put("cred", "CRED");
@@ -199,6 +228,7 @@ public class BoardTokenSeeder {
 
         SMARTRECRUITERS.put("PHONEPELIMITED", "PhonePe");
         // 2026-09-28: 69 postings in India that day, most in Hyderabad.
+        SMARTRECRUITERS.put("shipsy", "Shipsy");
         SMARTRECRUITERS.put("servicenow", "ServiceNow");
         SMARTRECRUITERS.put("DeliveryHero", "Delivery Hero");
         SMARTRECRUITERS.put("Personio", "Personio");
