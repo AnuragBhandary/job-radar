@@ -49,6 +49,8 @@ openings" and similar from any directory. In short:
    channel as cards (webhook in `secrets.yml` as `job-radar.notify.discord-webhook`).
    The last line of each posting's `--note` is the card text, and its first word
    sets the colour: "Apply" green, "Stretch" amber. `--dry-run` prints the JSON.
+   A review with no picks sends `notify --quiet-day --note="..."` instead: one
+   plain message that the review ran, with the shortlist still waiting.
 
 ## Preparing an application
 

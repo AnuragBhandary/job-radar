@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * {@code notify [--ids=a,b,c] [--title="..."] [--dry-run]} - post the shortlist to Discord.
+ * {@code notify --quiet-day [--note="..."]} says a review found nothing.
  *
  * <p>Sends every shortlisted posting not yet applied to, one card each, to the
  * webhook in {@code job-radar.notify.discord-webhook} (secrets.yml). With
@@ -68,6 +69,11 @@ public class NotifyCommand {
         if (!dryRun && (webhook == null || webhook.isBlank())) {
             System.out.println("No webhook: set job-radar.notify.discord-webhook in "
                     + "~/.config/job-radar/secrets.yml");
+            return;
+        }
+
+        if (options.containsKey("quiet-day")) {
+            quietDay(options.get("note"), dryRun);
             return;
         }
 
@@ -136,6 +142,39 @@ public class NotifyCommand {
         System.out.println(dryRun
                 ? "Dry run: " + cards.size() + " card(s), nothing sent."
                 : "Sent " + sent + " card(s) to Discord.");
+    }
+
+    /**
+     * {@code notify --quiet-day [--note="..."]}: one plain message saying the review
+     * ran and found nothing, so silence in the channel never has to be read as
+     * "did it run?". Names what is still waiting on the shortlist.
+     */
+    private void quietDay(String note, boolean dryRun) {
+        List<JobInterest> waiting = interests.findByStageOrderByUpdatedAtDesc(PipelineStage.SAVED);
+        StringBuilder text = new StringBuilder("**job-radar · " + LocalDate.now()
+                + " · nothing new to apply to today**");
+        if (note != null && !note.isBlank()) {
+            text.append('\n').append(clip(note.strip(), 1500));
+        }
+        if (waiting.isEmpty()) {
+            text.append("\nShortlist: empty.");
+        } else {
+            text.append("\nStill on the shortlist: ");
+            text.append(String.join(", ", waiting.stream()
+                    .map(i -> companyAndRole(i.getCompany(), i.getRole()))
+                    .map(cr -> cr[0] + " (" + cr[1] + ")")
+                    .toList()));
+        }
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("content", clip(text.toString(), 1900));
+        message.put("allowed_mentions", Map.of("parse", List.of()));
+        if (dryRun) {
+            System.out.println(toJson(message));
+            System.out.println("Dry run: quiet-day message, nothing sent.");
+            return;
+        }
+        System.out.println(post(toJson(message))
+                ? "Sent the quiet-day message to Discord." : "Quiet-day message not sent.");
     }
 
     private List<JobInterest> select(String ids) {
