@@ -86,6 +86,25 @@ class YearsExtractorTest {
         }
 
         @Test
+        @DisplayName("Bosch's bare range under the degree line, with no unit")
+        void bareRangeAfterTheDegreeLine() {
+            // Real, 2026-09-29: both reached review as "none stated".
+            assertThat(minYears("Solid experience with Python for test automation.\n\n"
+                    + "BE/B.Tech in IT/CSE/ECE/EE\n\n5-10")).isEqualTo(5);
+            assertThat(minYears("We are looking for a candidate with strong product software "
+                    + "development experience.\n\nBE/BTech/ME/MTech\n\n2-10")).isEqualTo(2);
+            assertThat(minYears("Bachelor's in Electronics, Computer Science, or related field.\n6+"))
+                    .isEqualTo(6);
+        }
+
+        @Test
+        @DisplayName("a bare range anywhere else is not read as years")
+        void bareRangeWithoutADegreeLineIsIgnored() {
+            assertThat(extractor.extract("Our office hours:\n9-6\nTeam size:\n\n5-10")
+                    .isNoneStated()).isTrue();
+        }
+
+        @Test
         @DisplayName("'degree plus N years' is a bar, not an alternative")
         void degreePlusYearsIsARequirement() {
             assertThat(minYears("Requirements: Bachelor's degree in Computer Science, or a "

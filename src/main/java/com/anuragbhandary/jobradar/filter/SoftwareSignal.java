@@ -58,7 +58,10 @@ final class SoftwareSignal {
                     + "|back end|platform|infrastructure|infra|data|ml|machine learning|ai|llm"
                     + "|reliability|sre|devops|cloud|security|systems?|api|application|web"
                     + "|mobile|android|ios|python|java|golang|kernel|database|compiler|research"
-                    + "|full[- ]?stack|frontend|front-end|qa|automation test)(?![\\p{L}])",
+                    + "|full[- ]?stack|frontend|front-end|qa|automation test"
+                    // Analyst roles are wanted for the data resume even when the
+                    // posting names only Excel and a BI tool (2026-09-29).
+                    + "|analyst|analytics|bi|business intelligence|etl|sql)(?![\\p{L}])",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     /**

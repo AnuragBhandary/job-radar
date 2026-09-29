@@ -247,6 +247,22 @@ public class YearsExtractor {
                 plainEvidence = phrase(description, tail.start(), tail.end());
             }
         }
+        // No unit at all. Bosch's SmartRecruiters postings end on the degree line
+        // and then a bare "2-10" or "5-10" on its own line; YEARS needs the word
+        // "years", so a five-year Quality Engineer and three two-year Java roles
+        // read as stating nothing (2026-09-29).
+        Matcher bare = BARE_RANGE_LINE.matcher(description);
+        while (bare.find()) {
+            if (!DEGREE_LINE.matcher(previousLine(description, bare.start())).find()) {
+                continue;
+            }
+            int years = Integer.parseInt(bare.group(1));
+            if (years < IMPLAUSIBLE_YEARS
+                    && (plainMin == YearsExtraction.NONE_STATED || years < plainMin)) {
+                plainMin = years;
+                plainEvidence = phrase(description, bare.start(), bare.end());
+            }
+        }
 
         return plainMin != YearsExtraction.NONE_STATED
                 ? new YearsExtraction(plainMin, plainEvidence, nonInternship)
@@ -480,6 +496,31 @@ public class YearsExtractor {
             return false;
         }
         return QUALIFICATION_BEFORE.matcher(before).find();
+    }
+
+    /**
+     * A line holding nothing but a range or an "N+": "2-10", "5 to 8", "6+".
+     * A lone number is not enough; it could be anything from a floor to a count.
+     */
+    private static final Pattern BARE_RANGE_LINE = Pattern.compile(
+            "(?m)^[ \\t]*(\\d{1,2})[ \\t]*(?:(?:[-–—]|to)[ \\t]*\\d{1,2}[ \\t]*\\+?|\\+)[ \\t]*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /** The line above a bare range, when it names a degree: "BE/BTech/ME/MTech". */
+    private static final Pattern DEGREE_LINE = Pattern.compile(
+            "\\b(?:b\\.?\\s?e|b\\.?\\s?tech|m\\.?\\s?e|m\\.?\\s?tech|b\\.?\\s?sc|m\\.?\\s?sc|mca|bca"
+                    + "|bachelor'?s?|master'?s?|degree|graduat\\w*)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /** The last non-blank line before {@code index}. */
+    private static String previousLine(String text, int index) {
+        String[] lines = text.substring(0, index).split("\\R");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            if (!lines[i].isBlank()) {
+                return lines[i];
+            }
+        }
+        return "";
     }
 
     /** A little surrounding text, so the reject reason reads like the posting. */

@@ -196,8 +196,10 @@ public class DigestWriter {
             // SmartRecruiters answers HTTP 200 with nothing for a company it has
             // never heard of, so a dead token and a company with no openings look
             // identical. Naming them is the only way the difference reaches a human.
+            java.time.Instant now = java.time.Instant.now();
             out.append("; returned nothing (token may be dead): ").append(empty.stream()
-                    .map(b -> b.getSource() + "/" + b.getToken())
+                    .map(b -> b.getSource() + "/" + b.getToken()
+                            + (b.daysEmpty(now) > 0 ? " (" + b.daysEmpty(now) + " days)" : ""))
                     .collect(Collectors.joining(", ")));
         }
         out.append('\n');

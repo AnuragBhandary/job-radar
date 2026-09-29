@@ -53,6 +53,15 @@ public class BoardToken {
     @Column(name = "last_posting_count")
     private Integer lastPostingCount;
 
+    /**
+     * When the board started answering with nothing, or null while it has
+     * postings. One empty fetch says little (a company between hiring rounds);
+     * several days of them usually mean a dead token or a company that moved
+     * boards, as Langfuse did when ClickHouse bought it.
+     */
+    @Column(name = "empty_since")
+    private Instant emptySince;
+
     /** Null when the last fetch succeeded. */
     @Column(name = "last_error", length = 1024)
     private String lastError;
@@ -88,6 +97,20 @@ public class BoardToken {
         this.lastFetchedAt = at;
         this.lastPostingCount = postingCount;
         this.lastError = null;
+        if (postingCount > 0) {
+            this.emptySince = null;
+        } else if (this.emptySince == null) {
+            this.emptySince = at;
+        }
+    }
+
+    /** Whole days this board has answered with nothing, or 0 while it has postings. */
+    public long daysEmpty(Instant now) {
+        return emptySince == null ? 0 : java.time.Duration.between(emptySince, now).toDays();
+    }
+
+    public Instant getEmptySince() {
+        return emptySince;
     }
 
     /** Records a failed fetch. The previous posting count is deliberately kept. */

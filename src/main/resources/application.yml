@@ -42,9 +42,11 @@ job-radar:
       - company: Upstox
         city: Mumbai
         url: https://upstox.darwinbox.in/ms/candidatev2/main/careers/allJobs
+        note: "tech roles were level II and product interns on 2026-09-29"
       - company: Tata 1mg
         city: Gurugram
         url: https://1mg.darwinbox.in/ms/candidatev2/main/careers/allJobs
+        note: "mostly pharma and operations; analyst roles appear (2026-09-29)"
       - company: Perfios
         city: Bengaluru, Mumbai
         url: https://perfios.darwinbox.in/ms/candidatev2/main/careers/allJobs
@@ -415,7 +417,13 @@ job-radar:
        python, java, distributed systems, ai engineer, genai, data engineer,
        # Abbreviations Indian boards use: Epifi's "Ai Engg Intern" and "DS/ML
        # Intern" (2026-09-28).
-       engg, ml]
+       engg, ml,
+       # Data and analyst roles, for the data resume (2026-09-29). Deliberately
+       # wide: "Data Analyst", "BI Developer" and "SQL Developer" named no role
+       # word above and were rejected on the title alone. Business, product and
+       # finance analysts come in too and are judged in review; the exclusions
+       # below (senior, manager, marketing, sales...) still win.
+       data, analyst, analytics, business intelligence, bi, etl, sql]
 
     # "ii" and "iii" are matched as whole words elsewhere; listing them here
     # would also reject "Engineer II" spelled inside another word.

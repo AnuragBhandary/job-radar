@@ -196,7 +196,9 @@ public class BoardTokenSeeder {
         ASHBY.put("camunda", "Camunda");
         ASHBY.put("forto", "Forto");
         ASHBY.put("choco", "Choco");
-        ASHBY.put("langfuse", "Langfuse");
+        // Langfuse's own board emptied when ClickHouse bought it (2026-09-29); its
+        // roles are listed on ClickHouse's board with a "Langfuse -" prefix.
+        ASHBY.put("clickhouse", "ClickHouse");
         ASHBY.put("enpal", "Enpal");
         ASHBY.put("qonto", "Qonto");
         ASHBY.put("atlan", "Atlan");

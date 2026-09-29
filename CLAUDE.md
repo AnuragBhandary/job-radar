@@ -86,8 +86,12 @@ openings" and similar from any directory. In short:
   Check a hit's locations and a few descriptions before trusting it: SmartRecruiters
   answers for unknown companies, and some boards hold only placeholder postings.
 - Rejections that are facts, not judgement: seniority and stack in the title, a
-  stated minimum above 2 years ("up to N years" is a ceiling), a stated service bond, and German being required or the
-  posting being written in German. At the employers in `big-tech-boards`
+  stated minimum above 2 years ("up to N years" is a ceiling; a bare "2-10" on
+  the line under the degree counts), a stated service bond, a U.S.-persons, ITAR
+  or required security clearance clause (`ExportControlRequirement`; export-licence
+  boilerplate is not one), and German being required or the
+  posting being written in German. Data and analyst titles pass the title check
+  (`data`, `analyst`, `bi`, `sql`... in `title-include`) for the data resume. At the employers in `big-tech-boards`
   (formal background checks) the cap is 1 year, and a stated non-internship or
   full-time experience requirement rejects; elsewhere that wording is ignored.
   Full-stack and frontend titles are rejected everywhere except Amazon

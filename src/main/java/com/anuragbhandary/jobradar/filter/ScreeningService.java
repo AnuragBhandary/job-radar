@@ -42,7 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
  *       to a country or a region the applicant cannot be in. The expensive
  *       mistake the original filter existed to prevent, preserved exactly;</li>
  *   <li>the title or the years requirement rules it out;</li>
- *   <li>the text states a fact that closes it: a bond, German, or - abroad only -
+ *   <li>the text states a fact that closes it: a bond, German, a U.S.-persons or
+ *       clearance requirement, or - abroad only -
  *       a refusal to sponsor a move or a requirement to live there already.</li>
  * </ol>
  *
@@ -268,6 +269,14 @@ public class ScreeningService {
         var german = GermanRequirement.find(posting.getDescriptionText());
         if (german.isPresent()) {
             reject(posting, german.get());
+            return;
+        }
+
+        // Every lane: a U.S.-persons clause closes a remote role just as surely
+        // as a relocation one.
+        var exportControl = ExportControlRequirement.find(posting.getDescriptionText());
+        if (exportControl.isPresent()) {
+            reject(posting, exportControl.get());
             return;
         }
 

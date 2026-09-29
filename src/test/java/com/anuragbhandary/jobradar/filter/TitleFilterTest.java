@@ -124,9 +124,24 @@ class TitleFilterTest {
     @Test
     @DisplayName("a title that is not a software role at all is rejected")
     void rejectsNonSoftwareTitles() {
-        FilterVerdict verdict = filter.screen("Financial Analyst");
+        FilterVerdict verdict = filter.screen("Office Coordinator");
         assertThat(verdict.accepted()).isFalse();
         assertThat(verdict.reason()).contains("not a software role");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Data Analyst", "Junior Data Analyst", "Financial Analyst",
+            "BI Developer", "SQL Developer", "Business Intelligence Associate"})
+    @DisplayName("data and analyst titles pass, for the data resume")
+    void acceptsDataAndAnalystTitles(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("seniority and discipline exclusions still beat a data title")
+    void exclusionsStillWinOverDataTitles() {
+        assertThat(filter.screen("Senior Data Analyst").accepted()).isFalse();
+        assertThat(filter.screen("Marketing Data Analyst").accepted()).isFalse();
     }
 
     @Test
