@@ -261,7 +261,8 @@ public class DiscoveryService {
 
     /** A readable company name from a token: "stable-money1" to "Stable Money1". */
     static String label(Source source, String token) {
-        String name = source == Source.WORKDAY ? token.split("/")[0] : token;
+        // Workday, Eightfold and Oracle tokens are several parts; the first names the employer.
+        String name = token.split("/")[0];
         StringBuilder out = new StringBuilder();
         for (String word : name.split("[-_. ]+")) {
             if (!word.isEmpty()) {

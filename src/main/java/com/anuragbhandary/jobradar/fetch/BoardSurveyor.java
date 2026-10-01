@@ -157,16 +157,17 @@ public class BoardSurveyor {
      */
     public String companyName(Source source, String token) {
         if (source == Source.ORACLE_HCM) {
+            // The candidate site's own name: "SBIC External Career Site".
             try {
                 String[] parts = token.split("/");
-                JsonNode req = read(http.get(("https://%s/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
-                        + "?onlyData=true&finder=findReqs;siteNumber=%s,limit=1").formatted(parts[0], parts[1]),
-                        null), token).path("items").path(0).path("requisitionList").path(0);
-                String name = req.path("LegalEmployer").asText(null);
-                if (name == null || name.isBlank()) {
-                    name = req.path("BusinessUnit").asText(null);
+                String name = read(http.get("https://%s/hcmRestApi/CandidateExperience/en/siteSettings/%s"
+                        .formatted(parts[0], parts[1]), null), token).path("app").path("siteName").asText(null);
+                if (name == null) {
+                    return null;
                 }
-                return name == null || name.isBlank() ? null : name.strip();
+                name = name.replaceAll("(?i)\\b(external|internal)?\\s*(career|careers|job|jobs)\\s*(site|portal|page)?\\b", " ")
+                        .replaceAll("\\s+", " ").strip();
+                return name.isBlank() ? null : name;
             } catch (FetchException | RuntimeException e) {
                 return null;
             }
