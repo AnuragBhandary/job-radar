@@ -41,9 +41,13 @@ public class YearsExtractor {
      * <p>Group 1 is the lower bound, which is the one that matters. The optional
      * group after it swallows the upper bound of a range so that "5-8 years"
      * yields 5 rather than also matching 8 separately.
+     *
+     * <p>The number has to start where its digits start. Without that, JPMorgan's
+     * "Our history spans over 200 years" matched as "00 years", and the 0 undercut
+     * the "4+ years" its posting required (2026-10-01).
      */
     private static final Pattern YEARS = Pattern.compile(
-            "(\\d{1,2})\\s*\\+?\\s*"
+            "(?<!\\d)(\\d{1,2})\\s*\\+?\\s*"
                     + "(?:(?:[-–—]|to)\\s*\\d{1,2}\\s*\\+?\\s*)?"
                     + "(years?|yrs?)\\b",
             Pattern.CASE_INSENSITIVE);

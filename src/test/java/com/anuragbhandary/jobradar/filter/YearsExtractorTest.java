@@ -425,4 +425,19 @@ class YearsExtractorTest {
                 + "Export Control Requirements: access to controlled data."))
                 .isEqualTo(-1);
     }
+
+    /**
+     * JPMorgan, 2026-10-01: "over 200 years" of company history was read as
+     * "00 years", and the 0 undercut the stated four-year requirement.
+     */
+    @Test
+    void aLongerNumberIsNotReadFromItsLastDigits() {
+        assertThat(minYears("Required Skills and Qualifications Self-Starter: Proven ability"
+                + " to work independently. Experience: 4+ years in data analytics, product"
+                + " development, or project management, ideally within financial services."
+                + " Education: Bachelor’s degree required. Employer Description"
+                + " JPMorganChase, one of the oldest financial institutions. Our history spans"
+                + " over 200 years and today we are a leader in investment banking."))
+                .isEqualTo(4);
+    }
 }
