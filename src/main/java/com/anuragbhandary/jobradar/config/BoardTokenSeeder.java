@@ -107,6 +107,11 @@ public class BoardTokenSeeder {
         WORKDAY.put("amat/wd1/External/india", "Applied Materials");
         WORKDAY.put("kla/wd1/Search/india", "KLA");
         WORKDAY.put("fmr/wd1/FidelityCareers/india", "Fidelity");
+        // 2026-10-01: big tech on Workday; the "India" search answered 4 and 26.
+        // Walmart, Qualcomm, Intuit, SAP, Oracle, JPMC and Goldman did not
+        // answer on a guessed tenant/site.
+        WORKDAY.put("broadcom/wd1/External_Career/india", "Broadcom");
+        WORKDAY.put("expedia/wd108/search/india", "Expedia");
 
         // 2026-09-28: probed and counted; each had India engineering roles that day
         // (Okta 73, Zscaler 41, PubMatic 29, Commvault 9, Twilio 8, ChargePoint 6,

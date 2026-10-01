@@ -65,6 +65,20 @@ job-radar:
         city: Bengaluru
         url: https://unacademy.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "business roles only on 2026-09-28"
+      # FAANG sites with no public job API (added 2026-10-01). Read the list,
+      # then open software/data roles for the minimum qualifications.
+      - company: Google
+        city: India (early career)
+        url: https://www.google.com/about/careers/applications/jobs/results?location=India&target_level=EARLY
+        note: "3 SWE roles asking 1 year (not non-internship) on 2026-10-01"
+      - company: Meta
+        city: India, Dublin
+        url: https://www.metacareers.com/jobsearch/?offices[0]=Bangalore%2C%20India&offices[1]=Gurgaon%2C%20India&offices[2]=Mumbai%2C%20India&offices[3]=Dublin%2C%20Ireland
+        note: "mostly hardware and sales in India on 2026-10-01"
+      - company: Apple
+        city: India
+        url: https://jobs.apple.com/en-in/search?location=india-INDC
+        note: "mostly retail; plain 'Software Engineer' titles asked 3-5+ years on 2026-10-01"
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -556,7 +570,11 @@ job-radar:
                       # Large employers added the same day. They were treated as
                       # big tech by a bug (any Workday board matched "workday");
                       # listed so the fix changes nothing for them.
-                      cisco, autodesk, crowdstrike, amat, kla]
+                      cisco, autodesk, crowdstrike, amat, kla,
+                      # Big tech boards added 2026-10-01.
+                      airbnb, doordashusa, pinterest, dropbox, snowflake,
+                      anthropic, figma, lyft, reddit, instacart, coupang,
+                      spotify, broadcom, expedia]
     big-tech-max-min-years: 1
 
     # Full-stack and frontend titles, rejected at every employer except Amazon

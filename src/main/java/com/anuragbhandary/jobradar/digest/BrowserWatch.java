@@ -30,7 +30,8 @@ public record BrowserWatch(List<Page> pages) {
         }
         StringBuilder out = new StringBuilder("\n## Check in the browser (")
                 .append(pages().size()).append(")\n")
-                .append("Not fetchable (Darwinbox is behind a bot check). Open each, read the "
+                .append("Not fetchable (Darwinbox is behind a bot check; the FAANG sites have no "
+                        + "public API). Open each, read the "
                         + "first page of jobs, and judge any software role like the ones above.\n");
         for (Page p : pages()) {
             out.append("- ").append(p.company());
