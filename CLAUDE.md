@@ -110,6 +110,15 @@ openings" and similar from any directory. In short:
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
   that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big
   global sites need it, or the page limit stops before the India desks.
+- Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
+  Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
+  from the site's sitemap, then one detail request per job that passes the slug
+  screen), Google (`GOOGLE`, one country per token, early-career and intern
+  levels only), and Oracle's recruiting cloud (`ORACLE_HCM`,
+  `name/host/site/locationId`: JPMorgan, Oracle). Any other Eightfold or Oracle
+  employer is one seed line. Microsoft answers 429 to bursts, hence
+  `http.site-delays-ms`. At Google a title's "II" is the entry level, so the
+  seniority rule ignores it there (`TitleFilter.withoutGoogleEntryLevel`).
 
 ## Where things are
 

@@ -43,7 +43,17 @@ public record AppProperties(
             String userAgent,
             long delayBetweenRequestsMs,
             int timeoutSeconds,
-            int maxRetries) {
+            int maxRetries,
+            java.util.Map<String, Long> siteDelaysMs) {
+
+        /**
+         * The gap for one site ({@code microsoft.com}). A few sites answer 429 to a
+         * request every half second but take every one at 1.5 s, and get their own.
+         */
+        public long delayFor(String site) {
+            Long own = siteDelaysMs == null ? null : siteDelaysMs.get(site);
+            return own == null ? delayBetweenRequestsMs : Math.max(own, delayBetweenRequestsMs);
+        }
     }
 
     /** Raw API responses saved to disk for replay and after-the-fact debugging. */
@@ -88,8 +98,11 @@ public record AppProperties(
             // A source name counts only for a source that is one employer. Matching
             // it for every source made "workday" (the company) put every Workday
             // tenant on the list, until 2026-09-28.
-            String source = posting.getSource() == com.anuragbhandary.jobradar.domain.Source.AMAZON
-                    ? "amazon" : "";
+            String source = switch (posting.getSource()) {
+                case AMAZON -> "amazon";
+                case GOOGLE -> "google";
+                case null, default -> "";
+            };
             for (String board : bigTechBoards) {
                 String b = board.toLowerCase(java.util.Locale.ROOT);
                 if (b.equals(token) || b.equals(tenant) || b.equals(source)) {

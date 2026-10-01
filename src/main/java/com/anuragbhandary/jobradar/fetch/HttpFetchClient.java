@@ -181,11 +181,12 @@ public class HttpFetchClient {
      * queues every other thread bound for that site behind this one.
      */
     private void throttle(String url) throws FetchException {
-        long delayMs = config.delayBetweenRequestsMs();
+        String site = site(url);
+        long delayMs = config.delayFor(site);
         if (delayMs <= 0) {
             return;
         }
-        Pace pace = paces.computeIfAbsent(site(url), k -> new Pace());
+        Pace pace = paces.computeIfAbsent(site, k -> new Pace());
         synchronized (pace) {
             long waitMs = delayMs
                     - Duration.ofNanos(System.nanoTime() - pace.lastRequestAtNanos).toMillis();

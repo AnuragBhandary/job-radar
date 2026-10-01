@@ -28,6 +28,11 @@ package com.anuragbhandary.jobradar.domain;
  * public feeds, one board each. RemoteOK and Himalayas were measured and left out
  * (no role and one role that fit, out of 99 and 200); Wellfound has no public
  * feed and forbids scraping.
+ *
+ * <p>{@link #EIGHTFOLD}, {@link #GOOGLE} and {@link #ORACLE_HCM} (added 2026-10-01)
+ * are the big employers that run their own careers sites. Eightfold sits behind
+ * Microsoft, Netflix and Qualcomm; Oracle's recruiting cloud behind JPMorgan and
+ * Oracle; Google is its own site, one employer like Amazon.
  */
 public enum Source {
     GREENHOUSE,
@@ -40,5 +45,8 @@ public enum Source {
     HACKER_NEWS,
     JOBICY,
     WE_WORK_REMOTELY,
-    ARBEITNOW
+    ARBEITNOW,
+    EIGHTFOLD,
+    GOOGLE,
+    ORACLE_HCM
 }

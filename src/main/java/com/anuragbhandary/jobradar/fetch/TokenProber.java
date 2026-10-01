@@ -95,7 +95,8 @@ public class TokenProber {
                 // None is probed this way: Amazon has no per-company board,
                 // Workday's search is a POST against a two-part tenant/site token,
                 // and Hacker News has one board.
-                case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW -> 0;
+                case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW,
+                        EIGHTFOLD, GOOGLE, ORACLE_HCM -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -136,6 +137,9 @@ public class TokenProber {
             // unlike SmartRecruiters it cannot masquerade as an empty board.
             case WORKDAY -> throw new IllegalArgumentException(
                     "Workday is not probed by token; add tenant/wdN/site and fetch it");
+            // Each needs a host found by hand, so they are seeded like Workday.
+            case EIGHTFOLD, GOOGLE, ORACLE_HCM -> throw new IllegalArgumentException(
+                    platform + " is not probed by token; seed it in BoardTokenSeeder");
         };
     }
 }

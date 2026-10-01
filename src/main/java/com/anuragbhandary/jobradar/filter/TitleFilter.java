@@ -118,6 +118,16 @@ public class TitleFilter {
         return FilterVerdict.accept();
     }
 
+    /**
+     * Google's title with its level II taken out. At Google "Software Engineer II"
+     * is the entry level (L3, "1 year of experience" on 2026-10-01) and III is the
+     * first experienced one, so II says nothing the stated years do not.
+     */
+    public static String withoutGoogleEntryLevel(String title) {
+        return title == null ? null
+                : title.replaceAll("(?i)\\bII\\b", " ").replaceAll("\\s+", " ").trim();
+    }
+
     /** The first of {@code words} found in the title as a whole word, or null. */
     public String firstMatchIn(String title, List<String> words) {
         if (title == null) {

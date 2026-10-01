@@ -65,6 +65,16 @@ class TitleFilterTest {
     }
 
     @Test
+    @DisplayName("at Google, II is the entry level and III is still rejected")
+    void googleEntryLevel() {
+        // Google's "Software Engineer II, YouTube" asked for 1 year on 2026-10-01.
+        assertThat(filter.screen(TitleFilter.withoutGoogleEntryLevel(
+                "Software Engineer II, YouTube")).accepted()).isTrue();
+        assertThat(filter.screen(TitleFilter.withoutGoogleEntryLevel(
+                "Software Engineer III, Google Cloud")).accepted()).isFalse();
+    }
+
+    @Test
     @DisplayName("Engineer II and III are levels, but SDE I is a target")
     void handlesRomanNumerals() {
         assertThat(filter.screen("Software Engineer II").accepted()).isFalse();

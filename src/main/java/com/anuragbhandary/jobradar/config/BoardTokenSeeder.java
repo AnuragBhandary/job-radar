@@ -58,6 +58,22 @@ public class BoardTokenSeeder {
      */
     private static final Map<String, String> WORKDAY = new LinkedHashMap<>();
 
+    /**
+     * Eightfold sites, keyed {@code name/host/domain}. The name is what the
+     * big-tech list matches; host and domain were read off each sitemap on
+     * 2026-10-01 (Microsoft 2,361 jobs, Qualcomm 2,027, Netflix 469).
+     */
+    private static final Map<String, String> EIGHTFOLD = new LinkedHashMap<>();
+
+    /** Google's search, one country per token, as Amazon's. */
+    private static final Map<String, String> GOOGLE = new LinkedHashMap<>();
+
+    /**
+     * Oracle recruiting cloud sites, keyed {@code name/host/site/locationId}; the
+     * location id is the country in that site's own geography.
+     */
+    private static final Map<String, String> ORACLE_HCM = new LinkedHashMap<>();
+
     /** One board: the current month's "Ask HN: Who is hiring?" thread. */
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
@@ -293,6 +309,19 @@ public class BoardTokenSeeder {
         AMAZON.put("DEU", "Amazon Germany");
         AMAZON.put("IRL", "Amazon Ireland");
         AMAZON.put("NLD", "Amazon Netherlands");
+
+        EIGHTFOLD.put("microsoft/apply.careers.microsoft.com/microsoft.com", "Microsoft");
+        EIGHTFOLD.put("netflix/explore.jobs.netflix.net/netflix.com", "Netflix");
+        EIGHTFOLD.put("qualcomm/careers.qualcomm.com/qualcomm.com", "Qualcomm");
+
+        GOOGLE.put("India", "Google India");
+        GOOGLE.put("Ireland", "Google Ireland");
+        GOOGLE.put("Germany", "Google Germany");
+
+        // India ids read from each site's location facet on 2026-10-01: JPMorgan
+        // 323 India requisitions, Oracle 13.
+        ORACLE_HCM.put("jpmc/jpmc.fa.oraclecloud.com/CX_1001/300000000289360", "JPMorgan Chase");
+        ORACLE_HCM.put("oracle/eeho.fa.us2.oraclecloud.com/CX_45001/300000000106947", "Oracle");
     }
 
     private final BoardTokenRepository boards;
@@ -372,7 +401,10 @@ public class BoardTokenSeeder {
                 + seedSource(Source.HACKER_NEWS, HACKER_NEWS)
                 + seedSource(Source.JOBICY, JOBICY)
                 + seedSource(Source.WE_WORK_REMOTELY, WE_WORK_REMOTELY)
-                + seedSource(Source.ARBEITNOW, ARBEITNOW);
+                + seedSource(Source.ARBEITNOW, ARBEITNOW)
+                + seedSource(Source.EIGHTFOLD, EIGHTFOLD)
+                + seedSource(Source.GOOGLE, GOOGLE)
+                + seedSource(Source.ORACLE_HCM, ORACLE_HCM);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }
