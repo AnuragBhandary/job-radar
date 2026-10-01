@@ -79,6 +79,11 @@ public class StoredPostings {
             return known;
         }
 
+        /** The stored posting whatever the day, or null: for a run that has hit its read cap. */
+        public RawPosting stored(String externalId) {
+            return externalId == null ? null : byId.get(externalId);
+        }
+
         public int reused() {
             return reused;
         }

@@ -48,6 +48,13 @@ public class EightfoldFetcher implements AtsFetcher {
     private static final Pattern JOB_LOC = Pattern.compile(
             "<loc>(https://[^<]*?/careers/job/(\\d+)-([^<?]*)[^<]*)</loc>");
 
+    /**
+     * Detail reads per board per run. NTT Data's first run read thousands of jobs
+     * at Eightfold's slow pace and took 84 minutes (2026-10-01); with the cap a
+     * new large tenant fills in over a few runs instead.
+     */
+    static final int MAX_READS_PER_RUN = 300;
+
     private final HttpFetchClient http;
     private final ObjectMapper json;
     private final TargetPlaces places;
@@ -112,9 +119,25 @@ public class EightfoldFetcher implements AtsFetcher {
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
         int failed = 0;
         StoredPostings.Known known = stored.open(Source.EIGHTFOLD, boardToken);
-        for (Listed job : shortlist) {
+        // Newest first (Eightfold's ids grow over time), so a capped run reads
+        // the latest jobs and leaves the oldest for the next one.
+        List<Listed> ordered = new ArrayList<>(shortlist);
+        ordered.sort(java.util.Comparator.comparing((Listed j) -> j.id().length())
+                .thenComparing(Listed::id).reversed());
+        int reads = 0;
+        for (Listed job : ordered) {
             RawPosting posting = known.reuse(job.id());
+            if (posting == null && reads >= MAX_READS_PER_RUN) {
+                // Past the cap: a stored job is returned as stored rather than
+                // dropped (a missing posting reads as closed); a new one waits.
+                posting = known.stored(job.id());
+                if (posting != null) {
+                    detailed.add(posting);
+                }
+                continue;
+            }
             if (posting == null) {
+                reads++;
                 posting = withDetail(board, job);
             }
             if (posting == null) {

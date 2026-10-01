@@ -28,6 +28,8 @@ job-radar:
     operator-lanes:
       "[oraclecloud.com]": 8
       "[myworkdayjobs.com]": 4
+      # Each tenant has its own host; one queue made NTT Data alone take 84 min.
+      "[eightfold.ai]": 4
 
   # Every raw API response is written to disk exactly as received. Gives test
   # fixtures for free, and makes "why was this rejected?" answerable afterwards
