@@ -53,6 +53,8 @@ public class DigestService {
     private final int staleDays;
     private final java.util.Set<String> staleExempt;
 
+    private final FitScore fitScore;
+
     public DigestService(
             PostingRepository postings,
             BoardTokenRepository boards,
@@ -60,7 +62,9 @@ public class DigestService {
             JobInterestRepository interests,
             AppProperties properties,
             @Value("${job-radar.digest.stale-days:45}") int staleDays,
-            @Value("${job-radar.digest.stale-exempt-boards:}") String staleExempt) {
+            @Value("${job-radar.digest.stale-exempt-boards:}") String staleExempt,
+            FitScore fitScore) {
+        this.fitScore = fitScore;
         this.postings = postings;
         this.boards = boards;
         this.sheets = sheets;
@@ -128,10 +132,30 @@ public class DigestService {
                 .sorted(Comparator.comparing(
                         JobInterest::getSavedAt))
                 .toList();
-        return new Digest(base.date(), base.since(), base.candidates(), base.closed(),
+        return new Digest(base.date(), base.since(), ranked(base.candidates(), date), base.closed(),
                 base.rejections(), base.boards(), base.salaryFloorsNeedReverification(),
                 base.alreadyDecided(), base.duplicatesCollapsed(), base.staleSetAside(),
                 shortlisted);
+    }
+
+    /**
+     * The openings sorted by fit, best first, with the ones past the configured
+     * count marked for a one-line entry. Nothing is dropped: a compact entry is
+     * still in the window that {@code openings --done} closes.
+     */
+    private List<Digest.Entry> ranked(List<Digest.Entry> entries, LocalDate today) {
+        List<Digest.Entry> scored = entries.stream()
+                .map(e -> new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
+                        fitScore.fit(e.posting(), today), false))
+                .sorted(Comparator.comparingInt((Digest.Entry e) -> e.fit().score()).reversed())
+                .toList();
+        int full = fitScore.fullDetail();
+        List<Digest.Entry> out = new java.util.ArrayList<>(scored.size());
+        for (int i = 0; i < scored.size(); i++) {
+            Digest.Entry e = scored.get(i);
+            out.add(i < full ? e : new Digest.Entry(e.posting(), e.updated(), e.companyApplied(), e.fit(), true));
+        }
+        return out;
     }
 
     private Digest assemble(LocalDate date, LocalDate since, List<Posting> all,

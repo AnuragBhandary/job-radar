@@ -62,7 +62,16 @@ public record Digest(
      *                       this company. Said, not acted on: an application to one
      *                       Amazon team is no reason to hide every other Amazon role
      */
-    public record Entry(Posting posting, boolean updated, boolean companyApplied) {
+    /**
+     * @param fit     the ranking score, or null outside the openings file
+     * @param compact one line instead of a full block: below the fit cut
+     */
+    public record Entry(Posting posting, boolean updated, boolean companyApplied,
+            FitScore.Fit fit, boolean compact) {
+
+        public Entry(Posting posting, boolean updated, boolean companyApplied) {
+            this(posting, updated, companyApplied, null, false);
+        }
     }
 
     /** True for an export over a window, false for the daily file. */

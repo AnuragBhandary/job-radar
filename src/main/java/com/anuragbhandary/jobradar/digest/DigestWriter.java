@@ -113,9 +113,25 @@ public class DigestWriter {
             // the reader to stop reading it.
             out.append("\nNothing new to review.\n");
         } else {
+            List<Digest.Entry> full = digest.candidates().stream().filter(e -> !e.compact()).toList();
+            List<Digest.Entry> compact = digest.candidates().stream().filter(Digest.Entry::compact).toList();
             out.append("\n## Candidates (").append(digest.candidates().size()).append(")\n");
-            for (Digest.Entry entry : digest.candidates()) {
+            if (!compact.isEmpty()) {
+                out.append("Sorted by fit; the ").append(full.size())
+                        .append(" best in full, the rest one line each under \"Lower fit\".\n");
+            }
+            for (Digest.Entry entry : full) {
                 candidate(out, entry, labels, digest.date());
+            }
+            if (!compact.isEmpty()) {
+                out.append("\n## Lower fit (").append(compact.size()).append(")\n");
+                for (Digest.Entry e : compact) {
+                    Posting p = e.posting();
+                    out.append("- ").append(p.getId()).append(" · ").append(company(p, labels))
+                            .append(" · ").append(p.getTitle()).append(" · ")
+                            .append(p.getLocation() == null ? "-" : p.getLocation())
+                            .append(" · fit ").append(e.fit().score()).append('\n');
+                }
             }
         }
 
@@ -232,6 +248,10 @@ public class DigestWriter {
             out.append(" _(description changed)_");
         }
         out.append('\n');
+        if (entry.fit() != null) {
+            out.append("Fit ").append(entry.fit().score()).append("/100: ")
+                    .append(entry.fit().summary()).append('\n');
+        }
         if (entry.companyApplied()) {
             out.append("**Already applied to this company** (this role or another)\n");
         }

@@ -643,6 +643,22 @@ job-radar:
   # deliberately just before that reset, not after it: the previous 2027-03-01
   # would have run two months of digests on stale thresholds without saying so.
   # ---------------------------------------------------------------------------
+  # Ranking of the openings file (FitScore). Skills from both resumes, as of
+  # 2026-09-28; only what the resumes actually claim, so a high score means
+  # an honest match. A resume change is an edit here.
+  ranking:
+    full-detail: 60
+    # "a|b" is one skill with two spellings, counted once.
+    skills:
+      [python, fastapi, asyncio, kafka, redis, "postgresql|postgres", docker,
+       "websocket|websockets", rest api, microservices, distributed systems,
+       event-driven, celery, "llm|llms|large language model", "generative ai|genai",
+       gemini, java, "backend|back-end",
+       sql, dbt, airflow, "etl|elt", "data warehouse|data warehousing",
+       "data modeling|data modelling|dimensional modeling|dimensional modelling",
+       metabase, pandas, mysql, "cdc|debezium|change data capture", data quality,
+       "data pipeline|data pipelines", analytics engineering]
+
   salary-floors:
     mumbai-inr: 500000
     india-other-inr: 800000
