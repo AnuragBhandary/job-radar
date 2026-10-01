@@ -224,6 +224,7 @@ public class DigestWriter {
         count(withheld, digest.alreadyDecided(), "already marked");
         count(withheld, digest.duplicatesCollapsed(), "repeat listings folded");
         count(withheld, digest.staleSetAside(), "stale");
+        count(withheld, digest.belowFitFloor(), "below the fit floor");
         if (!withheld.isEmpty()) {
             out.append("- Withheld: ").append(withheld).append('\n');
         }

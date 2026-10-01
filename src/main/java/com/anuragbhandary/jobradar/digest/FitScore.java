@@ -22,13 +22,22 @@ import org.springframework.stereotype.Component;
  * hundred, more than a review can judge one by one. This is a rough sort, not a
  * judgement: the review still reads each role it keeps. Out of 100:
  * <ul>
- *   <li>40 for the applicant's skills named in the title or description,</li>
- *   <li>20 for the stated years (none or zero scores best),</li>
+ *   <li>30 for the applicant's skills named in the title or description,</li>
+ *   <li>20 for an entry-level title (graduate, junior, fresher, "Engineer I",
+ *       associate), 10 for an internship, and up to 30 off for a senior one,</li>
+ *   <li>20 for the stated years (zero scores best, not stated sits between one
+ *       and two),</li>
  *   <li>25 for the lane, in the applicant's order: remote for a foreign employer,
  *       then Mumbai, then the rest of India, then a primary relocation country,
  *       then a secondary one,</li>
  *   <li>10 for freshness, and 5 for new-graduate wording.</li>
  * </ul>
+ *
+ * <p>The level term exists because skill words alone ranked by length of
+ * description: on 2026-10-01 an "Associate Distinguished Engineer" scored 74 and
+ * an 8-year role 75, while Deliveroo's new-grad role scored 51 and a "Java
+ * Developer - Fresher" 52. Entries under {@code min-fit} are left out of the
+ * file and counted.
  * The skills are configuration ({@code job-radar.ranking.skills}), both resumes'
  * worth, so a resume change is a config edit.
  */
@@ -37,12 +46,44 @@ public class FitScore {
 
     /** Configuration: the skill words, and how many entries get a full block. */
     @ConfigurationProperties(prefix = "job-radar.ranking")
-    public record Properties(List<String> skills, Integer fullDetail) {
+    public record Properties(List<String> skills, Integer fullDetail, Integer minFit) {
 
         public int fullDetailOrDefault() {
             return fullDetail == null ? 60 : fullDetail;
         }
+
+        public int minFitOrDefault() {
+            return minFit == null ? 0 : minFit;
+        }
     }
+
+    /**
+     * An entry-level title. A Roman "I" counts only on its own ("Engineer I", not
+     * "Engineer II" or "Engineer in Test").
+     */
+    private static final Pattern ENTRY_TITLE = Pattern.compile(
+            "\\b(?:graduate|new[\\s-]?grads?|fresher|freshers|entry[\\s-]level|early[\\s-]careers?"
+                    + "|junior|jr\\b|trainee|apprentice\\w*|campus"
+                    + "|associate\\s+(?:software|data|engineer|developer|analyst|ml|machine|ai|backend"
+                    + "|back-end|cloud|qa|quality|test|devops|site)"
+                    + "|(?:engineer|developer|analyst|scientist|sde|swe)\\s*[-,]?\\s*(?:i|1|l1)(?![\\w+#])"
+                    + "|level\\s*1\\b|\\bl1\\b)",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern INTERN_TITLE = Pattern.compile(
+            "\\b(?:intern|interns|internship|co-?op|placement\\s+student)\\b", Pattern.CASE_INSENSITIVE);
+
+    /** Seniority the title filter lets through, because it is in a longer title. */
+    private static final Pattern SENIOR_TITLE = Pattern.compile(
+            "\\b(?:senior|sr\\b|staff|principal|lead|leader|head|manager|director|architect"
+                    + "|distinguished|expert|chief|vp)\\b"
+                    + "|\\b(?:iii|iv)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /** A second-level title. Google's "II" is its entry level, so not there. */
+    private static final Pattern SECOND_LEVEL_TITLE = Pattern.compile(
+            "\\b(?:ii|2)\\s*$|\\b(?:engineer|developer|analyst|scientist)\\s+(?:ii|2)\\b",
+            Pattern.CASE_INSENSITIVE);
 
     /** A score and the reasons for it, for the line under the entry's heading. */
     public record Fit(int score, List<String> matched, String summary) {
@@ -67,6 +108,11 @@ public class FitScore {
         return properties.fullDetailOrDefault();
     }
 
+    /** Entries scoring under this are counted, not listed. */
+    public int minFit() {
+        return properties.minFitOrDefault();
+    }
+
     public Fit fit(Posting p, LocalDate today) {
         String text = ((p.getTitle() == null ? "" : p.getTitle()) + "\n"
                 + (p.getDescriptionText() == null ? "" : p.getDescriptionText())).toLowerCase(Locale.ROOT);
@@ -77,11 +123,13 @@ public class FitScore {
             }
         }
         matched.sort(String::compareTo);
-        int skills = Math.min(40, matched.size() * 6);
+        int skills = Math.min(30, matched.size() * 5);
+
+        Level level = level(p);
 
         // Negative is the extractor's "could not read it", which is not stated.
         Integer years = p.getMinYears() == null || p.getMinYears() < 0 ? null : p.getMinYears();
-        int experience = years == null ? 14 : switch (years) {
+        int experience = years == null ? 10 : switch (years) {
             case 0 -> 20;
             case 1 -> 15;
             case 2 -> 6;
@@ -97,13 +145,50 @@ public class FitScore {
         }
         int graduate = p.isGraduateSignal() ? 5 : 0;
 
-        int score = Math.min(100, skills + experience + lane + fresh + graduate);
-        String summary = "%d skill%s%s, %s, %s".formatted(matched.size(), matched.size() == 1 ? "" : "s",
+        int score = Math.max(0, Math.min(100,
+                skills + level.points + experience + lane + fresh + graduate));
+        String summary = "%d skill%s%s, %s%s, %s".formatted(matched.size(), matched.size() == 1 ? "" : "s",
                 matched.isEmpty() ? "" : " (" + String.join(", ", matched.subList(0, Math.min(6, matched.size())))
                         + (matched.size() > 6 ? ", ..." : "") + ")",
+                level.words.isEmpty() ? "" : level.words + ", ",
                 years == null ? "years not stated" : years + (years == 1 ? " year" : " years"),
                 laneName(p));
         return new Fit(score, matched, summary);
+    }
+
+    /** What the title says about the level, and what that is worth. */
+    enum Level {
+        ENTRY(20, "entry-level title"),
+        INTERN(10, "internship"),
+        NEUTRAL(0, ""),
+        SECOND(-10, "level II title"),
+        SENIOR(-30, "senior title");
+
+        final int points;
+        final String words;
+
+        Level(int points, String words) {
+            this.points = points;
+            this.words = words;
+        }
+    }
+
+    static Level level(Posting p) {
+        String title = p.getTitle() == null ? "" : p.getTitle().replace('_', ' ');
+        if (SENIOR_TITLE.matcher(title).find()) {
+            return Level.SENIOR;
+        }
+        if (INTERN_TITLE.matcher(title).find()) {
+            return Level.INTERN;
+        }
+        if (ENTRY_TITLE.matcher(title).find()) {
+            return Level.ENTRY;
+        }
+        if (p.getSource() != com.anuragbhandary.jobradar.domain.Source.GOOGLE
+                && SECOND_LEVEL_TITLE.matcher(title).find()) {
+            return Level.SECOND;
+        }
+        return Level.NEUTRAL;
     }
 
     /** The applicant's own order, which is not the strategy's weight order. */
@@ -114,8 +199,8 @@ public class FitScore {
         }
         return switch (lane) {
             case INTERNATIONAL_REMOTE -> 25;
-            case INDIA_HOME -> 22;
-            case INDIA_OTHER -> 20;
+            case INDIA_HOME -> 23;
+            case INDIA_OTHER -> 18;
             case INTERNATIONAL_RELOCATION -> strategy.tierFor(p.getCountryCode()) == RelocationTier.PRIMARY ? 14 : 10;
             case UNCLASSIFIED -> 5;
         };

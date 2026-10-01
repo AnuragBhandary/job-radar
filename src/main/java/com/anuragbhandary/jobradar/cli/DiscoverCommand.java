@@ -3,6 +3,7 @@ package com.anuragbhandary.jobradar.cli;
 import com.anuragbhandary.jobradar.discover.DiscoveryService;
 import com.anuragbhandary.jobradar.discover.DiscoveryService.Report;
 import com.anuragbhandary.jobradar.domain.Source;
+import com.anuragbhandary.jobradar.fetch.OracleBoardTidier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -27,9 +28,11 @@ import org.springframework.stereotype.Component;
 public class DiscoverCommand {
 
     private final DiscoveryService discovery;
+    private final OracleBoardTidier oracle;
 
-    public DiscoverCommand(DiscoveryService discovery) {
+    public DiscoverCommand(DiscoveryService discovery, OracleBoardTidier oracle) {
         this.discovery = discovery;
+        this.oracle = oracle;
     }
 
     public void run(Map<String, String> options) {
@@ -73,6 +76,12 @@ public class DiscoverCommand {
         }
         System.out.printf("%n%d board(s) %s.%n", added,
                 run.dryRun() ? "would be added (dry run, nothing written)" : "added to the daily run");
+        if (!run.dryRun()) {
+            String tidied = oracle.tidy();
+            if (tidied != null) {
+                System.out.println(tidied);
+            }
+        }
     }
 
     private static int intOption(Map<String, String> options, String name) {

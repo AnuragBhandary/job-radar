@@ -47,7 +47,11 @@ public class YearsExtractor {
      * the "4+ years" its posting required (2026-10-01).
      */
     private static final Pattern YEARS = Pattern.compile(
-            "(?<!\\d)(\\d{1,2})\\s*\\+?\\s*"
+            // A decimal reads as its whole part: "2.5+ years" is 2, and before
+            // 2026-10-01 it read as 5, the digits after the point.
+            // Only a digit before the point makes it a decimal: scraped text often
+            // has no space after a full stop ("related field.5+ years").
+            "(?<!\\d)(?<!\\d[.,])(\\d{1,2})(?:[.,]\\d)?\\s*\\+?\\s*"
                     + "(?:(?:[-–—]|to)\\s*\\d{1,2}\\s*\\+?\\s*)?"
                     + "(years?|yrs?)\\b",
             Pattern.CASE_INSENSITIVE);
@@ -132,6 +136,26 @@ public class YearsExtractor {
             Pattern.CASE_INSENSITIVE);
 
     /**
+     * More requirement headings, consulted only when the span found with
+     * {@link #REQUIRED_SECTION} states no years at all.
+     *
+     * <p>From postings whose years were missed on 2026-10-01: AlphaSense's
+     * "Foundational Requirements 4+ years", Deliveroo's "Our expectations", and the
+     * "Qualifications:" section the Oracle fetcher appends after a description
+     * whose prose already said "good to have". They are a fallback rather than
+     * more headings of the same rank because the first version ranked them
+     * equally: any of them appearing switched the top of the description into the
+     * stricter above-the-headings reading, and "Experience: 6 - 9 Years" lines
+     * stopped counting on 100 postings.
+     */
+    private static final Pattern FALLBACK_REQUIRED_SECTION = Pattern.compile(
+            "\\b(?:(?:foundational|core|key|essential|job)\\s+requirements"
+                    + "|our\\s+expectations|who\\s+you\\s+are|what\\s+we.{0,3}re\\s+looking\\s+for"
+                    + "|must[\\s-]haves?|successful\\s+candidates?\\s+will\\s+have"
+                    + "|(?<!(?:preferred|desired|additional|bonus|optional|nice)\\s{1,3})qualifications\\s*:)",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
      * Below this, a split is assumed to be spurious rather than structural.
      * A description opening on "Preferred Qualifications" has not told us what is
      * required; it has been formatted in a way this does not understand, and
@@ -199,20 +223,28 @@ public class YearsExtractor {
 
         String required = requiredSection(description);
 
-        // Two minimums: over every number, and over the numbers nobody hedged. A
-        // hedge may stop a smaller number undercutting a stated requirement, but it
+        // Minimums over four pools: every number, the numbers nobody hedged, and
+        // each of those narrowed to statements about experience overall. A hedge
+        // may stop a smaller number undercutting a stated requirement, but it
         // never makes a posting read as stating nothing - Philips puts its only
         // requirement behind "Preferably 6+ years", and skipping that turned a
         // six-year role into a candidate.
-        int min = YearsExtraction.NONE_STATED;
-        String evidence = null;
-        int plainMin = YearsExtraction.NONE_STATED;
-        String plainEvidence = null;
+        //
+        // The overall statement wins over one about a single tool (2026-10-01):
+        // Deliveroo's "3 to 6 years of professional software engineering
+        // experience" read as 1 from "1+ years of production experience in
+        // Golang", and Sutherland's "3-7 years of experience in Data Analytics"
+        // as 2 from "2 years of hands-on experience with Microsoft Fabric". A
+        // tool's number counts only when no overall one is stated.
+        Pool all = new Pool();
+        Pool plain = new Pool();
+        Pool allOverall = new Pool();
+        Pool plainOverall = new Pool();
 
         Matcher m = YEARS.matcher(required);
         while (m.find()) {
             if (isProgrammeDuration(required, m) || isDegreeAlternative(required, m)
-                    || isUpperBound(required, m)) {
+                    || isUpperBound(required, m) || isCompanyTime(required, m)) {
                 continue;
             }
             int years = Integer.parseInt(m.group(1));
@@ -220,14 +252,17 @@ public class YearsExtractor {
                 continue;
             }
             String here = phrase(required, m.start(), m.end());
-            if (min == YearsExtraction.NONE_STATED || years < min) {
-                min = years;
-                evidence = here;
+            boolean overall = !isAboutOneTool(required, m);
+            boolean hedged = isOptional(required, m);
+            all.offer(years, here);
+            if (overall) {
+                allOverall.offer(years, here);
             }
-            if (!isOptional(required, m)
-                    && (plainMin == YearsExtraction.NONE_STATED || years < plainMin)) {
-                plainMin = years;
-                plainEvidence = here;
+            if (!hedged) {
+                plain.offer(years, here);
+                if (overall) {
+                    plainOverall.offer(years, here);
+                }
             }
         }
         // The qualification line, wherever it sits. Bosch writes it last, after its
@@ -246,10 +281,9 @@ public class YearsExtractor {
             if (years >= IMPLAUSIBLE_YEARS) {
                 continue;
             }
-            if (plainMin == YearsExtraction.NONE_STATED || years < plainMin) {
-                plainMin = years;
-                plainEvidence = phrase(description, tail.start(), tail.end());
-            }
+            String here = phrase(description, tail.start(), tail.end());
+            plain.offer(years, here);
+            plainOverall.offer(years, here);
         }
         // No unit at all. Bosch's SmartRecruiters postings end on the degree line
         // and then a bare "2-10" or "5-10" on its own line; YEARS needs the word
@@ -261,16 +295,86 @@ public class YearsExtractor {
                 continue;
             }
             int years = Integer.parseInt(bare.group(1));
-            if (years < IMPLAUSIBLE_YEARS
-                    && (plainMin == YearsExtraction.NONE_STATED || years < plainMin)) {
-                plainMin = years;
-                plainEvidence = phrase(description, bare.start(), bare.end());
+            if (years < IMPLAUSIBLE_YEARS) {
+                String here = phrase(description, bare.start(), bare.end());
+                plain.offer(years, here);
+                plainOverall.offer(years, here);
             }
         }
 
-        return plainMin != YearsExtraction.NONE_STATED
-                ? new YearsExtraction(plainMin, plainEvidence, nonInternship)
-                : new YearsExtraction(min, evidence, nonInternship);
+        Pool chosen = !plain.isEmpty()
+                ? (plainOverall.isEmpty() ? plain : plainOverall)
+                : (allOverall.isEmpty() ? all : allOverall);
+        return new YearsExtraction(chosen.min, chosen.evidence, nonInternship);
+    }
+
+    /** "for the past 12 years", "Over the next 5 years", "in just 8 years". */
+    private static final Pattern COMPANY_TIME_BEFORE = Pattern.compile(
+            "\\b(?:past|last|next|coming|over\\s+the|for\\s+(?:over|more\\s+than|nearly|almost)"
+                    + "|in\\s+(?:just|only|under)|within\\s+the|during\\s+the|since|founded|celebrating"
+                    // A contract's length: "Contract role for 1.5 years".
+                    + "|(?:contract|role|assignment|engagement|duration|period)\\s+(?:of|for)"
+                    + "|travel\\s+extensively\\s+for)"
+                    + "\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /** "12 years in a row", "5 years running", "25 years of history". */
+    private static final Pattern COMPANY_TIME_AFTER = Pattern.compile(
+            "^\\W{0,3}(?:in\\s+a\\s+row|running|ago|old\\b|of\\s+(?:history|service|operation|operations"
+                    + "|growth|excellence|innovation|heritage|trust|success)\\b|anniversary)",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Time the company talks about, not experience it asks for. The overall
+     * requirement now outranks a number about one tool, so a stray "a Top
+     * Workplace for the past 12 years" outranked a real "2 years with SQL" and
+     * rejected six roles on the first pass (2026-10-01).
+     */
+    private static boolean isCompanyTime(String text, Matcher m) {
+        String before = text.substring(Math.max(0, m.start() - 25), m.start())
+                .replaceAll("[\\r\\n\\t]+", " ");
+        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 30));
+        return COMPANY_TIME_BEFORE.matcher(before).find() || COMPANY_TIME_AFTER.matcher(after).find();
+    }
+
+    /** The smallest number offered, and the words around it. */
+    private static final class Pool {
+        int min = YearsExtraction.NONE_STATED;
+        String evidence;
+
+        void offer(int years, String here) {
+            if (min == YearsExtraction.NONE_STATED || years < min) {
+                min = years;
+                evidence = here;
+            }
+        }
+
+        boolean isEmpty() {
+            return min == YearsExtraction.NONE_STATED;
+        }
+    }
+
+    /**
+     * Experience with one named tool rather than overall: "1+ years of production
+     * experience in Golang", "2 years of hands-on experience with Microsoft
+     * Fabric", "(2+ year) working with relational databases". "Experience in" a
+     * field (software, data, analytics, a similar role) is overall.
+     */
+    private static final Pattern ONE_TOOL_AFTER = Pattern.compile(
+            "^[^.;\\n]{0,50}?\\b(?:"
+                    + "(?:experience|exposure|expertise|proficiency|knowledge)\\s+(?:with|using|on)\\b"
+                    + "|(?:working|hands-on|hands\\s+on)\\s+(?:experience\\s+)?(?:with|on|in|using)\\b"
+                    + "|(?:experience|expertise)\\s+in\\s+(?!(?:a|an|the|software|data|analytics|backend"
+                    + "|back-end|engineering|development|it|technology|tech|similar|related|relevant"
+                    + "|industry|professional|programming|computer|product|quantitative|machine|ml|ai"
+                    + "|business|qa|quality|testing|devops|cloud|infrastructure|platform|web"
+                    + "|applications?|financial|fintech|this|such|one|any|building|designing"
+                    + "|developing|delivering|writing|working)\\b))",
+            Pattern.CASE_INSENSITIVE);
+
+    private static boolean isAboutOneTool(String text, Matcher m) {
+        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 90));
+        return ONE_TOOL_AFTER.matcher(after).find();
     }
 
     /**
@@ -282,6 +386,25 @@ public class YearsExtractor {
      * bullets - everything before the first wishlist heading is taken instead.
      */
     private static String requiredSection(String description) {
+        String span = headedSection(description);
+        if (YEARS.matcher(span).find()) {
+            return span;
+        }
+        List<Integer> fallbacks = new ArrayList<>();
+        Matcher heading = FALLBACK_REQUIRED_SECTION.matcher(description);
+        while (heading.find()) {
+            fallbacks.add(heading.start());
+        }
+        for (int i = fallbacks.size() - 1; i >= 0; i--) {
+            String candidate = spanFrom(description, fallbacks.get(i));
+            if (YEARS.matcher(candidate).find()) {
+                return candidate;
+            }
+        }
+        return span;
+    }
+
+    private static String headedSection(String description) {
         // The top of the description is tried last: Rubrik's "Experience You'll
         // Need: 2+ years" and Planet's "What You Bring: 2+ years" sit above the
         // only heading this recognises.
@@ -355,8 +478,52 @@ public class YearsExtractor {
      * role read as stating nothing (2026-09-28).
      */
     private static String normaliseSpaces(String text) {
-        return text.replaceAll("[\\u00A0\\u2007\\u2009\\u200A\\u202F\\u205F\\u3000]", " ");
+        return normaliseNumbers(
+                text.replaceAll("[\\u00A0\\u2007\\u2009\\u200A\\u202F\\u205F\\u3000]", " "));
     }
+
+    private static final List<String> NUMBER_WORDS = List.of(
+            "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten");
+
+    /**
+     * A number written as a word, with or without its digits after it: "At least
+     * three years of experience" (Millennium), "Four years of experience means"
+     * (ShyftLabs), "FIVE (5) to EIGHT (8) years" (CACI). All read as stating
+     * nothing until 2026-10-01.
+     */
+    private static final Pattern WORD_NUMBER = Pattern.compile(
+            "\\b(zero|one|two|three|four|five|six|seven|eight|nine|ten)\\b(?:\\s*\\(\\d{1,2}\\))?"
+                    + "(?=\\s*\\+?\\s*(?:(?:[-–—]|to)\\s*(?:\\d{1,2}|zero|one|two|three|four|five|six"
+                    + "|seven|eight|nine|ten)(?:\\s*\\(\\d{1,2}\\))?\\s*\\+?\\s*)?(?:years?|yrs?)\\b"
+                    + "([^.;\\n]{0,40}))",
+            Pattern.CASE_INSENSITIVE);
+
+    /** Digits after a digit, as in "5 (5) years" once the word is replaced. */
+    private static final Pattern REPEATED_DIGITS = Pattern.compile("(\\d{1,2})\\s*\\(\\1\\)");
+
+    /**
+     * Word numbers as digits, but only where the years are plainly experience:
+     * "over the last three years" stays prose and is never read as a bar.
+     */
+    static String normaliseNumbers(String text) {
+        Matcher m = WORD_NUMBER.matcher(text);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            String after = m.group(2) == null ? "" : m.group(2);
+            String replacement = m.group();
+            // The lookahead is not consumed, so in "FIVE (5) to EIGHT (8) years" the
+            // second word is found on its own and sees the same "years of experience".
+            if (EXPERIENCE_WORD.matcher(after).find()) {
+                replacement = Integer.toString(NUMBER_WORDS.indexOf(m.group(1).toLowerCase(Locale.ROOT)));
+            }
+            m.appendReplacement(out, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(out);
+        return REPEATED_DIGITS.matcher(out).replaceAll("$1");
+    }
+
+    private static final Pattern EXPERIENCE_WORD = Pattern.compile(
+            "\\b(?:experience|exp|hands-on|professional|industry)\\b", Pattern.CASE_INSENSITIVE);
 
     /**
      * Distinguishes "a 2-year development programme" from "2 years of experience".
@@ -474,14 +641,22 @@ public class YearsExtractor {
      * comes with its own degree and is a real bar.
      */
     private static boolean isDegreeAlternative(String text, Matcher m) {
+        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 60));
+        if (SUBSTITUTES_AFTER.matcher(after).find()) {
+            return true;
+        }
         String before = text.substring(Math.max(0, m.start() - 70), m.start())
                 .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
         if (!DEGREE_THEN_OR.matcher(before).find()) {
             return false;
         }
-        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 40));
-        return !WITH_A_DEGREE_AFTER.matcher(after).find();
+        return !WITH_A_DEGREE_AFTER.matcher(after.substring(0, Math.min(after.length(), 40))).find();
     }
+
+    /** "4 years of relevant experience can substitute for the degree". */
+    private static final Pattern SUBSTITUTES_AFTER = Pattern.compile(
+            "^[^.;\\n]{0,40}\\b(?:(?:can|may|will)\\s+(?:be\\s+)?substitut\\w*|in\\s+lieu\\s+of)",
+            Pattern.CASE_INSENSITIVE);
 
     /**
      * Whether a number states a qualification, wherever in the document it sits.

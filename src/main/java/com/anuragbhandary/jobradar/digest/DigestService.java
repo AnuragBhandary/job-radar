@@ -132,16 +132,21 @@ public class DigestService {
                 .sorted(Comparator.comparing(
                         JobInterest::getSavedAt))
                 .toList();
-        return new Digest(base.date(), base.since(), ranked(base.candidates(), date), base.closed(),
+        List<Digest.Entry> ranked = ranked(base.candidates(), date);
+        List<Digest.Entry> kept = ranked.stream()
+                .filter(e -> e.fit().score() >= fitScore.minFit())
+                .toList();
+        return new Digest(base.date(), base.since(), kept, base.closed(),
                 base.rejections(), base.boards(), base.salaryFloorsNeedReverification(),
                 base.alreadyDecided(), base.duplicatesCollapsed(), base.staleSetAside(),
-                shortlisted);
+                shortlisted, ranked.size() - kept.size());
     }
 
     /**
      * The openings sorted by fit, best first, with the ones past the configured
-     * count marked for a one-line entry. Nothing is dropped: a compact entry is
-     * still in the window that {@code openings --done} closes.
+     * count marked for a one-line entry. Entries under the fit floor are counted
+     * and left out of the file; {@code openings --done} closes the window over
+     * them too, since it closes by time.
      */
     private List<Digest.Entry> ranked(List<Digest.Entry> entries, LocalDate today) {
         List<Digest.Entry> scored = entries.stream()
@@ -183,11 +188,18 @@ public class DigestService {
                 .collect(Collectors.toSet());
         // A decision covers the role, not just the row: a relisted copy of a role
         // already applied to or skipped (new id, other board) is decided too.
-        Set<String> decidedRoles = postings.findAllById(decided).stream()
+        List<Posting> decidedPostings = postings.findAllById(decided);
+        Set<String> decidedRoles = decidedPostings.stream()
                 .map(p -> roleKey(p, labels))
                 .collect(Collectors.toSet());
+        // The same Oracle requisition seen through another of the employer's sites.
+        Set<String> decidedRequisitions = decidedPostings.stream()
+                .map(DigestService::requisitionKey)
+                .flatMap(java.util.Optional::stream)
+                .collect(Collectors.toSet());
         Predicate<Posting> undecided = p -> !decided.contains(p.getId())
-                && !decidedRoles.contains(roleKey(p, labels));
+                && !decidedRoles.contains(roleKey(p, labels))
+                && requisitionKey(p).map(k -> !decidedRequisitions.contains(k)).orElse(true);
 
         // Eligible AND recommended. A null outcome counts as recommended: that is
         // what a row screened before the strategy columns existed looks like.
@@ -202,7 +214,15 @@ public class DigestService {
                 && !staleExempt.contains(p.getBoardToken().toLowerCase(Locale.ROOT))
                 && ChronoUnit.DAYS.between(p.getPostedDate(), date) >= staleDays;
 
-        List<Posting> eligible = all.stream().filter(inScope).filter(candidate).toList();
+        // A board switched off (a retired Oracle test copy, a board disabled by
+        // hand) is never fetched again, so its postings would stay open forever.
+        Set<String> switchedOff = boards.findAll().stream()
+                .filter(b -> !b.isActive())
+                .map(b -> b.getSource() + "|" + b.getToken())
+                .collect(Collectors.toSet());
+        Predicate<Posting> onLiveBoard = p -> !switchedOff.contains(p.getSource() + "|" + p.getBoardToken());
+
+        List<Posting> eligible = all.stream().filter(inScope).filter(onLiveBoard).filter(candidate).toList();
         List<Posting> open = eligible.stream().filter(undecided).toList();
 
         List<Posting> raw = open.stream()
@@ -263,7 +283,14 @@ public class DigestService {
      */
     private static List<Posting> dedupe(List<Posting> postings, Map<String, String> labels) {
         Map<String, Posting> byRole = new LinkedHashMap<>();
+        // One Oracle requisition is listed on every candidate site of its employer
+        // (external, alumni, veterans...), each a board of its own here.
+        Set<String> requisitions = new java.util.HashSet<>();
         for (Posting posting : postings) {
+            java.util.Optional<String> requisition = requisitionKey(posting);
+            if (requisition.isPresent() && !requisitions.add(requisition.get())) {
+                continue;
+            }
             // A direct board's copy wins over an aggregator's, whichever came first:
             // it carries the employer's own link.
             String key = roleKey(posting, labels);
@@ -273,6 +300,11 @@ public class DigestService {
             }
         }
         return List.copyOf(byRole.values());
+    }
+
+    private static java.util.Optional<String> requisitionKey(Posting posting) {
+        return com.anuragbhandary.jobradar.fetch.OracleTenants.requisitionKey(
+                posting.getSource(), posting.getBoardToken(), posting.getExternalId());
     }
 
     private static String roleKey(Posting posting, Map<String, String> labels) {

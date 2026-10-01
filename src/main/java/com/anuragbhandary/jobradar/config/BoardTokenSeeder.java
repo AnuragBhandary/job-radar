@@ -412,6 +412,11 @@ public class BoardTokenSeeder {
                 "not on Greenhouse, Ashby, Lever or SmartRecruiters - runs its own product");
     }
 
+    /** Oracle boards named by hand, token to label: these names beat any site's own. */
+    public static Map<String, String> oracleLabels() {
+        return java.util.Collections.unmodifiableMap(ORACLE_HCM);
+    }
+
     /** Adds any missing seed tokens. Safe to call on every startup. */
     @Transactional
     public void seed() {

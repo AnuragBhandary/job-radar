@@ -17,7 +17,7 @@ class FitScoreTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 1);
 
     private final FitScore fit = new FitScore(
-            new FitScore.Properties(List.of("python", "kafka", "fastapi", "sql", "go", "postgresql"), 60),
+            new FitScore.Properties(List.of("python", "kafka", "fastapi", "sql", "go", "postgresql"), 60, 40),
             RealConfigAccess.countryStrategy());
 
     private static Posting posting(String title, String description, Integer years,
@@ -63,6 +63,50 @@ class FitScoreTest {
         int uk = laneScore(StrategicClass.INTERNATIONAL_RELOCATION, "GB");
         assertThat(List.of(remote, mumbai, india, ireland, uk)).isSortedAccordingTo((a, b) -> b - a);
         assertThat(ireland).isGreaterThan(uk);
+    }
+
+    @Test
+    @DisplayName("an entry-level title outranks a senior one with more skill words (2026-10-01)")
+    void levelBeatsSkillWords() {
+        // Real titles from the 2026-10-01 window. The senior one scored 74 and the
+        // fresher 52 when only skill words counted.
+        String longSeniorText = "Python, Kafka, FastAPI, SQL, PostgreSQL, Go in production.";
+        int senior = fit.fit(posting("Associate Distinguished Engineer (Cloud Architecture, Data Modeling)",
+                longSeniorText, null, StrategicClass.INDIA_OTHER, "IN", TODAY), TODAY).score();
+        int fresher = fit.fit(posting("Java Developer - Fresher", "Banking projects in Java.", null,
+                StrategicClass.INDIA_OTHER, "IN", TODAY), TODAY).score();
+        assertThat(fresher).isGreaterThan(senior + 15);
+    }
+
+    @Test
+    @DisplayName("titles read as entry level, internship, second level or senior")
+    void levels() {
+        assertThat(level("Software Engineer, New Grad")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Engineering Graduate Programme (Backend)")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Software Engineer I")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Data Analyst I")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Associate Software Engineer")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Developer L1")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Junior Backend Software Engineer (Kotlin / Java)")).isEqualTo(FitScore.Level.ENTRY);
+        assertThat(level("Software Development Engineer Intern")).isEqualTo(FitScore.Level.INTERN);
+        assertThat(level("Software Engineer II")).isEqualTo(FitScore.Level.SECOND);
+        assertThat(level("Lead Data Engineer")).isEqualTo(FitScore.Level.SENIOR);
+        assertThat(level("Software Engineer III")).isEqualTo(FitScore.Level.SENIOR);
+        // Not a Roman numeral.
+        assertThat(level("Software Engineer in Test")).isEqualTo(FitScore.Level.NEUTRAL);
+        assertThat(level("Data Engineer")).isEqualTo(FitScore.Level.NEUTRAL);
+    }
+
+    @Test
+    @DisplayName("Google's II is its entry level, so it costs nothing there")
+    void googleSecondLevel() {
+        Posting p = posting("Software Engineer II, YouTube", "", null, StrategicClass.INDIA_OTHER, "IN", null);
+        when(p.getSource()).thenReturn(com.anuragbhandary.jobradar.domain.Source.GOOGLE);
+        assertThat(FitScore.level(p)).isEqualTo(FitScore.Level.NEUTRAL);
+    }
+
+    private static FitScore.Level level(String title) {
+        return FitScore.level(posting(title, "", null, StrategicClass.INDIA_OTHER, "IN", null));
     }
 
     private int laneScore(StrategicClass lane, String country) {

@@ -42,7 +42,16 @@ public record Digest(
         int alreadyDecided,
         int duplicatesCollapsed,
         int staleSetAside,
-        List<JobInterest> shortlisted) {
+        List<JobInterest> shortlisted,
+        int belowFitFloor) {
+
+    public Digest(LocalDate date, LocalDate since, List<Entry> candidates, List<Posting> closed,
+            Map<String, Long> rejections, List<BoardToken> boards,
+            boolean salaryFloorsNeedReverification, int alreadyDecided,
+            int duplicatesCollapsed, int staleSetAside, List<JobInterest> shortlisted) {
+        this(date, since, candidates, closed, rejections, boards, salaryFloorsNeedReverification,
+                alreadyDecided, duplicatesCollapsed, staleSetAside, shortlisted, 0);
+    }
 
     /** Without a shortlist section: the daily file and the export. */
     public Digest(LocalDate date, LocalDate since, List<Entry> candidates, List<Posting> closed,
@@ -50,7 +59,7 @@ public record Digest(
             boolean salaryFloorsNeedReverification, int alreadyDecided,
             int duplicatesCollapsed, int staleSetAside) {
         this(date, since, candidates, closed, rejections, boards, salaryFloorsNeedReverification,
-                alreadyDecided, duplicatesCollapsed, staleSetAside, List.of());
+                alreadyDecided, duplicatesCollapsed, staleSetAside, List.of(), 0);
     }
 
     /**

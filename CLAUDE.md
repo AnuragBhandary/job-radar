@@ -26,8 +26,13 @@ openings" and similar from any directory. In short:
    shortlist not yet applied to.
    Relisted copies of a role already decided (same employer and title on any
    board; short generic titles also need the same country) are withheld, and
-   cross-board duplicates fold to the direct board's copy. A candidate whose
-   description names several frontend technologies is flagged.
+   cross-board duplicates fold to the direct board's copy. One Oracle
+   requisition shown on several of an employer's candidate sites folds to one
+   (`OracleTenants.requisitionKey`). A candidate whose description names
+   several frontend technologies is flagged. The file is sorted by `FitScore`
+   (skills, title level, years, lane, freshness); openings under
+   `job-radar.ranking.min-fit` are counted on the "Withheld" line, not listed,
+   and postings on switched-off boards are left out.
 3. Judge each against the resume (`resume --list`), rank, reply briefly.
 4. Record every decision: `mark <id>,<id>,... shortlist|skip --note="..."`, then
    `openings --done`, which closes the window at the moment the file was written.
@@ -116,7 +121,11 @@ openings" and similar from any directory. In short:
   screen), Google (`GOOGLE`, one country per token, early-career and intern
   levels only), and Oracle's recruiting cloud (`ORACLE_HCM`,
   `name/host/site/locationId`: JPMorgan, Oracle). Any other Eightfold or Oracle
-  employer is one seed line. Microsoft answers 429 to bursts, hence
+  employer is one seed line. Before every fetch and after discovery,
+  `OracleBoardTidier` names each Oracle site after its employer (a site called
+  "Candidate Experience site" or "Alumni" takes a sibling site's name, and a
+  seeded label wins) and retires test and development pods (`-test`, `-devN`)
+  whose live site is also fetched. Microsoft answers 429 to bursts, hence
   `http.site-delays-ms`. At Google a title's "II" is the entry level, so the
   seniority rule ignores it there (`TitleFilter.withoutGoogleEntryLevel`).
 - Careers sites with a sitemap of job pages are read by `SITEMAP`

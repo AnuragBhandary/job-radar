@@ -19,6 +19,121 @@ class YearsExtractorTest {
     private final YearsExtractor extractor = new YearsExtractor();
 
     @Nested
+    @DisplayName("misses found in the 2026-10-01 review window")
+    class Misses20261001 {
+
+        @Test
+        @DisplayName("numbers written as words, with or without digits after them")
+        void wordNumbers() {
+            assertThat(minYears("Requirements: • At least three years of experience in a quantitative, "
+                    + "engineering, or data-driven financial-services environment")).isEqualTo(3);
+            assertThat(minYears("Four years of experience means you have shipped real features in "
+                    + "production.")).isEqualTo(4);
+            assertThat(minYears("Requirements: Minimum of FIVE (5) to EIGHT (8) years of experience in "
+                    + "software development")).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("a word number in company prose is not a requirement")
+        void wordNumbersInProse() {
+            assertThat(minYears("Over the last three years we tripled in size. Requirements: a degree "
+                    + "in Computer Science.")).isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("the Oracle fetcher's appended 'Qualifications:' section after a prose 'good to have'")
+        void oracleQualificationsAfterProse() {
+            assertThat(minYears("Build pipelines on GCP. Good to have: Dataflow. Responsibilities: own the "
+                    + "jobs.\n\nQualifications: Graduate in Computer Science, or related field. 6+ years of "
+                    + "experience in data engineering or related field")).isEqualTo(6);
+        }
+
+        @Test
+        @DisplayName("'Preferred Qualifications:' is still the wishlist")
+        void preferredQualificationsIsNotARequirement() {
+            assertThat(minYears("Minimum qualifications: 1+ years of software development. "
+                    + "Preferred qualifications: 5+ years of experience with distributed systems."))
+                    .isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("headings the extractor did not know: Foundational Requirements, Our expectations")
+        void moreHeadings() {
+            assertThat(minYears("We value curiosity and a nice-to-have attitude. Who we are: a team. "
+                    + "Foundational Requirements 4+ years in analytics engineering, data engineering, "
+                    + "or BI engineering")).isEqualTo(4);
+            assertThat(minYears("Nice to have: Kotlin. Our expectations: 3 to 6 years of professional "
+                    + "software engineering experience")).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("the overall requirement wins over a number about one tool")
+        void overallBeatsOneTool() {
+            // Deliveroo, read as 1 until 2026-10-01.
+            assertThat(minYears("Our expectations: 3 to 6 years of professional software engineering "
+                    + "experience, including backend services you have shipped and owned in production. "
+                    + "1+ years of production experience in Golang, or strong experience in another "
+                    + "backend language")).isEqualTo(3);
+            // Sutherland, read as 2.
+            assertThat(minYears("Our most successful candidates will have: 3-7 years of experience in "
+                    + "Data Analytics, Data Engineering, or Business Intelligence. Minimum 2 years of "
+                    + "hands-on experience with Microsoft Fabric or Azure-based analytics platforms"))
+                    .isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("time the company talks about is not a requirement")
+        void companyTime() {
+            assertThat(minYears("Requirements: We have been a Top Workplace for the past 12 years. "
+                    + "2+ years of experience with SQL")).isEqualTo(2);
+            assertThat(minYears("What we're looking for: GPU assets today. Over the next 5 years, the "
+                    + "industry is set to grow 3x.")).isEqualTo(YearsExtraction.NONE_STATED);
+            assertThat(minYears("Requirements: 1 month paid sabbatical after 5 years of service"))
+                    .isEqualTo(YearsExtraction.NONE_STATED);
+            // "successful" is not "success".
+            assertThat(minYears("About you • 5+ years of successful experience in a similar role"))
+                    .isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("a decimal is its whole part, and years that substitute for a degree are no bar")
+        void decimalsAndSubstitutes() {
+            assertThat(minYears("WE'LL TALK IF THIS SOUNDS LIKE YOU 2.5+ years of experience designing "
+                    + "and developing")).isEqualTo(2);
+            assertThat(minYears("Requirements: degree in a related field.5+ years of experience"))
+                    .isEqualTo(5);
+            assertThat(minYears("Requirements: Bachelor's degree in Computer Science, Software Engineering, "
+                    + "or a related field 4 years of relevant experience can substitute for the degree."))
+                    .isEqualTo(YearsExtraction.NONE_STATED);
+        }
+
+        @Test
+        @DisplayName("a contract's length and a tool's years do not undercut the requirement")
+        void contractLengthAndHandsOn() {
+            assertThat(minYears("Mid to Senior levels. Minimum of 5 years of professional experience. "
+                    + "Automated Test Engineer: Contract role for 1.5 years.")).isEqualTo(5);
+            assertThat(minYears("Required Skills\n4+ years of software or data engineering experience, "
+                    + "including 1.5+ years hands-on with Palantir Foundry")).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("with only tool numbers stated, the smallest still counts")
+        void onlyToolNumbers() {
+            assertThat(minYears("Requirements: experience (2+ year) working with relational databases. "
+                    + "Experience (1+ year) implementing data pipelines that run on Kafka")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("an entry-level range stays entry level")
+        void entryRangeUnchanged() {
+            assertThat(minYears("Required qualifications: 0–2 years of experience in software "
+                    + "development, data science, machine learning, or Generative AI")).isEqualTo(0);
+            assertThat(minYears("Qualifications: Experience 1-3 years of relevant experience in "
+                    + "analytics, data engineering, business intelligence")).isEqualTo(1);
+        }
+    }
+
+    @Nested
     @DisplayName("the qualification line, wherever the posting puts it")
     class QualificationLineCases {
 

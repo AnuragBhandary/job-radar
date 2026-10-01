@@ -659,6 +659,9 @@ job-radar:
   # an honest match. A resume change is an edit here.
   ranking:
     full-detail: 60
+    # Openings scoring under this are counted on the "Withheld" line, not listed.
+    # 40 keeps all but a handful of entry-level titles (2026-10-01 window).
+    min-fit: 40
     # "a|b" is one skill with two spellings, counted once.
     skills:
       [python, fastapi, asyncio, kafka, redis, "postgresql|postgres", docker,

@@ -4,6 +4,7 @@ import com.anuragbhandary.jobradar.config.BoardTokenSeeder;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.fetch.FetchResult;
 import com.anuragbhandary.jobradar.fetch.FetchService;
+import com.anuragbhandary.jobradar.fetch.OracleBoardTidier;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -14,14 +15,20 @@ public class FetchCommand {
 
     private final FetchService fetchService;
     private final BoardTokenSeeder seeder;
+    private final OracleBoardTidier oracle;
 
-    public FetchCommand(FetchService fetchService, BoardTokenSeeder seeder) {
+    public FetchCommand(FetchService fetchService, BoardTokenSeeder seeder, OracleBoardTidier oracle) {
         this.fetchService = fetchService;
         this.seeder = seeder;
+        this.oracle = oracle;
     }
 
     public void run(Map<String, String> options) {
         seeder.seed();
+        String tidied = oracle.tidy();
+        if (tidied != null) {
+            System.out.println(tidied);
+        }
 
         String sourceOption = options.get("source");
         String token = options.get("token");
