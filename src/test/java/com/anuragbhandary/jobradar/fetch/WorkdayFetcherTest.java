@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
 import com.anuragbhandary.jobradar.filter.RealConfigAccess;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,9 +25,9 @@ class WorkdayFetcherTest {
             new AppProperties(null, null, null, null, RealConfigAccess.screening(), null);
 
     /** Records what was asked for, so the test can prove what was skipped. */
-    private static final class RecordingClient extends HttpFetchClient {
+    static final class RecordingClient extends HttpFetchClient {
         private final List<String> listed = new ArrayList<>();
-        private final List<String> detailed = new ArrayList<>();
+        final List<String> detailed = new ArrayList<>();
 
         RecordingClient() {
             super(null, new AppProperties(null, null,
@@ -50,7 +49,7 @@ class WorkdayFetcherTest {
 
     private final RecordingClient client = new RecordingClient();
     private final WorkdayFetcher fetcher = new WorkdayFetcher(
-            client, new ObjectMapper(), new GeoFilter(CONFIG), new TitleFilter(CONFIG));
+            client, new ObjectMapper(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG), StoredPostings.none());
 
     @Test
     void reportsSource() {

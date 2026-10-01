@@ -89,13 +89,8 @@ public class FetchService {
         return fetch(List.of(board.get()));
     }
 
-    /** What one board's network half produced: a batch, or the reason there is none. */
-    private record Fetched(BoardToken board, FetchBatch batch, String error, Duration took) {
-    }
-
-    private List<FetchResult> fetch(List<BoardToken> targets) {
-        List<FetchResult> results = new ArrayList<>(targets.size());
-        List<Fetched> timings = new ArrayList<>(targets.size());
+    /** Fetches every target in parallel and stores each result as it arrives. */
+    private void round(List<BoardToken> targets, List<FetchResult> results, List<Fetched> timings) {
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             CompletionService<Fetched> done = new ExecutorCompletionService<>(pool);
             for (BoardToken board : targets) {
@@ -107,6 +102,30 @@ public class FetchService {
                 timings.add(fetched);
                 log.info("{} in {}s", results.getLast(), fetched.took().toSeconds());
             }
+        }
+    }
+
+    /** What one board's network half produced: a batch, or the reason there is none. */
+    private record Fetched(BoardToken board, FetchBatch batch, String error, Duration took) {
+    }
+
+    private List<FetchResult> fetch(List<BoardToken> targets) {
+        List<FetchResult> results = new ArrayList<>(targets.size());
+        List<Fetched> timings = new ArrayList<>(targets.size());
+        round(targets, results, timings);
+
+        // One more try for the boards that failed, once everything else is done.
+        // Most failures are a site that was slow for a minute (46 boards on
+        // 2026-10-01, mostly Ashby timeouts), and a board that fails loses its
+        // postings for the day.
+        List<BoardToken> failed = targets.stream()
+                .filter(b -> results.stream().anyMatch(r -> r.failed()
+                        && r.source() == b.getSource() && r.boardToken().equals(b.getToken())))
+                .toList();
+        if (!failed.isEmpty() && failed.size() < targets.size()) {
+            log.info("Retrying {} board(s) that failed", failed.size());
+            results.removeIf(FetchResult::failed);
+            round(failed, results, timings);
         }
         logSlowest(timings);
 

@@ -1,7 +1,7 @@
 package com.anuragbhandary.jobradar.fetch;
 
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,16 +50,18 @@ public class EightfoldFetcher implements AtsFetcher {
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
-    private final GeoFilter geoFilter;
+    private final TargetPlaces places;
     private final TitleFilter titleFilter;
+    private final StoredPostings stored;
 
     public EightfoldFetcher(
             HttpFetchClient http, ObjectMapper json,
-            GeoFilter geoFilter, TitleFilter titleFilter) {
+            TargetPlaces places, TitleFilter titleFilter, StoredPostings stored) {
         this.http = http;
         this.json = json;
-        this.geoFilter = geoFilter;
+        this.places = places;
         this.titleFilter = titleFilter;
+        this.stored = stored;
     }
 
     @Override
@@ -109,8 +111,12 @@ public class EightfoldFetcher implements AtsFetcher {
 
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
         int failed = 0;
+        StoredPostings.Known known = stored.open(Source.EIGHTFOLD, boardToken);
         for (Listed job : shortlist) {
-            RawPosting posting = withDetail(board, job);
+            RawPosting posting = known.reuse(job.id());
+            if (posting == null) {
+                posting = withDetail(board, job);
+            }
             if (posting == null) {
                 failed++;
             } else {
@@ -155,7 +161,7 @@ public class EightfoldFetcher implements AtsFetcher {
      * full screen runs again on the real title and location afterwards.
      */
     private boolean passesCheapFilters(Listed job) {
-        return geoFilter.classify(job.slugText(), null).verdict().accepted()
+        return places.wanted(job.slugText(), null)
                 && titleFilter.screen(job.slugText()).accepted();
     }
 

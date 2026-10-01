@@ -43,7 +43,7 @@ class BoardSurveyorTest {
 
     private static BoardSurveyor surveyor(HttpFetchClient http) {
         return new BoardSurveyor(List.of(), null, http, new ObjectMapper(),
-                RealConfigAccess.locations(), new TitleFilter(CONFIG));
+                RealConfigAccess.locations(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG));
     }
 
     private static RawPosting posting(String title, String location) {
@@ -85,10 +85,14 @@ class BoardSurveyorTest {
                 posting("Software Engineer", "Remote"),
                 posting("Software Engineer", "San Francisco, CA"),
                 // Workday's country-state-city form of Dublin, Ohio.
-                posting("Software Engineer", "US-OH-DUBLIN (Crosby)")), 6);
+                posting("Software Engineer", "US-OH-DUBLIN (Crosby)"),
+                // The UK and the UAE, added to the strategy on 2026-10-01.
+                posting("Software Engineer", "London, United Kingdom"),
+                posting("Backend Engineer", "Dubai, United Arab Emirates")), 6);
 
         assertThat(s.india()).isEqualTo(1);
-        assertThat(s.relocation()).isEqualTo(1);
+        assertThat(s.relocation()).isEqualTo(3);
+        assertThat(s.abroad()).containsEntry("IE", 1).containsEntry("GB", 1).containsEntry("AE", 1);
         // Worldwide counts; bare "Remote", usually American, does not.
         assertThat(s.remote()).isEqualTo(1);
         assertThat(s.total()).isEqualTo(6);

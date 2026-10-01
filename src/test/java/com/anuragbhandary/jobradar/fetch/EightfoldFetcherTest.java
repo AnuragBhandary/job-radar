@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
 import com.anuragbhandary.jobradar.filter.RealConfigAccess;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,7 +47,7 @@ class EightfoldFetcherTest {
 
     private final RecordingClient client = new RecordingClient();
     private final EightfoldFetcher fetcher = new EightfoldFetcher(
-            client, new ObjectMapper(), new GeoFilter(CONFIG), new TitleFilter(CONFIG));
+            client, new ObjectMapper(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG), StoredPostings.none());
 
     @Test
     void reportsSource() {
@@ -112,7 +111,7 @@ class EightfoldFetcherTest {
             }
         };
         EightfoldFetcher f = new EightfoldFetcher(
-                empty, new ObjectMapper(), new GeoFilter(CONFIG), new TitleFilter(CONFIG));
+                empty, new ObjectMapper(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG), StoredPostings.none());
 
         assertThatThrownBy(() -> f.fetch(TOKEN)).isInstanceOf(FetchException.class);
     }
@@ -132,7 +131,7 @@ class EightfoldFetcherTest {
             }
         };
         EightfoldFetcher f = new EightfoldFetcher(
-                refusing, new ObjectMapper(), new GeoFilter(CONFIG), new TitleFilter(CONFIG));
+                refusing, new ObjectMapper(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG), StoredPostings.none());
 
         assertThatThrownBy(() -> f.fetch(TOKEN))
                 .isInstanceOf(FetchException.class)

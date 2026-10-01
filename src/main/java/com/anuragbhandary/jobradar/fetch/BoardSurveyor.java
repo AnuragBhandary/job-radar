@@ -4,15 +4,16 @@ import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.domain.WorkMode;
 import com.anuragbhandary.jobradar.filter.LocationClassifier;
 import com.anuragbhandary.jobradar.filter.LocationProfile;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,18 +32,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class BoardSurveyor {
 
-    /** What a board holds, in the terms the keep-or-skip decision needs. */
-    public record Survey(int total, int india, int relocation, int remote) {
+    /**
+     * What a board holds, in the terms the keep-or-skip decision needs.
+     *
+     * @param abroad jobs per recommended relocation country, by ISO code
+     */
+    public record Survey(int total, int india, int relocation, int remote, Map<String, Integer> abroad) {
+
+        public Survey(int total, int india, int relocation, int remote) {
+            this(total, india, relocation, remote, Map.of());
+        }
 
         public boolean hasTargetRoles() {
             return india + relocation + remote > 0;
         }
     }
 
-    /** Workday's country names for the relocation countries. */
-    static final Set<String> RELOCATION = Set.of("ireland", "germany", "netherlands");
-
-    private static final Set<String> RELOCATION_CODES = Set.of("IE", "DE", "NL");
+    /**
+     * What to type into a Workday search to find one country's jobs. Workday's
+     * search matches location text, which is how the "/india" boards work.
+     */
+    public static final Map<String, String> WORKDAY_SEARCH = Map.of(
+            "IN", "india", "IE", "ireland", "DE", "germany", "NL", "netherlands",
+            "GB", "united kingdom", "AE", "united arab emirates",
+            "SA", "saudi arabia", "QA", "qatar");
 
     private static final String SR_LIST =
             "https://api.smartrecruiters.com/v1/companies/%s/postings?limit=100&offset=0";
@@ -52,16 +65,18 @@ public class BoardSurveyor {
     private final HttpFetchClient http;
     private final ObjectMapper json;
     private final LocationClassifier locations;
+    private final TargetPlaces places;
     private final TitleFilter titles;
 
     public BoardSurveyor(List<AtsFetcher> fetchers, SmartRecruitersFetcher smartRecruiters,
             HttpFetchClient http, ObjectMapper json,
-            LocationClassifier locations, TitleFilter titles) {
+            LocationClassifier locations, TargetPlaces places, TitleFilter titles) {
         fetchers.forEach(f -> this.fetchers.put(f.source(), f));
         this.smartRecruiters = smartRecruiters;
         this.http = http;
         this.json = json;
         this.locations = locations;
+        this.places = places;
         this.titles = titles;
     }
 
@@ -112,8 +127,8 @@ public class BoardSurveyor {
     /** Counts postings whose title passes and whose location is a target. */
     Survey count(List<RawPosting> postings, int total) {
         int india = 0;
-        int relocation = 0;
         int remote = 0;
+        Map<String, Integer> abroad = new HashMap<>();
         for (RawPosting p : postings) {
             if (p.title() == null || !titles.screen(p.title()).accepted()) {
                 continue;
@@ -123,16 +138,21 @@ public class BoardSurveyor {
                 continue;
             }
             List<String> codes = where.allCountryCodes() == null ? List.of() : where.allCountryCodes();
+            List<String> moveTo = places.recommendedAbroad(where);
             if (where.isIndia() || codes.contains("IN") || where.allowsIndia()) {
                 india++;
-            } else if ((where.countryCode() != null && RELOCATION_CODES.contains(where.countryCode()))
-                    || codes.stream().anyMatch(c -> c != null && RELOCATION_CODES.contains(c))) {
-                relocation++;
+            } else if (!moveTo.isEmpty()) {
+                abroad.merge(moveTo.getFirst(), 1, Integer::sum);
             } else if (where.workMode() == WorkMode.REMOTE_GLOBAL) {
                 remote++;
             }
         }
-        return new Survey(total, india, relocation, remote);
+        return survey(total, india, remote, abroad);
+    }
+
+    private static Survey survey(int total, int india, int remote, Map<String, Integer> abroad) {
+        return new Survey(total, india, abroad.values().stream().mapToInt(Integer::intValue).sum(),
+                remote, Map.copyOf(abroad));
     }
 
     /**
@@ -154,52 +174,51 @@ public class BoardSurveyor {
         if (total == 0) {
             return new Survey(0, 0, 0, 0);
         }
-        Map<String, Integer> countries = workdayCountries(first);
-        if (countries == null) {
-            countries = classifiedLocations(first);
+        // Jobs per ISO code: from the country facet where the site has one,
+        // else from its place names, each read by the screening classifier.
+        Map<String, Integer> byCode = new HashMap<>();
+        Map<String, Integer> named = workdayCountries(first);
+        if (named == null) {
+            named = new HashMap<>();
+            collectLocations(first.path("facets"), false, named);
         }
-        if (countries.isEmpty()) {
+        named.forEach((place, count) -> {
+            String code = places.countryCode(place);
+            if (code != null) {
+                byCode.merge(code, count, Integer::sum);
+            }
+        });
+        if (named.isEmpty()) {
             // No location facet at all: search per country and classify what
             // comes back. The hit count alone is not evidence - Workday's search
             // matches "india" in "Indialantic, FL" and "IN" for Indiana.
-            for (String country : List.of("india", "ireland", "germany", "netherlands")) {
+            for (Map.Entry<String, String> country : WORKDAY_SEARCH.entrySet()) {
+                if (!country.getKey().equals("IN") && !places.recommendsMovingTo(country.getKey())) {
+                    continue;
+                }
                 JsonNode hits = read(http.post(base,
-                        "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"" + country + "\"}",
-                        null), token);
+                        "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\""
+                                + country.getValue() + "\"}", null), token);
                 for (JsonNode job : hits.path("jobPostings")) {
-                    String place = countryOf(job.path("locationsText").asText(null));
-                    if (place != null) {
-                        countries.merge(place, 1, Integer::sum);
+                    String code = places.countryCode(job.path("locationsText").asText(null));
+                    if (country.getKey().equals(code)) {
+                        byCode.merge(code, 1, Integer::sum);
                     }
                 }
             }
         }
-        int india = 0;
-        int relocation = 0;
-        for (Map.Entry<String, Integer> c : countries.entrySet()) {
-            String name = c.getKey();
-            if (name.equals("india")) {
-                india += c.getValue();
-            } else if (RELOCATION.stream().anyMatch(name::startsWith)) {
-                // "Netherlands" and "Netherlands, Kingdom of the" both; never
-                // "Northern Ireland", which is the United Kingdom.
-                relocation += c.getValue();
+        int india = byCode.getOrDefault("IN", 0);
+        Map<String, Integer> abroad = new HashMap<>();
+        byCode.forEach((code, count) -> {
+            if (places.recommendsMovingTo(code) && count > 0) {
+                abroad.put(code, count);
             }
-        }
-        return new Survey(total, india, relocation, 0);
+        });
+        return survey(total, india, 0, abroad);
     }
 
-    /**
-     * Jobs per target country from a site's location facets ("Bengaluru, India",
-     * "Mishawaka, IN"), each read by the same classifier screening uses.
-     */
-    Map<String, Integer> classifiedLocations(JsonNode response) {
-        Map<String, Integer> counts = new java.util.HashMap<>();
-        collectLocations(response.path("facets"), false, counts);
-        return counts;
-    }
-
-    private void collectLocations(JsonNode facets, boolean underLocation, Map<String, Integer> counts) {
+    /** Jobs per place name from a site's location facets ("Bengaluru, India", "Mishawaka, IN"). */
+    static void collectLocations(JsonNode facets, boolean underLocation, Map<String, Integer> counts) {
         for (JsonNode facet : facets) {
             boolean isLocation = underLocation
                     || facet.path("facetParameter").asText("").toLowerCase(Locale.ROOT).contains("location");
@@ -212,30 +231,12 @@ public class BoardSurveyor {
                 continue;
             }
             for (JsonNode v : values) {
-                String place = countryOf(v.path("descriptor").asText(null));
-                if (place != null) {
+                String place = v.path("descriptor").asText(null);
+                if (place != null && !place.isBlank()) {
                     counts.merge(place, v.path("count").asInt(0), Integer::sum);
                 }
             }
         }
-    }
-
-    /** "india", "ireland", "germany" or "netherlands" for a location string, else null. */
-    String countryOf(String location) {
-        if (location == null || location.isBlank()) {
-            return null;
-        }
-        LocationProfile where = locations.classify(location, null, null);
-        if (!where.verdict().accepted() || where.countryCode() == null) {
-            return null;
-        }
-        return switch (where.countryCode()) {
-            case "IN" -> "india";
-            case "IE" -> "ireland";
-            case "DE" -> "germany";
-            case "NL" -> "netherlands";
-            default -> null;
-        };
     }
 
     /** Jobs per lowercased country name, or null when the site has no country facet. */

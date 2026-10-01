@@ -24,7 +24,7 @@ class CountryStrategyTest {
             "SA | SECONDARY",
             "QA | SECONDARY",
             "AU | OPPORTUNISTIC",
-            "GB | LOW",
+            "GB | SECONDARY",
             "FI | SECONDARY",
             "AT | OPPORTUNISTIC",
             "CA | EXCLUDED",

@@ -1,7 +1,7 @@
 package com.anuragbhandary.jobradar.fetch;
 
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,16 +59,18 @@ public class WorkdayFetcher implements AtsFetcher {
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
-    private final GeoFilter geoFilter;
+    private final TargetPlaces places;
     private final TitleFilter titleFilter;
+    private final StoredPostings stored;
 
     public WorkdayFetcher(
             HttpFetchClient http, ObjectMapper json,
-            GeoFilter geoFilter, TitleFilter titleFilter) {
+            TargetPlaces places, TitleFilter titleFilter, StoredPostings stored) {
         this.http = http;
         this.json = json;
-        this.geoFilter = geoFilter;
+        this.places = places;
         this.titleFilter = titleFilter;
+        this.stored = stored;
     }
 
     @Override
@@ -159,12 +161,21 @@ public class WorkdayFetcher implements AtsFetcher {
                 boardToken, shortlist.size(), boardTotal, skipped);
 
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
+        StoredPostings.Known known = stored.open(Source.WORKDAY, boardToken);
         for (JsonNode summary : shortlist) {
-            RawPosting posting = withDescription(board, summary);
+            // The list's first bullet is the requisition id, the same id the
+            // detail gives and the posting is stored under.
+            JsonNode bullets = summary.path("bulletFields");
+            RawPosting posting = known.reuse(bullets.isArray() && !bullets.isEmpty()
+                    ? bullets.get(0).asText(null) : null);
+            if (posting == null) {
+                posting = withDescription(board, summary);
+            }
             if (posting != null) {
                 detailed.add(posting);
             }
         }
+        log.debug("{}: {} details reused from the database", boardToken, known.reused());
         return new FetchBatch(detailed, boardTotal);
     }
 
@@ -172,7 +183,7 @@ public class WorkdayFetcher implements AtsFetcher {
         String title = summary.path("title").asText(null);
         String location = summary.path("locationsText").asText(null);
         return title != null
-                && geoFilter.classify(location, title).verdict().accepted()
+                && places.wanted(location, title)
                 && titleFilter.screen(title).accepted();
     }
 

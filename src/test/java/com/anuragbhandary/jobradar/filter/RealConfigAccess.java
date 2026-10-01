@@ -25,6 +25,12 @@ public final class RealConfigAccess {
         return RealConfig.locations();
     }
 
+    /** The fetchers' place check, wired against the shipped rules. */
+    public static TargetPlaces targetPlaces() {
+        return new TargetPlaces(new GeoFilter(RealConfig.withScreening()),
+                RealConfig.locations(), RealConfig.countryStrategy());
+    }
+
     public static StrategicClassifier lanes() {
         return new StrategicClassifier(RealConfig.countryStrategy());
     }

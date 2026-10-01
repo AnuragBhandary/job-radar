@@ -244,11 +244,10 @@ public class DiscoveryService {
         if (s.india() > 0) {
             searches.add(result.token() + "/india");
         }
-        if (s.relocation() > 0) {
-            // Which of the three is not kept by the survey; a search with no hits
-            // costs one request a run.
-            for (String country : List.of("ireland", "germany", "netherlands")) {
-                searches.add(result.token() + "/" + country);
+        for (String code : s.abroad().keySet().stream().sorted().toList()) {
+            String search = BoardSurveyor.WORKDAY_SEARCH.get(code);
+            if (search != null) {
+                searches.add(result.token() + "/" + search);
             }
         }
         return searches;

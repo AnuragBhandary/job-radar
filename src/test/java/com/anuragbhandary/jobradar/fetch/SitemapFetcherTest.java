@@ -11,7 +11,6 @@ import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
 import com.anuragbhandary.jobradar.filter.RealConfigAccess;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
@@ -59,7 +58,7 @@ class SitemapFetcherTest {
     }
 
     private static SitemapFetcher fetcher(HttpFetchClient http, PostingRepository repo) {
-        return new SitemapFetcher(http, new ObjectMapper(), new GeoFilter(CONFIG),
+        return new SitemapFetcher(http, new ObjectMapper(), RealConfigAccess.targetPlaces(),
                 new TitleFilter(CONFIG), repo);
     }
 

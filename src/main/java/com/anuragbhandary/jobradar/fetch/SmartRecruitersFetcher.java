@@ -1,7 +1,7 @@
 package com.anuragbhandary.jobradar.fetch;
 
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,16 +48,18 @@ public class SmartRecruitersFetcher implements AtsFetcher {
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
-    private final GeoFilter geoFilter;
+    private final TargetPlaces places;
     private final TitleFilter titleFilter;
+    private final StoredPostings stored;
 
     public SmartRecruitersFetcher(
             HttpFetchClient http, ObjectMapper json,
-            GeoFilter geoFilter, TitleFilter titleFilter) {
+            TargetPlaces places, TitleFilter titleFilter, StoredPostings stored) {
         this.http = http;
         this.json = json;
-        this.geoFilter = geoFilter;
+        this.places = places;
         this.titleFilter = titleFilter;
+        this.stored = stored;
     }
 
     @Override
@@ -107,14 +109,16 @@ public class SmartRecruitersFetcher implements AtsFetcher {
                 boardToken, shortlist.size(), skipped);
 
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
+        StoredPostings.Known known = stored.open(Source.SMARTRECRUITERS, boardToken);
         for (RawPosting stub : shortlist) {
-            detailed.add(withDescription(boardToken, stub));
+            RawPosting reused = known.reuse(stub.externalId());
+            detailed.add(reused != null ? reused : withDescription(boardToken, stub));
         }
         return new FetchBatch(detailed, boardTotal);
     }
 
     private boolean passesCheapFilters(RawPosting stub) {
-        return geoFilter.classify(stub.location(), stub.title()).verdict().accepted()
+        return places.wanted(stub.location(), stub.title())
                 && titleFilter.screen(stub.title()).accepted();
     }
 

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.anuragbhandary.jobradar.config.AppProperties;
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
 import com.anuragbhandary.jobradar.filter.RealConfigAccess;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,7 +48,7 @@ class OracleHcmFetcherTest {
 
     private final RecordingClient client = new RecordingClient();
     private final OracleHcmFetcher fetcher = new OracleHcmFetcher(
-            client, new ObjectMapper(), new GeoFilter(CONFIG), new TitleFilter(CONFIG));
+            client, new ObjectMapper(), RealConfigAccess.targetPlaces(), new TitleFilter(CONFIG), StoredPostings.none());
 
     @Test
     void reportsSource() {

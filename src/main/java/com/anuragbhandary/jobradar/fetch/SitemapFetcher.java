@@ -3,7 +3,7 @@ package com.anuragbhandary.jobradar.fetch;
 import com.anuragbhandary.jobradar.domain.Posting;
 import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
@@ -87,18 +87,18 @@ public class SitemapFetcher implements AtsFetcher {
 
     private final HttpFetchClient http;
     private final ObjectReader lenientJson;
-    private final GeoFilter geoFilter;
+    private final TargetPlaces places;
     private final TitleFilter titleFilter;
     private final PostingRepository postings;
 
-    public SitemapFetcher(HttpFetchClient http, ObjectMapper json, GeoFilter geoFilter,
+    public SitemapFetcher(HttpFetchClient http, ObjectMapper json, TargetPlaces places,
             TitleFilter titleFilter, PostingRepository postings) {
         this.http = http;
         // Job descriptions are pasted from word processors, and raw tabs and line
         // breaks inside JSON strings are common enough to need tolerating.
         this.lenientJson = json.readerFor(JsonNode.class)
                 .with(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature());
-        this.geoFilter = geoFilter;
+        this.places = places;
         this.titleFilter = titleFilter;
         this.postings = postings;
     }
@@ -309,7 +309,7 @@ public class SitemapFetcher implements AtsFetcher {
     }
 
     private boolean passesCheapFilters(Listed job) {
-        return geoFilter.classify(job.slugText(), null).verdict().accepted()
+        return places.wanted(job.slugText(), null)
                 && titleFilter.screen(job.slugText()).accepted();
     }
 

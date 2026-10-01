@@ -1,7 +1,7 @@
 package com.anuragbhandary.jobradar.fetch;
 
 import com.anuragbhandary.jobradar.domain.Source;
-import com.anuragbhandary.jobradar.filter.GeoFilter;
+import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,16 +40,18 @@ public class OracleHcmFetcher implements AtsFetcher {
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
-    private final GeoFilter geoFilter;
+    private final TargetPlaces places;
     private final TitleFilter titleFilter;
+    private final StoredPostings stored;
 
     public OracleHcmFetcher(
             HttpFetchClient http, ObjectMapper json,
-            GeoFilter geoFilter, TitleFilter titleFilter) {
+            TargetPlaces places, TitleFilter titleFilter, StoredPostings stored) {
         this.http = http;
         this.json = json;
-        this.geoFilter = geoFilter;
+        this.places = places;
         this.titleFilter = titleFilter;
+        this.stored = stored;
     }
 
     @Override
@@ -122,7 +124,13 @@ public class OracleHcmFetcher implements AtsFetcher {
 
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
         int failed = 0;
+        StoredPostings.Known known = stored.open(Source.ORACLE_HCM, boardToken);
         for (Listed job : shortlist) {
+            RawPosting reused = known.reuse(job.id());
+            if (reused != null) {
+                detailed.add(reused);
+                continue;
+            }
             try {
                 detailed.add(parseDetail(http.get(board.detail(job.id()), null), job, board));
             } catch (Exception e) {
@@ -188,7 +196,7 @@ public class OracleHcmFetcher implements AtsFetcher {
     }
 
     private boolean passesCheapFilters(Listed job) {
-        return geoFilter.classify(job.location(), job.title()).verdict().accepted()
+        return places.wanted(job.location(), job.title())
                 && titleFilter.screen(job.title()).accepted();
     }
 

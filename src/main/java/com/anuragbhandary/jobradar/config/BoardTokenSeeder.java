@@ -317,6 +317,10 @@ public class BoardTokenSeeder {
         AMAZON.put("DEU", "Amazon Germany");
         AMAZON.put("IRL", "Amazon Ireland");
         AMAZON.put("NLD", "Amazon Netherlands");
+        // The UK and the UAE joined the strategy on 2026-10-01: 38 software
+        // roles in the UK that day, none in the UAE.
+        AMAZON.put("GBR", "Amazon UK");
+        AMAZON.put("ARE", "Amazon UAE");
 
         EIGHTFOLD.put("microsoft/apply.careers.microsoft.com/microsoft.com", "Microsoft");
         EIGHTFOLD.put("netflix/explore.jobs.netflix.net/netflix.com", "Netflix");
@@ -333,11 +337,15 @@ public class BoardTokenSeeder {
         GOOGLE.put("India", "Google India");
         GOOGLE.put("Ireland", "Google Ireland");
         GOOGLE.put("Germany", "Google Germany");
+        GOOGLE.put("United Kingdom", "Google UK");
+        GOOGLE.put("United Arab Emirates", "Google UAE");
 
         // India ids read from each site's location facet on 2026-10-01: JPMorgan
         // 323 India requisitions, Oracle 13.
         ORACLE_HCM.put("jpmc/jpmc.fa.oraclecloud.com/CX_1001/300000000289360", "JPMorgan Chase");
         ORACLE_HCM.put("oracle/eeho.fa.us2.oraclecloud.com/CX_45001/300000000106947", "Oracle");
+        // 681 UK requisitions on 2026-10-01.
+        ORACLE_HCM.put("jpmc/jpmc.fa.oraclecloud.com/CX_1001/300000000289276", "JPMorgan Chase UK");
     }
 
     private final BoardTokenRepository boards;

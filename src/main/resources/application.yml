@@ -172,9 +172,18 @@ job-radar:
         salary-floor-basis: "Skills in Demand Core Skills Income Threshold from 1 July 2026"
         verify-by: 2027-07-01
       # The Skilled Worker salary threshold is high for a junior role, and
-      # settlement is proposed to move from 5 to 10 years.
+      # settlement is proposed to move from 5 to 10 years. Raised from LOW on
+      # 2026-10-01, at the user's request, as one of the five likeliest countries
+      # for employer sponsorship; the move itself is decided later.
       - country-code: GB
-        relocation-tier: LOW
+        relocation-tier: SECONDARY
+        salary-floor: 41700
+        currency: GBP
+        salary-floor-basis: "Skilled Worker general threshold for 2026; the software
+          developer going rate is quoted at GBP 49,400-54,700 and a new-entrant
+          discount may apply, so a stated salary below this needs checking, not
+          rejecting"
+        verify-by: 2027-01-01
       - country-code: FI
         relocation-tier: SECONDARY
 
