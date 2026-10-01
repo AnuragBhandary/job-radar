@@ -32,6 +32,17 @@ class ArchiveIndexTest {
                 .isEqualTo("walmart/wd504/WalmartExternal");
         assertThat(ArchiveIndex.token(Platform.WORKDAY, "https://visa.wd5.myworkdayjobs.com/Visa_Early_Careers"))
                 .isEqualTo("visa/wd5/Visa_Early_Careers");
+        assertThat(ArchiveIndex.token(Platform.EIGHTFOLD,
+                "https://paypal.eightfold.ai/careers/job/274912?hl=en&domain=paypal.com"))
+                .isEqualTo("paypal/paypal.eightfold.ai/paypal.com");
+        assertThat(ArchiveIndex.token(Platform.EIGHTFOLD,
+                "https://aexp-sandbox.eightfold.ai/careers?domain=aexp-sandbox.com")).isNull();
+        assertThat(ArchiveIndex.token(Platform.ORACLE_HCM,
+                "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210774158"))
+                .isEqualTo("jpmc.fa.oraclecloud.com/CX_1001");
+        assertThat(ArchiveIndex.token(Platform.ORACLE_HCM,
+                "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch/jobs"))
+                .isNull();
     }
 
     @ParameterizedTest

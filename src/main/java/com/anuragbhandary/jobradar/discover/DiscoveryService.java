@@ -48,7 +48,7 @@ public class DiscoveryService {
     /** The sources the archive can find. */
     public static final List<Source> SOURCES = List.of(
             Source.GREENHOUSE, Source.LEVER, Source.ASHBY, Source.RECRUITEE,
-            Source.SMARTRECRUITERS, Source.WORKDAY);
+            Source.SMARTRECRUITERS, Source.WORKDAY, Source.EIGHTFOLD, Source.ORACLE_HCM);
 
     /**
      * A Workday site larger than this is added as one search per target country
@@ -60,7 +60,9 @@ public class DiscoveryService {
     /**
      * @param sources     which platforms to search
      * @param deep        also page through every archived URL, not just home pages
-     * @param recheckDays survey again a board skipped this many days ago; 0 never
+     * @param recheckDays survey again a board skipped this many days ago; 0 never,
+     *                    negative every board not added, whatever its age (after a
+     *                    change to what counts, such as a country added)
      * @param limit       surveys per platform this run; 0 for no limit
      * @param dryRun      survey and report, but write nothing
      */
@@ -168,8 +170,9 @@ public class DiscoveryService {
         for (DiscoveredBoard d : discovered.findBySource(source)) {
             seen.put(d.getToken().toLowerCase(Locale.ROOT), d);
         }
-        Instant recheckBefore = options.recheckDays() > 0
-                ? Instant.now().minus(Duration.ofDays(options.recheckDays())) : null;
+        Instant recheckBefore = options.recheckDays() < 0 ? Instant.now()
+                : options.recheckDays() > 0
+                        ? Instant.now().minus(Duration.ofDays(options.recheckDays())) : null;
         List<String> fresh = new ArrayList<>();
         for (Map.Entry<String, String> e : inArchive.entrySet()) {
             if (known.contains(e.getKey())) {
@@ -189,9 +192,13 @@ public class DiscoveryService {
     /** A Workday board seeded with a search is the same site as one without. */
     static String baseToken(Source source, String token) {
         String t = token.toLowerCase(Locale.ROOT);
+        String[] parts = t.split("/");
         if (source == Source.WORKDAY) {
-            String[] parts = t.split("/");
             return parts.length >= 3 ? parts[0] + "/" + parts[1] + "/" + parts[2] : t;
+        }
+        // A fetched Oracle board is name/host/site/country; the archive gives host/site.
+        if (source == Source.ORACLE_HCM && parts.length == 4) {
+            return parts[1] + "/" + parts[2];
         }
         return t;
     }
@@ -237,20 +244,19 @@ public class DiscoveryService {
         if (s == null || !s.hasTargetRoles()) {
             return List.of();
         }
+        if (result.source() == Source.ORACLE_HCM) {
+            // An Oracle board is one country of one site: name/host/site/locationId.
+            String host = result.token().split("/")[0];
+            String name = host.split("\\.")[0];
+            return s.perCountry().values().stream().sorted()
+                    .map(id -> name + "/" + result.token() + "/" + id).toList();
+        }
         if (result.source() != Source.WORKDAY || s.total() <= WORKDAY_WHOLE_SITE_MAX) {
             return List.of(result.token());
         }
-        List<String> searches = new ArrayList<>();
-        if (s.india() > 0) {
-            searches.add(result.token() + "/india");
-        }
-        for (String code : s.abroad().keySet().stream().sorted().toList()) {
-            String search = BoardSurveyor.WORKDAY_SEARCH.get(code);
-            if (search != null) {
-                searches.add(result.token() + "/" + search);
-            }
-        }
-        return searches;
+        // A large Workday site: one search per country it hires in.
+        return s.perCountry().values().stream().sorted()
+                .map(search -> result.token() + "/" + search).toList();
     }
 
     /** A readable company name from a token: "stable-money1" to "Stable Money1". */

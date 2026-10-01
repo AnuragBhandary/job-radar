@@ -16,11 +16,12 @@ import org.springframework.stereotype.Component;
  *
  * <pre>
  * discover [--platforms=greenhouse,lever,ashby,recruitee,smartrecruiters,workday]
- *          [--deep] [--recheck-days=N] [--limit=N] [--dry-run]
+ *          [--deep] [--recheck | --recheck-days=N] [--limit=N] [--dry-run]
  * </pre>
  *
  * A first run surveys about twenty thousand boards and takes an hour or more;
- * later runs survey only boards new to the archive.
+ * later runs survey only boards new to the archive. {@code --recheck} surveys
+ * again every board not added, after a change to what counts (a new country).
  */
 @Component
 public class DiscoverCommand {
@@ -50,7 +51,7 @@ public class DiscoverCommand {
         DiscoveryService.Options run = new DiscoveryService.Options(
                 sources,
                 "true".equals(options.get("deep")),
-                intOption(options, "recheck-days"),
+                "true".equals(options.get("recheck")) ? -1 : intOption(options, "recheck-days"),
                 intOption(options, "limit"),
                 "true".equals(options.get("dry-run")));
 

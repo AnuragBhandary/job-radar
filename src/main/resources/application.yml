@@ -625,7 +625,9 @@ job-radar:
                       # Own careers sites (Eightfold, Google, Oracle), the same day.
                       microsoft, netflix, qualcomm, google, jpmc, oracle,
                       # Sitemap-read sites and HSBC, the same day.
-                      hsbc, intuit, ey, stanchart, wipro]
+                      hsbc, intuit, ey, stanchart, wipro,
+                      # Eightfold tenants found by discovery, 2026-10-01.
+                      morganstanley, bnymellon, aexp, micron]
     big-tech-max-min-years: 1
 
     # Full-stack and frontend titles, rejected at every employer except Amazon

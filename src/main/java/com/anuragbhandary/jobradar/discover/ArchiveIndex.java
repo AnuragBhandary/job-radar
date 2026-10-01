@@ -97,6 +97,21 @@ public class ArchiveIndex {
                         "^https?://[^./]+\\.wd[0-9]+\\.myworkdayjobs\\.com/([a-z]{2}-[A-Z]{2}/)?[^/?#]+/?$")),
                 Pattern.compile(
                         "^https?://([^./]+)\\.(wd[0-9]+)\\.myworkdayjobs\\.com/(?:[a-z]{2}-[A-Z]{2}/)?([^/?#]+)"),
+                false),
+        // Tenants on eightfold.ai name their employer domain in the query string:
+        // paypal.eightfold.ai/careers?domain=paypal.com (139 on 2026-10-01).
+        EIGHTFOLD(Source.EIGHTFOLD, List.of(
+                new Query("eightfold.ai", "domain", ".*[?&]domain=.*")),
+                Pattern.compile("^https?://([a-z0-9-]+\\.eightfold\\.ai)/[^?#]*\\?(?:[^#]*&)?domain=([a-z0-9.-]+)",
+                        Pattern.CASE_INSENSITIVE),
+                true),
+        // Oracle candidate sites: host and site number. The survey adds the
+        // country id each board needs (3,176 pairs on 2026-10-01).
+        ORACLE_HCM(Source.ORACLE_HCM, List.of(
+                new Query("oraclecloud.com", "domain",
+                        ".*/hcmUI/CandidateExperience/[a-z]+/sites/[A-Za-z0-9_]+.*")),
+                Pattern.compile("^https?://([a-z0-9.-]+\\.oraclecloud\\.com)/hcmUI/CandidateExperience/[a-z]+/sites/([A-Za-z0-9_]+)",
+                        Pattern.CASE_INSENSITIVE),
                 false);
 
         final Source source;
@@ -200,6 +215,25 @@ public class ArchiveIndex {
                 return null;
             }
             return m.group(1).toLowerCase(Locale.ROOT) + "/" + m.group(2) + "/" + site;
+        }
+        if (platform == Platform.EIGHTFOLD) {
+            String host = m.group(1).toLowerCase(Locale.ROOT);
+            String domain = m.group(2).toLowerCase(Locale.ROOT);
+            String name = domain.split("\\.")[0];
+            // Test tenants, and the platform's own site.
+            if (host.contains("sandbox") || domain.equals("eightfold.ai") || !isPlausible(name)) {
+                return null;
+            }
+            return name + "/" + host + "/" + domain;
+        }
+        if (platform == Platform.ORACLE_HCM) {
+            String site = m.group(2);
+            // A site is CX, CX_1001 and the like; "jobsearch" and other words are
+            // the employer's own front end, not a candidate site number.
+            if (!site.matches("CX(_[0-9]+)?")) {
+                return null;
+            }
+            return m.group(1).toLowerCase(Locale.ROOT) + "/" + site;
         }
         String name = m.group(1);
         if (!isPlausible(name)) {

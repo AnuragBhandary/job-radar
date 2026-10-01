@@ -35,12 +35,16 @@ public class BoardSurveyor {
     /**
      * What a board holds, in the terms the keep-or-skip decision needs.
      *
-     * @param abroad jobs per recommended relocation country, by ISO code
+     * @param abroad     jobs per recommended relocation country, by ISO code
+     * @param perCountry for platforms whose board is one country of a site, what
+     *                   each wanted country's board adds to the token: a Workday
+     *                   search ("india") or an Oracle location id
      */
-    public record Survey(int total, int india, int relocation, int remote, Map<String, Integer> abroad) {
+    public record Survey(int total, int india, int relocation, int remote,
+            Map<String, Integer> abroad, Map<String, String> perCountry) {
 
         public Survey(int total, int india, int relocation, int remote) {
-            this(total, india, relocation, remote, Map.of());
+            this(total, india, relocation, remote, Map.of(), Map.of());
         }
 
         public boolean hasTargetRoles() {
@@ -88,8 +92,62 @@ public class BoardSurveyor {
             }
             case SMARTRECRUITERS -> smartRecruiters(token);
             case WORKDAY -> workday(token);
+            case EIGHTFOLD -> eightfold(token);
+            case ORACLE_HCM -> oracle(token);
             default -> throw new IllegalArgumentException(source + " is not surveyed");
         };
+    }
+
+    /** An Eightfold site: the sitemap's URLs carry each job's title and place. */
+    private Survey eightfold(String token) throws FetchException {
+        EightfoldFetcher.Board board = EightfoldFetcher.Board.parse(token);
+        List<EightfoldFetcher.Listed> jobs = EightfoldFetcher.parseSitemap(http.get(board.sitemap(), null));
+        if (jobs.isEmpty()) {
+            throw new FetchException("No job URLs in the sitemap of " + token);
+        }
+        List<RawPosting> slugs = jobs.stream()
+                .map(j -> new RawPosting(j.id(), j.slugText(), j.slugText(), null, j.url(), null))
+                .toList();
+        return count(slugs, jobs.size());
+    }
+
+    private static final String ORACLE_FACETS = "https://%s/hcmRestApi/resources/latest/"
+            + "recruitingCEJobRequisitions?onlyData=true&expand=locationsFacet"
+            + "&finder=findReqs;siteNumber=%s,facetsList=LOCATIONS,limit=1";
+
+    /**
+     * An Oracle site: its location facet gives jobs per place with the place's id,
+     * and a board is one country, so the survey records each wanted country's id.
+     * The facet lists the site's largest places only; a country below that cut
+     * is missed until it grows.
+     */
+    private Survey oracle(String token) throws FetchException {
+        String[] parts = token.split("/");
+        if (parts.length != 2) {
+            throw new FetchException("Oracle discovery token must be host/site, got: " + token);
+        }
+        JsonNode search = read(http.get(ORACLE_FACETS.formatted(parts[0], parts[1]), null), token)
+                .path("items").path(0);
+        int total = search.path("TotalJobsCount").asInt(0);
+        Map<String, Integer> counts = new HashMap<>();
+        Map<String, String> ids = new HashMap<>();
+        for (JsonNode place : search.path("locationsFacet")) {
+            String code = places.countryCode(place.path("Name").asText(null));
+            if (code == null || !(code.equals("IN") || places.recommendsMovingTo(code))) {
+                continue;
+            }
+            int count = place.path("TotalCount").asInt(0);
+            // The country itself carries the most jobs of all its places.
+            if (count > counts.getOrDefault(code, -1)) {
+                counts.put(code, count);
+                ids.put(code, place.path("Id").asText());
+            }
+        }
+        int india = counts.getOrDefault("IN", 0);
+        Map<String, Integer> abroad = new HashMap<>(counts);
+        abroad.remove("IN");
+        Survey counted = survey(total, india, 0, abroad);
+        return new Survey(counted.total(), india, counted.relocation(), 0, counted.abroad(), Map.copyOf(ids));
     }
 
     /**
@@ -98,6 +156,27 @@ public class BoardSurveyor {
      * often nothing like it: "stage" is KKR, "india" is AQR India.
      */
     public String companyName(Source source, String token) {
+        if (source == Source.ORACLE_HCM) {
+            try {
+                String[] parts = token.split("/");
+                JsonNode req = read(http.get(("https://%s/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
+                        + "?onlyData=true&finder=findReqs;siteNumber=%s,limit=1").formatted(parts[0], parts[1]),
+                        null), token).path("items").path(0).path("requisitionList").path(0);
+                String name = req.path("LegalEmployer").asText(null);
+                if (name == null || name.isBlank()) {
+                    name = req.path("BusinessUnit").asText(null);
+                }
+                return name == null || name.isBlank() ? null : name.strip();
+            } catch (FetchException | RuntimeException e) {
+                return null;
+            }
+        }
+        if (source == Source.EIGHTFOLD) {
+            // name/host/domain: the domain is the employer's, "paypal.com".
+            String domain = token.split("/")[2];
+            String name = domain.split("\\.")[0];
+            return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
+        }
         if (source != Source.GREENHOUSE) {
             return null;
         }
@@ -152,7 +231,7 @@ public class BoardSurveyor {
 
     private static Survey survey(int total, int india, int remote, Map<String, Integer> abroad) {
         return new Survey(total, india, abroad.values().stream().mapToInt(Integer::intValue).sum(),
-                remote, Map.copyOf(abroad));
+                remote, Map.copyOf(abroad), Map.of());
     }
 
     /**
@@ -214,7 +293,18 @@ public class BoardSurveyor {
                 abroad.put(code, count);
             }
         });
-        return survey(total, india, 0, abroad);
+        Map<String, String> searches = new HashMap<>();
+        if (india > 0) {
+            searches.put("IN", WORKDAY_SEARCH.get("IN"));
+        }
+        abroad.keySet().forEach(code -> {
+            if (WORKDAY_SEARCH.containsKey(code)) {
+                searches.put(code, WORKDAY_SEARCH.get(code));
+            }
+        });
+        Survey counted = survey(total, india, 0, abroad);
+        return new Survey(counted.total(), counted.india(), counted.relocation(), 0,
+                counted.abroad(), Map.copyOf(searches));
     }
 
     /** Jobs per place name from a site's location facets ("Bengaluru, India", "Mishawaka, IN"). */

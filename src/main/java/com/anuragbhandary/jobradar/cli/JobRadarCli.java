@@ -142,7 +142,7 @@ public class JobRadarCli implements ApplicationRunner {
                   probe --tokens=a,b,c [--add]            test candidate tokens on every ATS; --add saves hits
                   boards [--idle]                         what each board has yielded; --idle only the dead weight
                   boards --disable=SOURCE/token,...       stop fetching a board (--enable= to undo)
-                  discover [--platforms=lever,...] [--deep] [--recheck-days=N] [--limit=N] [--dry-run]
+                  discover [--platforms=lever,...] [--deep] [--recheck | --recheck-days=N] [--limit=N] [--dry-run]
                                                           find boards in the Internet Archive, survey them,
                                                           add those with roles in target countries
                 """);
