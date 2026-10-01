@@ -74,6 +74,14 @@ public class BoardTokenSeeder {
      */
     private static final Map<String, String> ORACLE_HCM = new LinkedHashMap<>();
 
+    /**
+     * Careers sites read through their sitemap, keyed {@code name/host/path}. Each
+     * was checked on 2026-10-01 for job URLs that carry the place, and for job data
+     * on the page (Intuit JSON-LD; EY full microdata; Standard Chartered and Wipro
+     * title and description only).
+     */
+    private static final Map<String, String> SITEMAP = new LinkedHashMap<>();
+
     /** One board: the current month's "Ask HN: Who is hiring?" thread. */
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
@@ -313,6 +321,14 @@ public class BoardTokenSeeder {
         EIGHTFOLD.put("microsoft/apply.careers.microsoft.com/microsoft.com", "Microsoft");
         EIGHTFOLD.put("netflix/explore.jobs.netflix.net/netflix.com", "Netflix");
         EIGHTFOLD.put("qualcomm/careers.qualcomm.com/qualcomm.com", "Qualcomm");
+        EIGHTFOLD.put("hsbc/portal.careers.hsbc.com/hsbc.com", "HSBC");
+
+        // India pages in each sitemap on 2026-10-01: EY 1,747, Standard
+        // Chartered 263, Intuit 27; Wipro lists 5,425 jobs, most in India.
+        SITEMAP.put("intuit/jobs.intuit.com/sitemap.xml", "Intuit");
+        SITEMAP.put("ey/careers.ey.com/sitemap.xml", "EY");
+        SITEMAP.put("stanchart/jobs.standardchartered.com/sitemap.xml", "Standard Chartered");
+        SITEMAP.put("wipro/careers.wipro.com/sitemap.xml", "Wipro");
 
         GOOGLE.put("India", "Google India");
         GOOGLE.put("Ireland", "Google Ireland");
@@ -404,7 +420,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.ARBEITNOW, ARBEITNOW)
                 + seedSource(Source.EIGHTFOLD, EIGHTFOLD)
                 + seedSource(Source.GOOGLE, GOOGLE)
-                + seedSource(Source.ORACLE_HCM, ORACLE_HCM);
+                + seedSource(Source.ORACLE_HCM, ORACLE_HCM)
+                + seedSource(Source.SITEMAP, SITEMAP);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

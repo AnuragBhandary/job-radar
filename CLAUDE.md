@@ -119,6 +119,20 @@ openings" and similar from any directory. In short:
   employer is one seed line. Microsoft answers 429 to bursts, hence
   `http.site-delays-ms`. At Google a title's "II" is the entry level, so the
   seniority rule ignores it there (`TitleFilter.withoutGoogleEntryLevel`).
+- Careers sites with a sitemap of job pages are read by `SITEMAP`
+  (`name/host/path-to-sitemap`: Intuit, EY, Standard Chartered, Wipro). It reads
+  JSON-LD `JobPosting`, else microdata, else takes the place from the URL, so a
+  site qualifies only if its job URLs carry the place. Stored pages are reused
+  unless the sitemap's `lastmod` is recent; at most 400 new pages are read a run.
+- `discover` finds boards nobody named: it asks the Internet Archive's URL index
+  (Common Crawl's was down) for every Greenhouse, Lever, Ashby, Recruitee,
+  SmartRecruiters and Workday board, surveys each new one with one request, and
+  adds those with a passing title in India, Ireland, Germany, the Netherlands or
+  worldwide remote (bare "Remote" does not count). Every survey is kept in
+  `discovered_board`, so a re-run surveys only boards new to the archive;
+  `--recheck-days=N` looks again at the skipped ones, `--deep` also pages through
+  every archived job URL (slow), `--dry-run` writes nothing. A large Workday site
+  is added as one search per country (`tenant/wdN/site/india`).
 
 ## Where things are
 

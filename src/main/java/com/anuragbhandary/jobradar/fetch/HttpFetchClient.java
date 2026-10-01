@@ -91,7 +91,27 @@ public class HttpFetchClient {
         throw new FetchException("HTTP " + result.status() + " from " + url);
     }
 
+    /**
+     * As {@link #get}, with a longer wait for the response.
+     *
+     * <p>For the Internet Archive's URL index, which answers a whole-domain query
+     * in seconds for Ashby and in over three minutes for Workday. Same throttle,
+     * retries and User-Agent; only the deadline differs.
+     */
+    public String getSlow(String url, int timeoutSeconds) throws FetchException {
+        HttpResult result = execute(url, null, null, timeoutSeconds);
+        if (result.isSuccess()) {
+            return result.body();
+        }
+        throw new FetchException("HTTP " + result.status() + " from " + url);
+    }
+
     private HttpResult execute(String url, String jsonBody, String fixtureName)
+            throws FetchException {
+        return execute(url, jsonBody, fixtureName, config.timeoutSeconds());
+    }
+
+    private HttpResult execute(String url, String jsonBody, String fixtureName, int timeoutSeconds)
             throws FetchException {
         IOException lastIoFailure = null;
 
@@ -101,7 +121,7 @@ public class HttpFetchClient {
                 HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(url))
                         .header("User-Agent", config.userAgent())
                         .header("Accept", "application/json")
-                        .timeout(Duration.ofSeconds(config.timeoutSeconds()));
+                        .timeout(Duration.ofSeconds(timeoutSeconds));
                 if (jsonBody == null) {
                     request.GET();
                 } else {
@@ -117,12 +137,12 @@ public class HttpFetchClient {
                 java.util.concurrent.CompletableFuture<HttpResponse<String>> pending =
                         http.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString());
                 try {
-                    response = pending.get(config.timeoutSeconds() * 3L,
+                    response = pending.get(timeoutSeconds * 3L,
                             java.util.concurrent.TimeUnit.SECONDS);
                 } catch (java.util.concurrent.TimeoutException e) {
                     pending.cancel(true);
                     throw new IOException("no complete response within "
-                            + config.timeoutSeconds() * 3 + "s");
+                            + timeoutSeconds * 3 + "s");
                 } catch (java.util.concurrent.ExecutionException e) {
                     if (e.getCause() instanceof IOException io) {
                         throw io;

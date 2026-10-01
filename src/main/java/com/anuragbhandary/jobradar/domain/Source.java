@@ -48,5 +48,7 @@ public enum Source {
     ARBEITNOW,
     EIGHTFOLD,
     GOOGLE,
-    ORACLE_HCM
+    ORACLE_HCM,
+    /** Any careers site whose sitemap lists its job pages; see {@code SitemapFetcher}. */
+    SITEMAP
 }

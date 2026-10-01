@@ -145,7 +145,8 @@ public class SmartRecruitersFetcher implements AtsFetcher {
         return text.toString().trim();
     }
 
-    private RawPosting toStub(JsonNode summary) {
+    /** Package-visible for {@link BoardSurveyor}, which counts stubs without details. */
+    RawPosting toStub(JsonNode summary) {
         String id = summary.path("id").asText(null);
         String title = summary.path("name").asText(null);
         if (id == null || title == null) {

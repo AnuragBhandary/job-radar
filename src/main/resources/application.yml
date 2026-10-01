@@ -351,6 +351,17 @@ job-radar:
       "[hamburg new york]": US
       "[hamburg pennsylvania]": US
       "[hamburg new jersey]": US
+      # Workday writes country, state, city: "US-OH-DUBLIN (Crosby)" (2026-10-01).
+      "[us oh dublin]": US
+      "[us ca dublin]": US
+      "[us ga dublin]": US
+      "[us ct berlin]": US
+      "[us nh berlin]": US
+      "[us md berlin]": US
+      "[us wi berlin]": US
+      "[us ny hamburg]": US
+      "[us pa hamburg]": US
+      "[us nj hamburg]": US
 
   # ---------------------------------------------------------------------------
   # Screening rules. In YAML rather than Java because they change often: the
@@ -424,7 +435,9 @@ job-radar:
         ["dublin ohio", "dublin oh", "dublin california", "dublin ca",
          "dublin georgia", "berlin connecticut", "berlin ct",
          "berlin new hampshire", "berlin maryland", "berlin wisconsin",
-         "hamburg new york", "hamburg pennsylvania", "hamburg new jersey"]
+         "hamburg new york", "hamburg pennsylvania", "hamburg new jersey",
+         "us oh dublin", "us ca dublin", "us ga dublin", "us ct berlin", "us nh berlin",
+         "us md berlin", "us wi berlin", "us ny hamburg", "us pa hamburg", "us nj hamburg"]
 
     title-include:
       [software, backend, back-end, back end, full-stack, fullstack, full stack,
@@ -577,7 +590,9 @@ job-radar:
                       anthropic, figma, lyft, reddit, instacart, coupang,
                       spotify, broadcom, expedia,
                       # Own careers sites (Eightfold, Google, Oracle), the same day.
-                      microsoft, netflix, qualcomm, google, jpmc, oracle]
+                      microsoft, netflix, qualcomm, google, jpmc, oracle,
+                      # Sitemap-read sites and HSBC, the same day.
+                      hsbc, intuit, ey, stanchart, wipro]
     big-tech-max-min-years: 1
 
     # Full-stack and frontend titles, rejected at every employer except Amazon

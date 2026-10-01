@@ -30,11 +30,13 @@ public class JobRadarCli implements ApplicationRunner {
     private final NotifyCommand notify;
     private final LinksCommand links;
     private final BoardsCommand boards;
+    private final DiscoverCommand discover;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
-            NotifyCommand notify, LinksCommand links, BoardsCommand boards) {
+            NotifyCommand notify, LinksCommand links, BoardsCommand boards,
+            DiscoverCommand discover) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -47,6 +49,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.notify = notify;
         this.links = links;
         this.boards = boards;
+        this.discover = discover;
     }
 
     @Override
@@ -79,6 +82,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "notify" -> notify.run(options);
             case "links" -> links.run(options);
             case "boards" -> boards.run(options);
+            case "discover" -> discover.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -138,6 +142,9 @@ public class JobRadarCli implements ApplicationRunner {
                   probe --tokens=a,b,c [--add]            test candidate tokens on every ATS; --add saves hits
                   boards [--idle]                         what each board has yielded; --idle only the dead weight
                   boards --disable=SOURCE/token,...       stop fetching a board (--enable= to undo)
+                  discover [--platforms=lever,...] [--deep] [--recheck-days=N] [--limit=N] [--dry-run]
+                                                          find boards in the Internet Archive, survey them,
+                                                          add those with roles in target countries
                 """);
     }
 }

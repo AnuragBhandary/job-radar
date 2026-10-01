@@ -75,6 +75,10 @@ public final class SchemaMigrator {
                         com.anuragbhandary.jobradar.domain.PostingStatus.class)),
                 new EnumColumn("board_token", "source", names(
                         com.anuragbhandary.jobradar.domain.Source.class)),
+                new EnumColumn("discovered_board", "source", names(
+                        com.anuragbhandary.jobradar.domain.Source.class)),
+                new EnumColumn("discovered_board", "outcome", names(
+                        com.anuragbhandary.jobradar.domain.DiscoveredBoard.Outcome.class)),
                 // application_attempt, application_field and the knowledge tables
                 // are no longer written (their code is at tag v1-full). Their
                 // constraints already accept every value they hold, so they are
