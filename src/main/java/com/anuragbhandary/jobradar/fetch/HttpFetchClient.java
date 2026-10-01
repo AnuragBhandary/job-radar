@@ -147,6 +147,12 @@ public class HttpFetchClient {
                     if (e.getCause() instanceof IOException io) {
                         throw io;
                     }
+                    if (e.getCause() instanceof IllegalArgumentException && jsonBody == null) {
+                        String next = repairedRedirect(url, timeoutSeconds);
+                        if (next != null && !next.equals(url)) {
+                            return execute(next, null, fixtureName, timeoutSeconds);
+                        }
+                    }
                     throw new IOException(e.getCause());
                 }
 
@@ -176,6 +182,66 @@ public class HttpFetchClient {
         throw new FetchException(
                 "Gave up on " + url + " after " + config.maxRetries() + " attempts",
                 lastIoFailure);
+    }
+
+    /**
+     * Follows one redirect by hand when its target is not a legal URI.
+     *
+     * <p>Wipro's careers site answers a job link holding "%2B" ("Java+Kafka")
+     * with {@code Location: /job/Pune-SDET- -Python-...}, a raw space, which
+     * Java's client refuses to follow ("Illegal character in path"). Browsers
+     * and curl encode it and carry on; so does this. Every such job failed three
+     * times and the board was reported broken on 2026-10-01.
+     *
+     * @return the repaired absolute target, or null when there is no redirect
+     */
+    private String repairedRedirect(String url, int timeoutSeconds) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .header("User-Agent", config.userAgent())
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .GET()
+                    .build();
+            HttpResponse<Void> response = noRedirects().send(request, HttpResponse.BodyHandlers.discarding());
+            if (response.statusCode() < 300 || response.statusCode() >= 400) {
+                return null;
+            }
+            return response.headers().firstValue("Location")
+                    .map(location -> URI.create(url).resolve(encodeIllegal(location)).toString())
+                    .orElse(null);
+        } catch (IOException | IllegalArgumentException e) {
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+    }
+
+    private volatile HttpClient noRedirects;
+
+    private HttpClient noRedirects() {
+        if (noRedirects == null) {
+            noRedirects = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(config.timeoutSeconds()))
+                    .followRedirects(HttpClient.Redirect.NEVER)
+                    .build();
+        }
+        return noRedirects;
+    }
+
+    /** Percent-encodes what a URI may not hold raw, leaving existing escapes alone. */
+    static String encodeIllegal(String location) {
+        StringBuilder out = new StringBuilder(location.length());
+        for (byte b : location.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            int c = b & 0xff;
+            boolean legal = c > 0x20 && c < 0x7f && "\"<>\\^`{|}".indexOf(c) < 0;
+            if (legal) {
+                out.append((char) c);
+            } else {
+                out.append('%').append(String.format("%02X", c));
+            }
+        }
+        return out.toString();
     }
 
     /** A response that reached us, whatever its status. */

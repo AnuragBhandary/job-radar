@@ -59,6 +59,20 @@ public final class Employer {
         return new String[] {label, t};
     }
 
+    /**
+     * Boards that post for employers they do not name. Jobgether lists roles "on
+     * behalf of a partner company, who manages all applications" (2026-10-01:
+     * 245 candidates, no employer in title or text), so there is no employer's
+     * own page to apply on unless the description gives the company away.
+     */
+    private static final java.util.Set<String> HIDDEN_EMPLOYER_BOARDS = java.util.Set.of(
+            "LEVER/jobgether");
+
+    public static boolean hidesEmployer(Source source, String boardToken) {
+        return source != null && boardToken != null
+                && HIDDEN_EMPLOYER_BOARDS.contains(source + "/" + boardToken.toLowerCase(Locale.ROOT));
+    }
+
     public static String company(String boardLabel, Source source, String title) {
         return split(boardLabel, source, title)[0];
     }

@@ -73,13 +73,33 @@ final class SoftwareSignal {
             "^\\W*(?:junior|associate|graduate|entry[- ]level)?\\s*engineer(?:ing)?"
                     + "\\s*(?:i{1,3}|[1-3])?\\W*$", Pattern.CASE_INSENSITIVE);
 
+    /** Building, plant and hotel upkeep: what a non-software "Engineer" does. */
+    private static final Pattern MAINTENANCE = Pattern.compile(
+            "\\b(?:plumbing|plumber|hvac|carpentry|drywall|boilers?|preventive\\s+maintenance"
+                    + "|guest\\s+(?:repair|room)s?|shut-?off\\s+valves?|refrigeration|housekeeping"
+                    + "|kitchen\\s+equipment|mechanical\\s+room)\\b",
+            Pattern.CASE_INSENSITIVE);
+
     private SoftwareSignal() {
     }
 
     /** Why the posting is not a software job, or empty. */
     static Optional<String> missing(String title, String description) {
-        if (title != null && (SOFTWARE_TITLE.matcher(title).find()
-                || BARE_TITLE.matcher(title).matches())) {
+        if (title != null && SOFTWARE_TITLE.matcher(title).find()) {
+            return Optional.empty();
+        }
+        if (title != null && BARE_TITLE.matcher(title).matches()) {
+            // Still trusted when the description says nothing, as at Target's
+            // captive centres. Only building and hotel maintenance is caught:
+            // Marriott's "Engineer I" (2026-10-01) was plumbing, drywall and
+            // kitchen equipment, and named no software tool.
+            if (description != null && termsIn(description).isEmpty()) {
+                java.util.regex.Matcher m = MAINTENANCE.matcher(description);
+                if (m.find()) {
+                    return Optional.of("not a software role: a bare engineer title over "
+                            + "maintenance work (\"" + m.group() + "\")");
+                }
+            }
             return Optional.empty();
         }
         return missing(description);

@@ -33,16 +33,19 @@ public final class Internship {
     private static final Pattern STUDENT_ONLY = Pattern.compile(
             "\\bcurrently\\s+(?:enrolled|pursuing|studying|a\\s+student)"
                     + "|\\bmust\\s+be\\s+(?:a\\s+)?(?:current(?:ly)?\\s+)?(?:enrolled|student)"
-                    + "|\\benrolled\\s+(?:full[- ]time\\s+)?in\\s+(?:a|an)\\s+(?:accredited\\s+)?"
+                    + "|\\benrolled\\s+(?:full[- ]time\\s+)?in\\s+(?:a|an)\\s+(?:full[- ]time\\s+)?(?:accredited\\s+)?"
                     + "(?:bachelor|master|degree|university|undergraduate|graduate|b\\.?tech|m\\.?tech)"
                     + "|\\bpursuing\\s+(?:a\\s+|an\\s+|your\\s+)?(?:bachelor|master|b\\.?tech|m\\.?tech|b\\.?e\\b"
                     + "|degree|undergraduate|graduate\\s+degree|ph\\.?d)"
+                    // "a graduation date between December 2026 and June 2027" (Amex).
                     + "|\\b(?:expected\\s+)?graduat(?:e|ing|ion)\\s+(?:in|by|between|date|year)\\s*[:\\-]?\\s*"
-                    + "(?:\\w+\\s+)?20(?:2[6-9]|3\\d)"
+                    + "(?:\\w+\\s+){0,2}20(?:2[6-9]|3\\d)"
                     + "|\\b20(?:2[6-9]|3\\d)\\s+(?:batch|graduates?|pass[- ]?outs?)\\b"
                     + "|\\bbatch\\s+(?:of\\s+)?20(?:2[6-9]|3\\d)\\b"
-                    + "|\\bclass\\s+of\\s+20(?:2[6-9]|3\\d)\\b"
-                    + "|\\b(?:final|pre[- ]final|penultimate)[- ]year\\s+(?:students?|of\\s+(?:study|your))"
+                    // Not "Enterprise Tech 30 Class of 2026", an award list.
+                    + "|(?<!\\d\\s)\\bclass\\s+of\\s+20(?:2[6-9]|3\\d)\\b"
+                    + "|\\b(?:final|pre[- ]final|penultimate)[- ]year\\s+(?:students?|of\\s+(?:study|your)"
+                    + "|undergraduates?|postgraduates?|masters?|bachelor)"
                     + "|\\breturn(?:ing)?\\s+to\\s+(?:school|university|college|your\\s+studies)"
                     + "|\\bremaining\\s+(?:semester|term|year)s?\\s+(?:of|in|at)\\b"
                     // Stripe's Bangalore intern (2026-09-28): "through pursuit of a
@@ -70,7 +73,29 @@ public final class Internship {
             "\\b(\\d{1,2})\\s*(?:[-–]\\s*\\d{1,2}\\s*)?[- ]?(months?|weeks?)\\b",
             Pattern.CASE_INSENSITIVE);
 
+    /**
+     * A graduate programme or new-grad role: open to a recent graduate by
+     * definition, and often only to this year's.
+     */
+    private static final Pattern GRADUATE_PROGRAMME = Pattern.compile(
+            "(?<![\\p{L}])(?:graduate|grad|new[- ]?grads?|campus|early[- ]careers?|apprentice\\w*"
+                    + "|placement|class\\s+of|20(?:2[6-9]|3\\d))(?![\\p{L}])",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+    /**
+     * Only this year's graduates. Deliveroo's new-grad role (2026-10-01) asked for
+     * a degree "graduated within the last year", which the graduates-welcome
+     * wording below would otherwise read as an opening.
+     */
+    private static final Pattern RECENT_ONLY = Pattern.compile(
+            "\\bgraduat(?:ed|ion)\\s+(?:with)?in\\s+the\\s+(?:last|past)\\s+(?:year|12\\s+months|twelve\\s+months)",
+            Pattern.CASE_INSENSITIVE);
+
     private Internship() {
+    }
+
+    public static boolean isGraduateProgramme(String title) {
+        return title != null && GRADUATE_PROGRAMME.matcher(title).find();
     }
 
     public static boolean isInternship(String title) {
@@ -81,6 +106,10 @@ public final class Internship {
     static Optional<String> studentOnly(String description) {
         if (description == null) {
             return Optional.empty();
+        }
+        Matcher recent = RECENT_ONLY.matcher(description);
+        if (recent.find()) {
+            return Optional.of(phrase(description, recent.start(), recent.end()));
         }
         Matcher m = STUDENT_ONLY.matcher(description);
         while (m.find()) {

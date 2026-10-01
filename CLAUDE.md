@@ -49,7 +49,10 @@ openings" and similar from any directory. In short:
    Workday maintenance is UNKNOWN, never dead). An UNKNOWN on a company board
    becomes DEAD when that board has fetched fine for 36 hours without the posting. `notify` runs the same check and
    drops dead links. When nothing is found, search the careers site by hand and
-   record it with `mark <id> shortlist --url=<link>`.
+   record it with `mark <id> shortlist --url=<link>`; a link set that way is
+   always the one checked and sent. An Eightfold job is live while its site's
+   sitemap lists it (its own page can 404 while the job is open), and Eightfold
+   links are stored in the `/careers?pid=<id>` form.
 8. `notify --ids=<picks in ranked order>` posts the picks to the user's Discord
    channel as cards (webhook in `secrets.yml` as `job-radar.notify.discord-webhook`).
    The last line of each posting's `--note` is the card text, and its first word
@@ -105,10 +108,19 @@ openings" and similar from any directory. In short:
   relocation role, and a requirement to live in the country already.
   Internships: only in India or remote into India, and not when the text
   limits them to enrolled students (`Internship`); the candidate block shows
-  whether one converts to full time and how long it runs. Big tech also
+  whether one converts to full time and how long it runs. Graduate programmes
+  and new-grad titles are rejected on the same wording (current enrolment,
+  graduating 2026 or later, "graduated within the last year"), in every lane.
+  "Authorised to work in <country>" and "right to work ... required" are
+  sponsorship refusals. US-only remote with no place ("Remote (Any State)",
+  "Nationwide Remote") is US in `geo.countries`. Big tech also
   includes the banks and large India offices (`big-tech-boards`).
   Not software: a title with no software word (and not a bare "Engineer") whose
-  full description names fewer than two software tools (`SoftwareSignal`).
+  full description names fewer than two software tools (`SoftwareSignal`); a
+  bare "Engineer" naming no tool over maintenance work (plumbing, HVAC, guest
+  repairs) is rejected too. Data-collection drivers, civil, site, facilities and
+  teaching titles are in `title-exclude`. Jobgether hides the employer
+  (`Employer.hidesEmployer`): its postings score 20 lower and are flagged.
   Hacker News is exempt. The candidate block also flags stated pay below the
   relocation floor, in the floor's currency only.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
@@ -132,7 +144,12 @@ openings" and similar from any directory. In short:
   (`name/host/path-to-sitemap`: Intuit, EY, Standard Chartered, Wipro). It reads
   JSON-LD `JobPosting`, else microdata, else takes the place from the URL, so a
   site qualifies only if its job URLs carry the place. Stored pages are reused
-  unless the sitemap's `lastmod` is recent; at most 400 new pages are read a run.
+  unless the sitemap's `lastmod` is recent or the stored description is under
+  1,000 characters; at most 400 pages are read a run, and a stored page not
+  re-read keeps its stored copy. SAP SuccessFactors sites (Wipro) keep the job
+  text in blocks beside the `itemprop="description"` element; those are read
+  too. A redirect to an illegal URI (Wipro's raw spaces) is followed with the
+  characters encoded (`HttpFetchClient.repairedRedirect`).
 - `discover` finds boards nobody named: it asks the Internet Archive's URL index
   (Common Crawl's was down) for every Greenhouse, Lever, Ashby, Recruitee,
   SmartRecruiters and Workday board, surveys each new one with one request, and

@@ -193,4 +193,20 @@ class SitemapFetcherTest {
         assertThatThrownBy(() -> SitemapFetcher.Board.parse("ey/careers.ey.com"))
                 .isInstanceOf(FetchException.class);
     }
+
+    @Test
+    @DisplayName("SuccessFactors keeps the job text beside the description element (Wipro)")
+    void readsSuccessFactorsJobText() {
+        RawPosting p = fetcher(null, emptyRepo()).parsePage(
+                FixtureSupport.load("sitemap-wipro-job.html"),
+                job("https://careers.wipro.com/job/Mumbai-Developer-L1-IND-400708/1327073655/",
+                        "Mumbai Developer L1"));
+
+        // Until 2026-10-01 only the company paragraph was read.
+        assertThat(p.description()).startsWith("Wipro Limited")
+                .contains("design, test and maintain software")
+                .contains("Mandatory Skills").contains("Oracle SQL")
+                .doesNotContain("<span");
+        assertThat(p.description().length()).isGreaterThan(3000);
+    }
 }

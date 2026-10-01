@@ -74,6 +74,7 @@ public class LinkChecker {
                         + "/jobs/" + externalId, "Greenhouse");
                 case LEVER -> byApi("https://api.lever.co/v0/postings/" + token + "/"
                         + externalId, "Lever");
+                case EIGHTFOLD -> eightfold(token, externalId);
                 default -> check(url);
             };
         } catch (IOException e) {
@@ -134,6 +135,26 @@ public class LinkChecker {
             Thread.currentThread().interrupt();
             return new Result(State.UNKNOWN, "interrupted");
         }
+    }
+
+    /**
+     * An Eightfold job is open while the site's sitemap lists it, which is how the
+     * fetch decides too. Its page is no evidence either way: NTT DATA's answered
+     * 404 for a listed job (2026-10-01), and the job API still answers for jobs
+     * long closed.
+     */
+    private Result eightfold(String token, String externalId) throws IOException, InterruptedException {
+        String[] parts = token == null ? new String[0] : token.split("/");
+        if (parts.length != 3) {
+            return new Result(State.UNKNOWN, "not an Eightfold token: " + token);
+        }
+        Response r = get("https://%s/careers/sitemap.xml?domain=%s".formatted(parts[1], parts[2]));
+        if (r.status() != 200 || !r.body().contains("<loc>")) {
+            return new Result(State.UNKNOWN, "Eightfold sitemap answered " + r.status());
+        }
+        return r.body().contains("/careers/job/" + externalId)
+                ? new Result(State.LIVE, "listed on the Eightfold sitemap")
+                : new Result(State.DEAD, "no longer in the Eightfold sitemap");
     }
 
     private Result byApi(String apiUrl, String platform) throws IOException, InterruptedException {

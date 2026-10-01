@@ -143,4 +143,12 @@ class EightfoldFetcherTest {
         assertThatThrownBy(() -> fetcher.fetch("microsoft"))
                 .isInstanceOf(FetchException.class);
     }
+
+    /** NTT DATA's slug page answered 404 for a listed job on 2026-10-01. */
+    @Test
+    void linksByPositionId() {
+        assertThat(new EightfoldFetcher.Board("nttdata", "nttdata.eightfold.ai", "nttdata.com")
+                .publicUrl("563327934537258"))
+                .isEqualTo("https://nttdata.eightfold.ai/careers?pid=563327934537258&domain=nttdata.com");
+    }
 }

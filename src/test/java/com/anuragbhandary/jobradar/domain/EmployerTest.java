@@ -48,4 +48,11 @@ class EmployerTest {
         assertThat(Employer.roleKey("Arbeitnow", Source.ARBEITNOW, "AI Agent Engineer (f/m/d) @ Manex AI GmbH"))
                 .isEqualTo(Employer.roleKey("Arbeitnow", Source.ARBEITNOW, "AI Agent Engineer (m/w/d) @ Manex AI"));
     }
+
+    @Test
+    void jobgetherHidesTheEmployer() {
+        assertThat(Employer.hidesEmployer(Source.LEVER, "jobgether")).isTrue();
+        assertThat(Employer.hidesEmployer(Source.LEVER, "shyftlabs")).isFalse();
+        assertThat(Employer.hidesEmployer(Source.GREENHOUSE, "jobgether")).isFalse();
+    }
 }

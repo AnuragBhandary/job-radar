@@ -45,6 +45,12 @@ public class SignalExtractor {
             compile("must\\s+(?:already\\s+)?(?:have|hold|possess)[^.]{0,40}"
                     + "(?:right\\s+to\\s+work|work\\s+authoris?z?ation|work\\s+permit)"),
             compile("(?:existing|current|valid)\\s+right\\s+to\\s+work"),
+            // Deliveroo's new-grad role (2026-10-01): "Right to Work: Applicants
+            // must be authorised to work in the UK".
+            compile("must\\s+(?:already\\s+)?be\\s+(?:legally\\s+)?(?:authori[sz]ed|eligible|entitled|permitted)"
+                    + "\\s+to\\s+work"),
+            compile("(?:require|need)s?\\s+(?:the\\s+|full\\s+|existing\\s+){0,2}right\\s+to\\s+work"),
+            compile("right\\s+to\\s+work[^.]{0,40}?\\s+(?:is\\s+)?(?:required|essential|mandatory)"),
             compile("security\\s+clearance"),
             compile("(?:must\\s+be|require[sd]?)[^.]{0,30}citizen"));
 

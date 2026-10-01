@@ -95,6 +95,16 @@ public class EightfoldFetcher implements AtsFetcher {
             return "https://%s/api/pcsx/position_details?position_id=%s&domain=%s&hl=en"
                     .formatted(host, id, domain);
         }
+
+        /**
+         * The page a person applies on, by position id. The sitemap's own
+         * {@code /careers/job/<id>-<slug>} page answered 404 on NTT DATA's site
+         * for a job its API still listed (2026-10-01), so a pick was dropped as
+         * dead; the {@code ?pid=} form opened on every tenant tried.
+         */
+        String publicUrl(String id) {
+            return "https://%s/careers?pid=%s&domain=%s".formatted(host, id, domain);
+        }
     }
 
     /** One job as the sitemap lists it. */
@@ -132,7 +142,7 @@ public class EightfoldFetcher implements AtsFetcher {
                 // dropped (a missing posting reads as closed); a new one waits.
                 posting = known.stored(job.id());
                 if (posting != null) {
-                    detailed.add(posting);
+                    detailed.add(withPublicUrl(posting, board));
                 }
                 continue;
             }
@@ -143,7 +153,7 @@ public class EightfoldFetcher implements AtsFetcher {
             if (posting == null) {
                 failed++;
             } else {
-                detailed.add(posting);
+                detailed.add(withPublicUrl(posting, board));
             }
         }
         // A posting missing from the batch is read as closed. If the site
@@ -154,6 +164,13 @@ public class EightfoldFetcher implements AtsFetcher {
                     + " detail requests failed on " + boardToken);
         }
         return new FetchBatch(detailed, listed.size());
+    }
+
+    /** Stored postings carry the sitemap's link; this moves them to the stable one. */
+    private static RawPosting withPublicUrl(RawPosting p, Board board) {
+        String url = board.publicUrl(p.externalId());
+        return url.equals(p.url()) ? p : new RawPosting(p.externalId(), p.title(), p.location(),
+                p.description(), url, p.postedDate());
     }
 
     /** Split out so tests can drive it from a saved sitemap. */

@@ -75,6 +75,17 @@ public class LinkService {
         if (result.state() == LinkChecker.State.UNKNOWN) {
             result = absentFromBoard(posting).orElse(result);
         }
+        // A link set by hand with mark --url is the one the person checked and
+        // will apply on, so it is the one sent. The listing's link used to win
+        // over it, and a pick whose board page 404ed was dropped even after a
+        // working link was recorded (NTT DATA, 2026-10-01). When the listing is
+        // known to be open that settles it; otherwise the hand-set link is checked.
+        if (posting.getDirectUrl() != null && !posting.getDirectUrl().equals(posting.getUrl())) {
+            LinkChecker.Result direct = result.state() == LinkChecker.State.LIVE
+                    ? new LinkChecker.Result(LinkChecker.State.LIVE, result.reason() + "; link set by hand")
+                    : checker.check(posting.getDirectUrl());
+            return new Link(posting.getDirectUrl(), true, direct, null);
+        }
         return new Link(posting.getUrl(), true, result, null);
     }
 

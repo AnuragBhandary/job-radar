@@ -62,4 +62,16 @@ class SoftwareSignalTest {
         assertThat(SoftwareSignal.missing("Manufacturing Engineer – Magnet Industrialisation", silent))
                 .isPresent();
     }
+
+    /** Marriott's "Engineer I", 2026-10-01: hotel maintenance under a bare title. */
+    @Test
+    void aBareTitleOverMaintenanceWork() {
+        String upkeep = padded("Respond and attend to guest repair requests. Perform preventive "
+                + "maintenance on tools and kitchen and mechanical room equipment. Identify, locate "
+                + "and operate all shut-off valves. Plumbing, drywall and HVAC repairs.");
+        assertThat(SoftwareSignal.missing("Engineer I", upkeep)).isPresent();
+        // The same words beside software tools leave a bare title alone.
+        assertThat(SoftwareSignal.missing("Engineer I", upkeep + " Python, SQL and Docker."))
+                .isEmpty();
+    }
 }

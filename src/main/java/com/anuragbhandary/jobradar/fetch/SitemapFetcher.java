@@ -148,12 +148,19 @@ public class SitemapFetcher implements AtsFetcher {
         Instant rereadAfter = Instant.now().minus(java.time.Duration.ofDays(REREAD_DAYS));
         List<RawPosting> out = new ArrayList<>(shortlist.size());
         List<Listed> toRead = new ArrayList<>();
+        // Stored pages read again even though unchanged: their description was
+        // too short to judge (Wipro's company paragraph, before the page's own
+        // job text was read). Kept as stored if the read does not happen.
+        Map<String, RawPosting> fallback = new HashMap<>();
         for (Listed job : shortlist) {
             Posting known = stored.get(job.id());
-            if (known != null && (job.lastmod() == null || job.lastmod().isBefore(rereadAfter))) {
-                out.add(new RawPosting(known.getExternalId(), known.getTitle(), known.getLocation(),
-                        known.getDescriptionText(), known.getUrl(), known.getPostedDate()));
+            boolean unchanged = job.lastmod() == null || job.lastmod().isBefore(rereadAfter);
+            if (known != null && unchanged && !tooShortToJudge(known)) {
+                out.add(asRaw(known));
             } else {
+                if (known != null) {
+                    fallback.put(job.id(), asRaw(known));
+                }
                 toRead.add(job);
             }
         }
@@ -162,6 +169,14 @@ public class SitemapFetcher implements AtsFetcher {
         if (toRead.size() > MAX_PAGES_PER_RUN) {
             log.info("{}: {} pages to read, reading the newest {} this run",
                     boardToken, toRead.size(), MAX_PAGES_PER_RUN);
+            // Past the cap, a stored page stays as stored: a posting missing from
+            // the batch reads as closed.
+            for (Listed later : toRead.subList(MAX_PAGES_PER_RUN, toRead.size())) {
+                RawPosting kept = fallback.remove(later.id());
+                if (kept != null) {
+                    out.add(kept);
+                }
+            }
             toRead = toRead.subList(0, MAX_PAGES_PER_RUN);
         }
 
@@ -177,18 +192,18 @@ public class SitemapFetcher implements AtsFetcher {
                     continue;
                 }
                 if (!page.isSuccess()) {
-                    failed++;
+                    failed += keepStored(job, fallback, out);
                     continue;
                 }
                 RawPosting posting = parsePage(page.body(), job);
                 if (posting == null) {
-                    failed++;
+                    failed += keepStored(job, fallback, out);
                 } else {
                     out.add(posting);
                 }
             } catch (FetchException e) {
                 log.debug("Skipping {}: {}", job.url(), e.getMessage());
-                failed++;
+                failed += keepStored(job, fallback, out);
             }
         }
         log.debug("{}: {} job pages, {} shortlisted, {} read ({} closed, {} failed)",
@@ -225,6 +240,28 @@ public class SitemapFetcher implements AtsFetcher {
             return entries;
         }
         return entries(xml);
+    }
+
+    /** Below this a stored description is a company paragraph, not a job. */
+    static final int SHORT_DESCRIPTION_CHARS = 1000;
+
+    private static boolean tooShortToJudge(Posting p) {
+        return p.getDescriptionText() == null || p.getDescriptionText().length() < SHORT_DESCRIPTION_CHARS;
+    }
+
+    private static RawPosting asRaw(Posting known) {
+        return new RawPosting(known.getExternalId(), known.getTitle(), known.getLocation(),
+                known.getDescriptionText(), known.getUrl(), known.getPostedDate());
+    }
+
+    /** A failed re-read of a stored page keeps it; a failed new page counts as a failure (1). */
+    private static int keepStored(Listed job, Map<String, RawPosting> fallback, List<RawPosting> out) {
+        RawPosting kept = fallback.get(job.id());
+        if (kept != null) {
+            out.add(kept);
+            return 0;
+        }
+        return 1;
     }
 
     /** {@code [loc, lastmod]} for each {@code <url>} in one sitemap. */
@@ -324,6 +361,10 @@ public class SitemapFetcher implements AtsFetcher {
             return null;
         }
         String description = Microdata.html(html, "description");
+        String rest = Microdata.successFactorsAfterDescription(html);
+        if (rest != null) {
+            description = (description == null ? "" : description) + "\n\n" + rest;
+        }
         StringJoiner place = new StringJoiner(", ");
         for (String part : List.of("addressLocality", "addressRegion", "addressCountry")) {
             String value = Microdata.text(html, part);
@@ -463,6 +504,61 @@ public class SitemapFetcher implements AtsFetcher {
         static String text(String html, String prop) {
             String inner = html(html, prop);
             return inner == null ? null : Html.toPlainText(inner).trim();
+        }
+
+        private static final Pattern SF_TEXT_SPAN = Pattern.compile(
+                "<span\\b[^>]*class=\"[^\"]*\\brtltextaligneligible\\b[^\"]*\"[^>]*>",
+                Pattern.CASE_INSENSITIVE);
+
+        /**
+         * The job text an SAP SuccessFactors careers page keeps beside its
+         * {@code itemprop="description"} element rather than inside it.
+         *
+         * <p>Wipro's description element holds only the company paragraph; the
+         * role, its duties and "Mandatory Skills" sit in the text blocks after it.
+         * Read alone, 1,122 Wipro postings carried the same 650 characters of
+         * boilerplate (2026-10-01) and could not be judged. Null on any page
+         * without that layout.
+         */
+        static String successFactorsAfterDescription(String html) {
+            if (!html.contains("joblayouttoken")) {
+                return null;
+            }
+            Matcher description = Pattern.compile("\\bitemprop=\"description\"").matcher(html);
+            if (!description.find()) {
+                return null;
+            }
+            Matcher span = SF_TEXT_SPAN.matcher(html);
+            Pattern edge = Pattern.compile("<(/?)span\\b[^>]*>", Pattern.CASE_INSENSITIVE);
+            StringBuilder out = new StringBuilder();
+            int from = description.end();
+            while (span.find(from)) {
+                Matcher m = edge.matcher(html);
+                m.region(span.end(), html.length());
+                int depth = 1;
+                int end = -1;
+                while (m.find()) {
+                    depth += m.group(1).isEmpty() ? 1 : -1;
+                    if (depth == 0) {
+                        end = m.start();
+                        break;
+                    }
+                }
+                if (end < 0) {
+                    break;
+                }
+                String inner = html.substring(span.end(), end);
+                // Search starts past the first description element, so a later one
+                // (Wipro's "Mandatory Skills" block is a second) is job text too.
+                if (!inner.isBlank()) {
+                    if (out.length() > 0) {
+                        out.append("\n\n");
+                    }
+                    out.append(inner);
+                }
+                from = m.end();
+            }
+            return out.length() == 0 ? null : out.toString();
         }
 
         /** The inner HTML of the first element with this itemprop, balanced on its tag name. */

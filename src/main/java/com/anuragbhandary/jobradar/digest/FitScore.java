@@ -144,13 +144,17 @@ public class FitScore {
             fresh = age <= 3 ? 10 : age <= 7 ? 7 : age <= 14 ? 4 : 0;
         }
         int graduate = p.isGraduateSignal() ? 5 : 0;
+        // He applies on the employer's own site only, which a hidden employer rules
+        // out unless the review can work out who it is.
+        boolean hidden = com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(
+                p.getSource(), p.getBoardToken());
 
         int score = Math.max(0, Math.min(100,
-                skills + level.points + experience + lane + fresh + graduate));
+                skills + level.points + experience + lane + fresh + graduate - (hidden ? 20 : 0)));
         String summary = "%d skill%s%s, %s%s, %s".formatted(matched.size(), matched.size() == 1 ? "" : "s",
                 matched.isEmpty() ? "" : " (" + String.join(", ", matched.subList(0, Math.min(6, matched.size())))
                         + (matched.size() > 6 ? ", ..." : "") + ")",
-                level.words.isEmpty() ? "" : level.words + ", ",
+                (level.words.isEmpty() ? "" : level.words + ", ") + (hidden ? "employer hidden, " : ""),
                 years == null ? "years not stated" : years + (years == 1 ? " year" : " years"),
                 laneName(p));
         return new Fit(score, matched, summary);

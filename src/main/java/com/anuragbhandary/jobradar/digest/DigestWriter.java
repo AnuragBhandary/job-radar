@@ -130,7 +130,10 @@ public class DigestWriter {
                     out.append("- ").append(p.getId()).append(" · ").append(company(p, labels))
                             .append(" · ").append(p.getTitle()).append(" · ")
                             .append(p.getLocation() == null ? "-" : p.getLocation())
-                            .append(" · fit ").append(e.fit().score()).append('\n');
+                            .append(" · fit ").append(e.fit().score())
+                            .append(com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(
+                                    p.getSource(), p.getBoardToken()) ? " · employer hidden" : "")
+                            .append('\n');
                 }
             }
         }
@@ -255,6 +258,10 @@ public class DigestWriter {
         }
         if (entry.companyApplied()) {
             out.append("**Already applied to this company** (this role or another)\n");
+        }
+        if (com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(p.getSource(), p.getBoardToken())) {
+            out.append("**Employer hidden:** a middleman posting for an unnamed company; apply only "
+                    + "if the description gives the employer away and its own careers page has the role\n");
         }
         String frontend = frontendSignal(p.getDescriptionText());
         if (frontend != null) {

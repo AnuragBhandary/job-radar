@@ -20,6 +20,17 @@ class SignalExtractorTest {
     @DisplayName("sponsorship")
     class Sponsorship {
 
+        /** Deliveroo's new-grad role, 2026-10-01. */
+        @Test
+        void authorisedToWorkIsBlocking() {
+            assertThat(extractor.sponsorship("Right to Work: Applicants must be authorised to work in "
+                    + "the UK.")).startsWith("blocked:");
+            assertThat(extractor.sponsorship("The right to work in the UK is required for this role."))
+                    .startsWith("blocked:");
+            assertThat(extractor.sponsorship("We will help you relocate and offer visa sponsorship."))
+                    .startsWith("supportive:");
+        }
+
         @ParameterizedTest
         @ValueSource(strings = {
                 "We are unable to sponsor visas for this position.",

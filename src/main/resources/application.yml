@@ -251,7 +251,12 @@ job-radar:
            ohio, california, texas, washington, massachusetts, new jersey,
            illinois, florida, colorado, north carolina, virginia, pennsylvania,
            arizona, oregon, utah, minnesota, michigan, tennessee, maryland,
-           connecticut, wisconsin, new hampshire]
+           connecticut, wisconsin, new hampshire,
+           # US-only remote that names no place (2026-10-01: CACI's "Remote (Any
+           # State)" and Empower's "Nationwide Remote" were read as open to India).
+           # Not bare "nationwide": Nationwide is also a UK building society.
+           any state, all states, all 50 states, nationwide remote,
+           remote us, us remote, remote usa, usa remote]
       CA: [canada, toronto, vancouver, montreal, ottawa, calgary, waterloo]
       GB: [united kingdom, uk, england, scotland, wales, london, manchester,
            edinburgh, cambridge, bristol, glasgow, leeds, belfast]
@@ -568,7 +573,17 @@ job-radar:
        # work, service desks, and contract roles, all against standing rules.
        emirati, uae national, saudi national, qatari national,
        data entry, data collector, annotator, ai trainer, freelance, freelancer,
-       service desk, (contract), on contract, contract role]
+       service desk, (contract), on contract, contract role,
+       # Not software, and titled so that "data" or a bare "Engineer" let them
+       # through (2026-10-01): ADAS data-collection drivers, hotel and building
+       # maintenance, construction site and civil roles, university teaching.
+       collection driver, data colletor, driver / data, drive & get paid, delivery driver,
+       civil engineer, civil, facilities engineer, facility engineer,
+       facilities infrastructure, facilities automation, data center facilities,
+       facilities & physical,
+       site engineer, planning engineer, cost control, qa/qc, contracts engineer,
+       commissioning, hvac, data center shift, data centre shift,
+       professor, lecturer, teacher, tutor]
 
     # Finance, risk and operations work, rejected unless the title also names
     # software or data (domain-keep). Built on 2026-10-01 from skip reasons:

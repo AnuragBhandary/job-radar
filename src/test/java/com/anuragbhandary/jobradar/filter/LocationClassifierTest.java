@@ -310,4 +310,13 @@ class LocationClassifierTest {
         // "Ukraine" - which would be right for the wrong reason.
         assertThat(at("Kyiv, Ukraine").countryCode()).isEqualTo("UA");
     }
+
+    /** CACI and Empower, 2026-10-01: US-only remote that names no place. */
+    @ParameterizedTest
+    @ValueSource(strings = {"Remote (Any State)", "Nationwide Remote", "Remote - US", "Remote, all 50 states"})
+    void usOnlyRemoteIsUs(String location) {
+        LocationProfile profile = at(location);
+        assertThat(profile.countryCode()).isEqualTo("US");
+        assertThat(profile.workMode()).isEqualTo(WorkMode.REMOTE_COUNTRY_LOCKED);
+    }
 }

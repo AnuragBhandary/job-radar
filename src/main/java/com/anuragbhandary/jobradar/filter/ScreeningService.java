@@ -219,6 +219,16 @@ public class ScreeningService {
                 reject(posting, "internship for enrolled students: \"" + studentOnly.get() + "\"");
                 return;
             }
+        } else if (Internship.isGraduateProgramme(posting.getTitle())) {
+            // The same wording closes a graduate programme: LSEG's wants final-year
+            // students or the class of 2026, American Express's a graduation date
+            // in 2026-27, Incident's current enrolment.
+            var studentOnly = Internship.studentOnly(posting.getDescriptionText());
+            if (studentOnly.isPresent()) {
+                reject(posting, "graduate programme for students or this year's graduates: \""
+                        + studentOnly.get() + "\"");
+                return;
+            }
         }
 
         posting.setGraduateSignal(

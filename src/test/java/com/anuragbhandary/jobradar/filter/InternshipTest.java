@@ -52,4 +52,27 @@ class InternshipTest {
         assertThat(Internship.conversion("A three-month project.")).isEmpty();
         assertThat(Internship.duration("Requires 6 months of experience with Python.")).isEmpty();
     }
+
+    /** Graduate programmes from the 2026-10-01 window, none open to a 2025 graduate. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Students must have a graduation date between December 2026 and June 2027.",
+            "To be eligible you must be a final year undergraduate or Masters student.",
+            "You're enrolled in a full-time Bachelors or Masters degree in Computer Science.",
+            "A degree in Computer Science or a related technical field (graduated within the last year)."})
+    void graduateProgrammesForThisYearOnly(String text) {
+        assertThat(Internship.studentOnly(text)).isPresent();
+    }
+
+    @Test
+    void graduateProgrammeTitles() {
+        assertThat(Internship.isGraduateProgramme("Software Engineer, New Grad")).isTrue();
+        assertThat(Internship.isGraduateProgramme("Engineering Graduate Programme (Backend)")).isTrue();
+        assertThat(Internship.isGraduateProgramme("Campus - Full Time - Software Engineer - 2027 (UK - London)")).isTrue();
+        assertThat(Internship.isGraduateProgramme("Backend Engineer")).isFalse();
+        assertThat(Internship.studentOnly("Named to the Enterprise Tech 30 Class of 2026.")).isEmpty();
+        // A recent graduate is still welcome.
+        assertThat(Internship.studentOnly("This role suits a recent graduate (or someone with a strong "
+                + "project record).")).isEmpty();
+    }
 }
