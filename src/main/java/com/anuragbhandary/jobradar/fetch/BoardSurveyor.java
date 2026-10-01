@@ -77,6 +77,24 @@ public class BoardSurveyor {
         };
     }
 
+    /**
+     * The employer's own name where the platform publishes one, else null. The
+     * label becomes the company in the tracker, and Greenhouse board names are
+     * often nothing like it: "stage" is KKR, "india" is AQR India.
+     */
+    public String companyName(Source source, String token) {
+        if (source != Source.GREENHOUSE) {
+            return null;
+        }
+        try {
+            String name = read(http.get("https://boards-api.greenhouse.io/v1/boards/" + token, null), token)
+                    .path("name").asText(null);
+            return name == null || name.isBlank() ? null : name.strip();
+        } catch (FetchException e) {
+            return null;
+        }
+    }
+
     private Survey smartRecruiters(String token) throws FetchException {
         JsonNode root = read(http.get(SR_LIST.formatted(token), null), token);
         List<RawPosting> stubs = new ArrayList<>();

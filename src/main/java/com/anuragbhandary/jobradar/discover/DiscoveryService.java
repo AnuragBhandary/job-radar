@@ -73,7 +73,11 @@ public class DiscoveryService {
             int added, int failed, List<String> addedBoards, String error) {
     }
 
-    record Surveyed(Source source, String token, Survey survey, String error) {
+    record Surveyed(Source source, String token, Survey survey, String error, String name) {
+
+        Surveyed(Source source, String token, Survey survey, String error) {
+            this(source, token, survey, error, null);
+        }
     }
 
     private final ArchiveIndex archive;
@@ -194,7 +198,10 @@ public class DiscoveryService {
 
     private Surveyed survey(Source source, String token) {
         try {
-            return new Surveyed(source, token, surveyor.survey(source, token), null);
+            Survey survey = surveyor.survey(source, token);
+            // The name lookup costs a request, so only for boards being added.
+            String name = survey.hasTargetRoles() ? surveyor.companyName(source, token) : null;
+            return new Surveyed(source, token, survey, null, name);
         } catch (FetchException | RuntimeException e) {
             return new Surveyed(source, token, null, e.getMessage());
         }
@@ -217,7 +224,8 @@ public class DiscoveryService {
         discovered.save(row);
         for (String token : added) {
             if (boards.findBySourceAndToken(result.source(), token).isEmpty()) {
-                boards.save(new BoardToken(result.source(), token, label(result.source(), token)));
+                boards.save(new BoardToken(result.source(), token,
+                        result.name() != null ? result.name() : label(result.source(), token)));
             }
         }
         return added;
