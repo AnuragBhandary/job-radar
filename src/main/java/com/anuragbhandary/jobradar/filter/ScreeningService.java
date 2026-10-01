@@ -274,6 +274,11 @@ public class ScreeningService {
             reject(posting, german.get());
             return;
         }
+        var dutch = DutchRequirement.find(posting.getDescriptionText());
+        if (dutch.isPresent()) {
+            reject(posting, dutch.get());
+            return;
+        }
 
         // Every lane: a U.S.-persons clause closes a remote role just as surely
         // as a relocation one.

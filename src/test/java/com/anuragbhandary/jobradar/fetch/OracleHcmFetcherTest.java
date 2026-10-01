@@ -75,10 +75,10 @@ class OracleHcmFetcherTest {
         FetchBatch batch = fetcher.fetch(TOKEN);
 
         // Four requisitions: two "Lead" software roles and a "Senior Associate"
-        // fail on title; the finance analyst passes (analyst titles are in scope
-        // for the data resume) and is the one detail read.
-        assertThat(client.detailed).hasSize(1);
-        assertThat(batch.postings()).hasSize(1);
+        // fail on title, and since 2026-10-01 so does the financial planning
+        // analyst (a finance role with no software or data word). No detail is read.
+        assertThat(client.detailed).isEmpty();
+        assertThat(batch.postings()).isEmpty();
         assertThat(batch.boardTotal()).isEqualTo(323);
         // The list is shorter than a page, so it is read once.
         assertThat(client.listed).hasSize(1);

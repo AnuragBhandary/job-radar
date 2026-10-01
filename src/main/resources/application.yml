@@ -553,7 +553,31 @@ job-radar:
        industrial engineer, power architecture,
        # From the 2026-09-25 review: a VP role ("vp" alone missed it), a medical
        # device service technician, a copywriting "Content Engineer" and RevOps.
-       vice president, technician, content engineer, revops]
+       vice president, technician, content engineer, revops,
+       # From skip reasons and the 2026-10-01 queue (3,009 recommended): roles
+       # restricted to nationals (Emiratisation), gig annotation and "AI trainer"
+       # work, service desks, and contract roles, all against standing rules.
+       emirati, uae national, saudi national, qatari national,
+       data entry, data collector, annotator, ai trainer, freelance, freelancer,
+       service desk, (contract), on contract, contract role]
+
+    # Finance, risk and operations work, rejected unless the title also names
+    # software or data (domain-keep). Built on 2026-10-01 from skip reasons:
+    # operations, risk, KYC, credit and tax analysts were the commonest skips,
+    # and EY's tax practice alone put 133 "Analyst - TAX" roles in one queue.
+    domain-exclude:
+      [tax, kyc, aml, anti money laundering, financial crime, fraud, forensic,
+       forensics, compliance, credit risk, risk analyst, risk management, market risk,
+       audit, auditor, accounting, accountant, controller, treasury, payroll,
+       underwriting, underwriter, actuarial, investigations, fund accounting,
+       fund servicing, fund controller, trading services, equity research,
+       financial planning, fp&a, reconciliation, collections, procurement,
+       reference data, operations analyst, payment processing, wealth management,
+       investment banking, private equity]
+    domain-keep:
+      [software, developer, engineer, engineering, sde, programmer, data,
+       machine learning, ml, ai, python, java, sql, bi, backend, platform,
+       automation, devops, cloud]
 
     # Whole boards whose roles are structurally unavailable, kept fetched rather
     # than deactivated: the postings still count towards board health, the

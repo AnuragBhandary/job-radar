@@ -111,6 +111,11 @@ public class TitleFilter {
             return FilterVerdict.reject("title excluded on seniority level");
         }
 
+        String domain = firstMatch(normalised, screening.domainExclude());
+        if (domain != null && firstMatch(normalised, screening.domainKeep()) == null) {
+            return FilterVerdict.reject("finance, risk or operations role: '" + domain + "'");
+        }
+
         String included = firstMatch(normalised, screening.titleInclude());
         if (included == null && requireRoleWord) {
             return FilterVerdict.reject("title is not a software role");

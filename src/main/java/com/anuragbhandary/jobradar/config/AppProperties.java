@@ -74,6 +74,11 @@ public record AppProperties(
      * @param bigTechMaxMinYears the years cap for {@code bigTechBoards}.
      * @param fullStackExclude title words for full-stack and frontend roles,
      *                    rejected everywhere except Amazon.
+     * @param domainExclude title words for finance, risk and operations work
+     *                    (tax, KYC, audit), rejected unless the title also has a
+     *                    {@code domainKeep} word: "Analyst - TAX" goes,
+     *                    "Software Development Engineer, Tax Engine" stays.
+     * @param domainKeep  software and data words that keep such a title.
      */
     public record Screening(
             Geo geo,
@@ -84,7 +89,9 @@ public record AppProperties(
             int maxMinYears,
             List<String> bigTechBoards,
             int bigTechMaxMinYears,
-            List<String> fullStackExclude) {
+            List<String> fullStackExclude,
+            List<String> domainExclude,
+            List<String> domainKeep) {
 
         /** Whether this posting's employer is on the big-tech list. */
         public boolean isBigTech(com.anuragbhandary.jobradar.domain.Posting posting) {

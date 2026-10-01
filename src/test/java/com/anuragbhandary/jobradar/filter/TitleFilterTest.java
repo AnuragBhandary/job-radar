@@ -64,6 +64,37 @@ class TitleFilterTest {
         assertThat(filter.screen("Senior Software Engineer").accepted()).isFalse();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Analyst - TAX - National - TAX - GCR - Global Compliance & Reporting - New Delhi",
+            "Analyst - Forensics - National - ASU - Forensics - Investigations & Compliance - Noida",
+            "Corporate & Investment Bank Credit Risk Analyst",
+            "Associate Data Analyst (Emirati National)",
+            "Data Collector & Annotator - Night Shift",
+            "Java Coding Specialist - Freelance AI Trainer Project",
+            "SERVICE DESK ANALYST L2",
+            "DEVELOPER L3(CONTRACT)",
+            "Infrastructure Monitoring Engineer (On Contract)",
+            "Fund Servicing Analyst",
+    })
+    @DisplayName("finance, risk and operations roles, nationals-only and gig work are rejected")
+    void rejectsDomainAndGigRoles(String title) {
+        assertThat(filter.screen(title).accepted()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Software Development Engineer, Tax Engine Services",
+            "Data Analyst - Fraud Analytics",
+            "Compliance Automation Engineer",
+            "Machine Learning Engineer, Risk",
+            "Smart Contract Developer",
+    })
+    @DisplayName("a software or data word keeps a title that names a finance domain")
+    void keepsSoftwareRolesInFinanceDomains(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
     @Test
     @DisplayName("at Google, II is the entry level and III is still rejected")
     void googleEntryLevel() {

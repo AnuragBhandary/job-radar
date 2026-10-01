@@ -95,7 +95,7 @@ final class GermanRequirement {
     /** Clause breaks include commas: "Deutsch gut, Englisch von Vorteil" hedges English. */
     private static final Pattern CLAUSE_BREAK = Pattern.compile("[.,;\\n]");
 
-    private static String lastClause(String text) {
+    static String lastClause(String text) {
         Matcher m = CLAUSE_BREAK.matcher(text);
         int cut = -1;
         while (m.find()) {
@@ -104,7 +104,7 @@ final class GermanRequirement {
         return cut < 0 ? text : text.substring(cut + 1);
     }
 
-    private static String firstClause(String text) {
+    static String firstClause(String text) {
         Matcher m = CLAUSE_BREAK.matcher(text);
         return m.find() ? text.substring(0, m.start()) : text;
     }
