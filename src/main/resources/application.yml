@@ -21,6 +21,13 @@ job-radar:
     # bursts and took every request at about 1.3 s apart (2026-10-01).
     site-delays-ms:
       "[microsoft.com]": 1500
+      # Eightfold's shared host refused detail requests at 500 ms (2026-10-01).
+      "[eightfold.ai]": 1500
+    # Parallel lanes for operators that host many customers' sites; see
+    # AppProperties.Http.lanesFor. Each lane still waits the full gap.
+    operator-lanes:
+      "[oraclecloud.com]": 8
+      "[myworkdayjobs.com]": 4
 
   # Every raw API response is written to disk exactly as received. Gives test
   # fixtures for free, and makes "why was this rejected?" answerable afterwards

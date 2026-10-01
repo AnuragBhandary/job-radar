@@ -41,7 +41,7 @@ class SitemapFetcherTest {
 
         Client(Function<String, HttpResult> page) {
             super(null, new AppProperties(null, null,
-                    new AppProperties.Http("test", 0, 5, 1, null), null, null, null), null);
+                    new AppProperties.Http("test", 0, 5, 1, null, null), null, null, null), null);
             this.page = page;
         }
 

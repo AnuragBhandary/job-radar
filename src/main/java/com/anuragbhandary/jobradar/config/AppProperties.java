@@ -44,7 +44,20 @@ public record AppProperties(
             long delayBetweenRequestsMs,
             int timeoutSeconds,
             int maxRetries,
-            java.util.Map<String, Long> siteDelaysMs) {
+            java.util.Map<String, Long> siteDelaysMs,
+            java.util.Map<String, Integer> operatorLanes) {
+
+        /**
+         * How many hosts of one operator may be paced in parallel. Each Oracle
+         * cloud tenant is a separate customer's site, but they all share the
+         * operator "oraclecloud.com", so with one queue 1,189 Oracle boards took
+         * over an hour and a half to get through. N lanes allow at most N requests
+         * per gap to that operator in all, each tenant still on the full gap.
+         */
+        public int lanesFor(String site) {
+            Integer lanes = operatorLanes == null ? null : operatorLanes.get(site);
+            return lanes == null || lanes < 1 ? 1 : lanes;
+        }
 
         /**
          * The gap for one site ({@code microsoft.com}). A few sites answer 429 to a

@@ -197,9 +197,20 @@ public class ArchiveIndex {
     static void collect(Platform platform, String body, Map<String, String> found) {
         for (String line : body.split("\n")) {
             String token = token(platform, line.trim());
-            if (token != null) {
-                found.putIfAbsent(token.toLowerCase(Locale.ROOT), token);
+            if (token == null) {
+                continue;
             }
+            if (platform == Platform.EIGHTFOLD) {
+                // One board per employer domain, preferring the tenant's own host
+                // over the shared app.eightfold.ai, which serves the same jobs.
+                String key = "domain:" + token.split("/")[2];
+                String before = found.get(key);
+                if (before == null || (before.contains("/app.eightfold.ai/") && !token.contains("/app.eightfold.ai/"))) {
+                    found.put(key, token);
+                }
+                continue;
+            }
+            found.putIfAbsent(token.toLowerCase(Locale.ROOT), token);
         }
     }
 

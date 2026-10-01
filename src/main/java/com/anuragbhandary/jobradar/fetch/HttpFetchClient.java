@@ -206,7 +206,9 @@ public class HttpFetchClient {
         if (delayMs <= 0) {
             return;
         }
-        Pace pace = paces.computeIfAbsent(site, k -> new Pace());
+        int lanes = config.lanesFor(site);
+        String key = lanes == 1 ? site : site + "#" + Math.floorMod(host(url).hashCode(), lanes);
+        Pace pace = paces.computeIfAbsent(key, k -> new Pace());
         synchronized (pace) {
             long waitMs = delayMs
                     - Duration.ofNanos(System.nanoTime() - pace.lastRequestAtNanos).toMillis();
@@ -222,6 +224,15 @@ public class HttpFetchClient {
      * Workday tenant ({@code target.wd5.myworkdayjobs.com}) is one Workday, and
      * every Greenhouse board one Greenhouse, so each keeps the full delay.
      */
+    private static String host(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            return host == null ? "" : host.toLowerCase(java.util.Locale.ROOT);
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
+    }
+
     static String site(String url) {
         String host;
         try {

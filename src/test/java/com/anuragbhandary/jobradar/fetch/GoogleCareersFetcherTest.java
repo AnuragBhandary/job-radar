@@ -27,7 +27,7 @@ class GoogleCareersFetcherTest {
 
         PagingClient() {
             super(null, new AppProperties(null, null,
-                    new AppProperties.Http("test", 0, 5, 1, null), null, null, null), null);
+                    new AppProperties.Http("test", 0, 5, 1, null, null), null, null, null), null);
         }
 
         @Override
@@ -35,7 +35,7 @@ class GoogleCareersFetcherTest {
             urls.add(url);
             return url.endsWith("&page=1")
                     ? FixtureSupport.load("google-india.html")
-                    : "<script>AF_initDataCallback({key: 'ds:1', hash: '2', data:[null,0,20], sideChannel: {}});</script>";
+                    : "<script>AF_initDataCallback({key: 'ds:1', hash: '2', data:[null,null,0,20], sideChannel: {}});</script>";
         }
     }
 

@@ -66,6 +66,19 @@ class ArchiveIndexTest {
     }
 
     @Test
+    @DisplayName("an Eightfold employer is found once, on its own host rather than app.eightfold.ai")
+    void eightfoldOncePerDomain() {
+        Map<String, String> found = new LinkedHashMap<>();
+        ArchiveIndex.collect(Platform.EIGHTFOLD, """
+                https://app.eightfold.ai/careers?domain=trimble.com
+                https://trimble.eightfold.ai/careers/job/1?domain=trimble.com
+                https://app.eightfold.ai/careers?domain=trimble.com&pid=2
+                """, found);
+        assertThat(found).containsExactly(
+                Map.entry("domain:trimble.com", "trimble/trimble.eightfold.ai/trimble.com"));
+    }
+
+    @Test
     @DisplayName("a response is de-duplicated across case, keeping the first form")
     void collectsDistinct() {
         Map<String, String> found = new LinkedHashMap<>();

@@ -168,7 +168,7 @@ public class DiscoveryService {
         }
         Map<String, DiscoveredBoard> seen = new HashMap<>();
         for (DiscoveredBoard d : discovered.findBySource(source)) {
-            seen.put(d.getToken().toLowerCase(Locale.ROOT), d);
+            seen.put(baseToken(source, d.getToken()), d);
         }
         Instant recheckBefore = options.recheckDays() < 0 ? Instant.now()
                 : options.recheckDays() > 0
@@ -199,6 +199,11 @@ public class DiscoveryService {
         // A fetched Oracle board is name/host/site/country; the archive gives host/site.
         if (source == Source.ORACLE_HCM && parts.length == 4) {
             return parts[1] + "/" + parts[2];
+        }
+        // An Eightfold employer is its domain: qualcomm.com answers on
+        // careers.qualcomm.com, qualcomm.eightfold.ai and app.eightfold.ai alike.
+        if (source == Source.EIGHTFOLD && parts.length == 3) {
+            return "domain:" + parts[2];
         }
         return t;
     }

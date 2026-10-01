@@ -92,8 +92,9 @@ public class GoogleCareersFetcher implements AtsFetcher {
         }
         JsonNode jobs = data.path(0);
         if (!jobs.isArray()) {
-            // An empty search is [null, 0, 20]: no jobs array, nothing wrong.
-            if (data.path(1).asInt(-1) == 0) {
+            // An empty search is [null, null, 0, 20] (Google UAE, 2026-10-01): no
+            // jobs array and a total of zero, nothing wrong.
+            if (data.path(2).asInt(-1) == 0) {
                 return new Page(List.of(), 0);
             }
             throw new FetchException("No jobs array in Google's results for " + boardToken);
