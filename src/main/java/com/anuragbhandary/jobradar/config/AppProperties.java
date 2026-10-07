@@ -121,6 +121,7 @@ public record AppProperties(
             String source = switch (posting.getSource()) {
                 case AMAZON -> "amazon";
                 case GOOGLE -> "google";
+                case APPLE -> "apple";
                 case null, default -> "";
             };
             for (String board : bigTechBoards) {

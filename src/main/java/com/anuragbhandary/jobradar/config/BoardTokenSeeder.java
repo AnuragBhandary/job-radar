@@ -67,6 +67,7 @@ public class BoardTokenSeeder {
 
     /** Google's search, one country per token, as Amazon's. */
     private static final Map<String, String> GOOGLE = new LinkedHashMap<>();
+    private static final Map<String, String> APPLE = new LinkedHashMap<>();
 
     /**
      * Oracle recruiting cloud sites, keyed {@code name/host/site/locationId}; the
@@ -340,6 +341,16 @@ public class BoardTokenSeeder {
         GOOGLE.put("United Kingdom", "Google UK");
         GOOGLE.put("United Arab Emirates", "Google UAE");
 
+        // Location codes from the site's own search URLs (2026-10-07). Most of
+        // each list is Apple Retail, which the title filter drops before any
+        // detail page is read.
+        APPLE.put("en-in/india-INDC", "Apple India");
+        APPLE.put("en-ie/ireland-IRL", "Apple Ireland");
+        APPLE.put("en-us/germany-DEU", "Apple Germany");
+        APPLE.put("en-us/netherlands-NLD", "Apple Netherlands");
+        APPLE.put("en-gb/united-kingdom-GBR", "Apple UK");
+        APPLE.put("en-ae/united-arab-emirates-ARE", "Apple UAE");
+
         // India ids read from each site's location facet on 2026-10-01: JPMorgan
         // 323 India requisitions, Oracle 13.
         ORACLE_HCM.put("jpmc/jpmc.fa.oraclecloud.com/CX_1001/300000000289360", "JPMorgan Chase");
@@ -433,6 +444,7 @@ public class BoardTokenSeeder {
                 + seedSource(Source.ARBEITNOW, ARBEITNOW)
                 + seedSource(Source.EIGHTFOLD, EIGHTFOLD)
                 + seedSource(Source.GOOGLE, GOOGLE)
+                + seedSource(Source.APPLE, APPLE)
                 + seedSource(Source.ORACLE_HCM, ORACLE_HCM)
                 + seedSource(Source.SITEMAP, SITEMAP);
         if (added > 0) {

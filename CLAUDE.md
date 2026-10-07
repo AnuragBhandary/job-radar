@@ -128,6 +128,9 @@ openings" and similar from any directory. In short:
   (`Employer.hidesEmployer`): its postings score 20 lower and are flagged.
   Hacker News is exempt. The candidate block also flags stated pay below the
   relocation floor, in the floor's currency only.
+- `calibrate` scores every decided posting with today's fit score and prints
+  picks, read-and-dropped and unread skips by fit band, source and lane: the
+  evidence for moving `ranking.min-fit`.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
   that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big
@@ -136,7 +139,10 @@ openings" and similar from any directory. In short:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug
   screen), Google (`GOOGLE`, one country per token, early-career and intern
-  levels only), and Oracle's recruiting cloud (`ORACLE_HCM`,
+  levels only), Apple (`APPLE`, `locale/location` as in the site's search URL,
+  `en-in/india-INDC`; the search page and each job page carry their data as
+  embedded JSON, and retail titles drop on the title filter before any job page
+  is read), and Oracle's recruiting cloud (`ORACLE_HCM`,
   `name/host/site/locationId`: JPMorgan, Oracle). Any other Eightfold or Oracle
   employer is one seed line. Before every fetch and after discovery,
   `OracleBoardTidier` names each Oracle site after its employer (a site called

@@ -79,16 +79,12 @@ job-radar:
         url: https://unacademy.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "business roles only on 2026-09-28"
       # Big tech sites with nothing a program can read (added 2026-10-01; Meta's
-      # job sitemap is empty, Apple publishes none). Google, Microsoft, Netflix,
+      # job sitemap is empty). Apple is fetched since 2026-10-07 (APPLE). Google, Microsoft, Netflix,
       # Qualcomm, JPMorgan and Oracle are fetched (GOOGLE, EIGHTFOLD, ORACLE_HCM).
       - company: Meta
         city: India, Dublin
         url: https://www.metacareers.com/jobsearch/?offices[0]=Bangalore%2C%20India&offices[1]=Gurgaon%2C%20India&offices[2]=Mumbai%2C%20India&offices[3]=Dublin%2C%20Ireland
         note: "mostly hardware and sales in India on 2026-10-01"
-      - company: Apple
-        city: India
-        url: https://jobs.apple.com/en-in/search?location=india-INDC
-        note: "mostly retail; plain 'Software Engineer' titles asked 3-5+ years on 2026-10-01"
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -361,6 +357,8 @@ job-radar:
     # same trap is documented on ApplicantProfile.extraAnswers, where it silently
     # emptied the escape hatch it was written for.
     false-friend-countries:
+      # Not Wales: Radiologist's Sydney role was filed as British (2026-10-07).
+      "[new south wales]": AU
       "[dublin ohio]": US
       "[dublin oh]": US
       "[dublin california]": US
@@ -460,7 +458,8 @@ job-radar:
          "berlin new hampshire", "berlin maryland", "berlin wisconsin",
          "hamburg new york", "hamburg pennsylvania", "hamburg new jersey",
          "us oh dublin", "us ca dublin", "us ga dublin", "us ct berlin", "us nh berlin",
-         "us md berlin", "us wi berlin", "us ny hamburg", "us pa hamburg", "us nj hamburg"]
+         "us md berlin", "us wi berlin", "us ny hamburg", "us pa hamburg", "us nj hamburg",
+         "new south wales"]
 
     title-include:
       [software, backend, back-end, back end, full-stack, fullstack, full stack,
@@ -638,7 +637,7 @@ job-radar:
     # only if the posting does not say non-internship or full-time experience,
     # and nothing above 1 stated year is shown. Board tokens, a Workday tenant
     # (the part before the first slash), or a source name ("amazon").
-    big-tech-boards: [amazon, adobe, intel, mastercard, nvidia, paypal, target, wf,
+    big-tech-boards: [amazon, apple, adobe, intel, mastercard, nvidia, paypal, target, wf,
                       nxp, philips, stripe, databricks, openai, datadog, mongodb,
                       scaleai, BoschGroup, elastic, gitlab, coinbase, rubrik,
                       salesforce, hp, workday, motorolasolutions, citi,

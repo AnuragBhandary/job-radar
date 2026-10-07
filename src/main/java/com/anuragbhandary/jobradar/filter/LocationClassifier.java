@@ -164,7 +164,14 @@ public class LocationClassifier {
                     List.of(), null, false, FilterVerdict.accept());
         }
 
-        List<String> named = countriesNamedIn(haystack);
+        // The location field first; the title only when it names nowhere. Waymo's
+        // "Software Quality Operations Specialist - Germany/Spain" sits in London,
+        // and the title's market was filed as the job's country (2026-10-07).
+        List<String> named = countriesNamedIn(
+                LocationText.haystack(location, null));
+        if (named.isEmpty()) {
+            named = countriesNamedIn(haystack);
+        }
         boolean remote = LocationText.containsAny(haystack, geo.remoteMarkers());
 
         if (!remote) {

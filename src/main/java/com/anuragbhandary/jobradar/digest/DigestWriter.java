@@ -268,6 +268,14 @@ public class DigestWriter {
             out.append("**Frontend in the description:** ").append(frontend)
                     .append(" (full-stack titles are filtered; this one is not titled so)\n");
         }
+        if (p.getDescriptionText() == null
+                || p.getDescriptionText().strip().length() < NO_DESCRIPTION_CHARS) {
+            // Kotak's Mumbai Software Engineer (2026-10-07): the employer's own API
+            // had nothing either, so the years, stack and student checks all passed
+            // on silence. Say so rather than look like a clean bill.
+            out.append("**No description posted:** nothing was screened beyond the title; "
+                    + "open the link and check the stack and years before applying\n");
+        }
         if (com.anuragbhandary.jobradar.filter.Internship.isInternship(p.getTitle())) {
             out.append("**Internship** · converts to full time: ")
                     .append(com.anuragbhandary.jobradar.filter.Internship
@@ -341,6 +349,9 @@ public class DigestWriter {
             "react", "angular", "vue", "next.js", "nextjs", "svelte", "typescript",
             "frontend", "front-end", "front end", "full-stack", "full stack", "fullstack",
             "css", "tailwind");
+
+    /** Below this, a stored description is empty in practice. */
+    static final int NO_DESCRIPTION_CHARS = 50;
 
     /**
      * Frontend technologies a description names, when there are enough of them to

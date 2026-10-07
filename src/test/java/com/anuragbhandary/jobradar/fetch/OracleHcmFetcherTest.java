@@ -100,6 +100,24 @@ class OracleHcmFetcherTest {
     }
 
     @Test
+    @DisplayName("an empty description falls back to the program and division text (Goldman Sachs)")
+    void fallsBackToProgramText() throws Exception {
+        OracleHcmFetcher.Board board = OracleHcmFetcher.Board.parse(TOKEN);
+        OracleHcmFetcher.Listed job = new OracleHcmFetcher.Listed(
+                "170173", "Summer Analyst", "London", LocalDate.of(2026, 10, 1));
+        String body = """
+                {"items":[{"Title":"Summer Analyst","ExternalDescriptionStr":"",
+                 "CorporateDescriptionStr":"<p>Our Summer Analyst Program is a summer internship \
+                for students pursuing a bachelors degree.</p>",
+                 "OrganizationDescriptionStr":"<p>About the division</p>"}]}""";
+
+        RawPosting posting = fetcher.parseDetail(body, job, board);
+
+        assertThat(posting.description()).contains("students pursuing a bachelors degree")
+                .contains("About the division").doesNotContain("<p>");
+    }
+
+    @Test
     @DisplayName("the detail URL is a valid URI: the quotes around the id are encoded")
     void detailUrlIsValid() throws Exception {
         String url = OracleHcmFetcher.Board.parse(TOKEN).detail("210774158");

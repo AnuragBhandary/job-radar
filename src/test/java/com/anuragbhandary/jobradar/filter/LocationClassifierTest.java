@@ -319,4 +319,15 @@ class LocationClassifierTest {
         assertThat(profile.countryCode()).isEqualTo("US");
         assertThat(profile.workMode()).isEqualTo(WorkMode.REMOTE_COUNTRY_LOCKED);
     }
+
+    /** Waymo and Radiologist, 2026-10-07: filed under the wrong country. */
+    @Test
+    void theLocationFieldOutranksTheTitle() {
+        assertThat(classifier.classify("London, UK",
+                "Software Quality Operations Specialist - Germany/Spain", null).countryCode())
+                .isEqualTo("GB");
+        assertThat(classifier.classify(null, "Backend Engineer - Berlin", null).countryCode())
+                .isEqualTo("DE");
+        assertThat(at("Sydney CBD, New South Wales, Australia").countryCode()).isEqualTo("AU");
+    }
 }

@@ -72,7 +72,10 @@ public class StoredPostings {
                 return null;
             }
             RawPosting known = byId.get(externalId);
-            if (known == null || Math.floorMod(externalId.hashCode() + today, REFRESH_EVERY_DAYS) == 0) {
+            // A stored posting with no description is read again every run: the
+            // employer may add the text later, and an empty one decides nothing.
+            if (known == null || known.description() == null || known.description().isBlank()
+                    || Math.floorMod(externalId.hashCode() + today, REFRESH_EVERY_DAYS) == 0) {
                 return null;
             }
             reused++;

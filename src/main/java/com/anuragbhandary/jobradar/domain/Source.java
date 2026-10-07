@@ -49,6 +49,8 @@ public enum Source {
     EIGHTFOLD,
     GOOGLE,
     ORACLE_HCM,
+    /** Apple's own careers site, one employer like Google (added 2026-10-07). */
+    APPLE,
     /** Any careers site whose sitemap lists its job pages; see {@code SitemapFetcher}. */
     SITEMAP
 }

@@ -96,7 +96,7 @@ public class TokenProber {
                 // Workday's search is a POST against a two-part tenant/site token,
                 // and Hacker News has one board.
                 case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW,
-                        EIGHTFOLD, GOOGLE, ORACLE_HCM, SITEMAP -> 0;
+                        EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -138,7 +138,7 @@ public class TokenProber {
             case WORKDAY -> throw new IllegalArgumentException(
                     "Workday is not probed by token; add tenant/wdN/site and fetch it");
             // Each needs a host found by hand, so they are seeded like Workday.
-            case EIGHTFOLD, GOOGLE, ORACLE_HCM, SITEMAP -> throw new IllegalArgumentException(
+            case EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP -> throw new IllegalArgumentException(
                     platform + " is not probed by token; seed it in BoardTokenSeeder");
         };
     }

@@ -179,6 +179,15 @@ public class OracleHcmFetcher implements AtsFetcher {
                 Html.toPlainText(req.path("ExternalDescriptionStr").asText("")));
         appendSection(text, "Responsibilities", req.path("ExternalResponsibilitiesStr").asText(""));
         appendSection(text, "Qualifications", req.path("ExternalQualificationsStr").asText(""));
+        // Some tenants leave the usual fields empty and put the role in these:
+        // Goldman Sachs's "About the program" and "About the division" (2026-10-07).
+        // Only then, so other tenants' company boilerplate stays out of the text
+        // the screening rules read.
+        if (text.toString().isBlank()) {
+            appendSection(text, "About the role", req.path("ShortDescriptionStr").asText(""));
+            appendSection(text, "About the program", req.path("CorporateDescriptionStr").asText(""));
+            appendSection(text, "About the team", req.path("OrganizationDescriptionStr").asText(""));
+        }
         return new RawPosting(
                 job.id(),
                 job.title(),
