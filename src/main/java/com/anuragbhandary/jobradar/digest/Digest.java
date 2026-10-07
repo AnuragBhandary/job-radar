@@ -74,12 +74,28 @@ public record Digest(
     /**
      * @param fit     the ranking score, or null outside the openings file
      * @param compact one line instead of a full block: below the fit cut
+     * @param similar other openings at the same employer whose titles differ only
+     *                in brackets (Visa's "Data Engineer" and "Data Engineer (1 - 2
+     *                years ... Kafka)"): listed under this one, each still decided
      */
     public record Entry(Posting posting, boolean updated, boolean companyApplied,
-            FitScore.Fit fit, boolean compact) {
+            FitScore.Fit fit, boolean compact, List<Entry> similar) {
+
+        public Entry(Posting posting, boolean updated, boolean companyApplied,
+                FitScore.Fit fit, boolean compact) {
+            this(posting, updated, companyApplied, fit, compact, List.of());
+        }
 
         public Entry(Posting posting, boolean updated, boolean companyApplied) {
             this(posting, updated, companyApplied, null, false);
+        }
+
+        /** This entry's posting id and every similar one's, for marking. */
+        public List<Long> ids() {
+            List<Long> ids = new java.util.ArrayList<>();
+            ids.add(posting.getId());
+            similar.forEach(s -> ids.add(s.posting().getId()));
+            return ids;
         }
     }
 

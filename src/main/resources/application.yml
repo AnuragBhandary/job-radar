@@ -684,6 +684,9 @@ job-radar:
     # Openings scoring under this are counted on the "Withheld" line, not listed.
     # 40 keeps all but a handful of entry-level titles (2026-10-01 window).
     min-fit: 40
+    # Learned weights from `calibrate --learn`, private like applicant.yml. When the
+    # file is absent the hand weights in FitScore are used.
+    model-path: ${JOB_RADAR_FIT_MODEL:${user.home}/.config/job-radar/fit-model.properties}
     # "a|b" is one skill with two spellings, counted once.
     skills:
       [python, fastapi, asyncio, kafka, redis, "postgresql|postgres", docker,

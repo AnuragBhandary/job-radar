@@ -130,7 +130,21 @@ openings" and similar from any directory. In short:
   relocation floor, in the floor's currency only.
 - `calibrate` scores every decided posting with today's fit score and prints
   picks, read-and-dropped and unread skips by fit band, source and lane: the
-  evidence for moving `ranking.min-fit`.
+  evidence for moving `ranking.min-fit`. It also compares the hand weights with
+  weights learned from the decisions (out-of-sample AUC); `calibrate --learn`
+  saves the learned ones to `~/.config/job-radar/fit-model.properties` when they
+  win by 0.02 (`--force` saves anyway), and `FitScore` uses them from then on.
+  The lane is not learned: it stays in his order (remote, Mumbai, rest of India,
+  abroad) as a bonus on top, and there is no data-title feature, so data roles
+  rank with software ones. Re-run `--learn` monthly. The same command lists
+  title words common among read skips and absent from picks (suggestions only),
+  the commonest skip reasons, and, once applications exist, replies by source,
+  lane and resume.
+- In the openings file, same-employer openings whose titles differ only in
+  brackets are listed under the best one as "Similar at this employer". Each id
+  still needs its own decision.
+- `notify` checks the whole waiting shortlist, not only the picks it sends: a
+  dead page is dropped from the shortlist and named at the top of the post.
 - `probe` does not cover Workday. A Workday board is added to `WORKDAY` in
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
   that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big

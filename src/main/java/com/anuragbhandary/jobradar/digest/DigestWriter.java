@@ -115,13 +115,17 @@ public class DigestWriter {
         } else {
             List<Digest.Entry> full = digest.candidates().stream().filter(e -> !e.compact()).toList();
             List<Digest.Entry> compact = digest.candidates().stream().filter(Digest.Entry::compact).toList();
-            out.append("\n## Candidates (").append(digest.candidates().size()).append(")\n");
+            int folded = digest.candidates().stream().mapToInt(e -> e.similar().size()).sum();
+            out.append("\n## Candidates (").append(digest.candidates().size())
+                    .append(folded == 0 ? "" : ", plus " + folded + " similar listed under them")
+                    .append(")\n");
             if (!compact.isEmpty()) {
                 out.append("Sorted by fit; the ").append(full.size())
                         .append(" best in full, the rest one line each under \"Lower fit\".\n");
             }
             for (Digest.Entry entry : full) {
                 candidate(out, entry, labels, digest.date());
+                similar(out, entry);
             }
             if (!compact.isEmpty()) {
                 out.append("\n## Lower fit (").append(compact.size()).append(")\n");
@@ -133,6 +137,9 @@ public class DigestWriter {
                             .append(" · fit ").append(e.fit().score())
                             .append(com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(
                                     p.getSource(), p.getBoardToken()) ? " · employer hidden" : "")
+                            .append(e.similar().isEmpty() ? "" : " · similar: " + e.similar().stream()
+                                    .map(s -> s.posting().getId() + " " + s.posting().getTitle())
+                                    .collect(java.util.stream.Collectors.joining("; ")))
                             .append('\n');
                 }
             }
@@ -241,6 +248,21 @@ public class DigestWriter {
             out.append(", ");
         }
         out.append(n).append(' ').append(what);
+    }
+
+    /** The folded variants under a full block: one line each, still to be decided. */
+    private static void similar(StringBuilder out, Digest.Entry entry) {
+        if (entry.similar().isEmpty()) {
+            return;
+        }
+        out.append("\n**Similar at this employer** (titles differ only in brackets; decide each id):\n");
+        for (Digest.Entry s : entry.similar()) {
+            Posting p = s.posting();
+            out.append("- ").append(p.getId()).append(" · ").append(p.getTitle())
+                    .append(" · fit ").append(s.fit() == null ? "-" : s.fit().score())
+                    .append(" · years: ").append(years(p))
+                    .append(" · ").append(p.getUrl() == null ? "-" : p.getUrl()).append('\n');
+        }
     }
 
     private void candidate(StringBuilder out, Digest.Entry entry, Map<String, String> labels,

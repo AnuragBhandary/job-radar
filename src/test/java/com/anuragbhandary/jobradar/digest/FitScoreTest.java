@@ -17,7 +17,7 @@ class FitScoreTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 1);
 
     private final FitScore fit = new FitScore(
-            new FitScore.Properties(List.of("python", "kafka", "fastapi", "sql", "go", "postgresql"), 60, 40),
+            new FitScore.Properties(List.of("python", "kafka", "fastapi", "sql", "go", "postgresql"), 60, 40, null),
             RealConfigAccess.countryStrategy());
 
     private static Posting posting(String title, String description, Integer years,
@@ -126,5 +126,25 @@ class FitScoreTest {
         assertThat(senior.summary()).contains("senior wording");
         assertThat(FitScore.level(posting("Software Engineering PMTS", "", null,
                 StrategicClass.INDIA_OTHER, "IN", TODAY))).isEqualTo(FitScore.Level.SENIOR);
+    }
+
+    @Test
+    @DisplayName("with a learned model the lane still ranks in his order")
+    void learnedScoreKeepsTheLaneOrder(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws Exception {
+        double[] w = new double[FitModel.FEATURES.size()];
+        java.nio.file.Path file = dir.resolve("fit-model.properties");
+        new FitModel(w).save(file, "flat");
+        FitScore learned = new FitScore(new FitScore.Properties(List.of("python"), 60, 40, file.toString()),
+                RealConfigAccess.countryStrategy());
+
+        assertThat(learned.learned()).isTrue();
+        int mumbai = learned.fit(posting("Backend Engineer", "Python.", 0,
+                StrategicClass.INDIA_HOME, "IN", null), TODAY).score();
+        int abroad = learned.fit(posting("Backend Engineer", "Python.", 0,
+                StrategicClass.INTERNATIONAL_RELOCATION, "DE", null), TODAY).score();
+        // A flat model gives one half everywhere: 38, plus the lane.
+        assertThat(mumbai).isGreaterThan(abroad);
+        assertThat(mumbai).isEqualTo(FitScore.learnedScore(0.5, 23));
     }
 }

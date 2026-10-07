@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -72,12 +73,19 @@ public class NotifyCommand {
             return;
         }
 
+        boolean check = !options.containsKey("no-check");
+
         if (options.containsKey("quiet-day")) {
-            quietDay(options.get("note"), dryRun);
+            quietDay(options.get("note"), dryRun, check ? closedOnShortlist(Set.of(), dryRun) : List.of());
             return;
         }
 
         List<JobInterest> rows = select(options.get("ids"));
+        // The rest of the shortlist too, every review: a role saved a week ago can
+        // close before it is applied to, and the post says so before the new picks.
+        List<String> closed = check ? closedOnShortlist(rows.stream()
+                .map(JobInterest::getPostingId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet()), dryRun) : List.of();
         if (rows.isEmpty()) {
             System.out.println("Nothing to send: the shortlist is empty.");
             return;
@@ -85,7 +93,6 @@ public class NotifyCommand {
 
         // Every link is checked before it is sent, and aggregator links are
         // swapped for the employer's own page. A dead one never reaches the phone.
-        boolean check = !options.containsKey("no-check");
         List<Map<String, Object>> cards = new ArrayList<>();
         for (JobInterest row : rows) {
             String warning = null;
@@ -125,7 +132,7 @@ public class NotifyCommand {
         for (int i = 0; i < cards.size(); i += EMBEDS_PER_MESSAGE) {
             Map<String, Object> message = new LinkedHashMap<>();
             if (i == 0) {
-                message.put("content", "**" + title + "**");
+                message.put("content", clip("**" + title + "**" + closedLine(closed), 1900));
             }
             message.put("embeds", cards.subList(i, Math.min(i + EMBEDS_PER_MESSAGE, cards.size())));
             message.put("allowed_mentions", Map.of("parse", List.of()));
@@ -149,10 +156,10 @@ public class NotifyCommand {
      * ran and found nothing, so silence in the channel never has to be read as
      * "did it run?". Names what is still waiting on the shortlist.
      */
-    private void quietDay(String note, boolean dryRun) {
+    private void quietDay(String note, boolean dryRun, List<String> closed) {
         List<JobInterest> waiting = interests.findByStageOrderByUpdatedAtDesc(PipelineStage.SAVED);
         StringBuilder text = new StringBuilder("**job-radar · " + LocalDate.now()
-                + " · nothing new to apply to today**");
+                + " · nothing new to apply to today**" + closedLine(closed));
         if (note != null && !note.isBlank()) {
             text.append('\n').append(clip(note.strip(), 1500));
         }
@@ -175,6 +182,44 @@ public class NotifyCommand {
         }
         System.out.println(post(toJson(message))
                 ? "Sent the quiet-day message to Discord." : "Quiet-day message not sent.");
+    }
+
+    /**
+     * Checks every shortlisted posting not in {@code sending} and drops the ones
+     * whose page is gone, as a dead pick is dropped. Returns "Company (role)" for
+     * each. An UNKNOWN answer (Workday's 403s) leaves a row alone. A dry run only
+     * reports.
+     */
+    private List<String> closedOnShortlist(Set<Long> sending, boolean dryRun) {
+        List<String> closed = new ArrayList<>();
+        for (JobInterest row : interests.findByStageOrderByUpdatedAtDesc(PipelineStage.SAVED)) {
+            if (row.getPostingId() == null || sending.contains(row.getPostingId())) {
+                continue;
+            }
+            Posting posting = postings.findById(row.getPostingId()).orElse(null);
+            if (posting == null) {
+                continue;
+            }
+            com.anuragbhandary.jobradar.pipeline.LinkService.Link link = links.forPosting(posting);
+            if (!link.check().dead()) {
+                continue;
+            }
+            String[] cr = companyAndRole(row.getCompany(), row.getRole());
+            closed.add(cr[0] + " (" + cr[1] + ")");
+            System.out.println((dryRun ? "Would drop " : "Dropped ") + row.getPostingId()
+                    + " from the shortlist (" + row.getCompany() + "): " + link.check().reason());
+            if (!dryRun) {
+                row.setStage(PipelineStage.DROPPED);
+                row.addNote(LocalDate.now() + ": link dead, " + link.check().reason());
+                interests.save(row);
+            }
+        }
+        return closed;
+    }
+
+    private static String closedLine(List<String> closed) {
+        return closed.isEmpty() ? "" : "\n⚠️ Closed before you applied, taken off the shortlist: "
+                + String.join(", ", closed);
     }
 
     private List<JobInterest> select(String ids) {

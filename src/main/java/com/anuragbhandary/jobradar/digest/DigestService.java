@@ -132,14 +132,19 @@ public class DigestService {
                 .sorted(Comparator.comparing(
                         JobInterest::getSavedAt))
                 .toList();
-        List<Digest.Entry> ranked = ranked(base.candidates(), date);
+        Map<String, String> labels = boards.findByActiveTrue().stream()
+                .filter(b -> b.getLabel() != null)
+                .collect(Collectors.toMap(BoardToken::getToken, BoardToken::getLabel, (a, b) -> a));
+        List<Digest.Entry> ranked = ranked(base.candidates(), date, labels);
         List<Digest.Entry> kept = ranked.stream()
                 .filter(e -> e.fit().score() >= fitScore.minFit())
                 .toList();
+        int listed = ranked.stream().mapToInt(e -> e.ids().size()).sum();
+        int keptListed = kept.stream().mapToInt(e -> e.ids().size()).sum();
         return new Digest(base.date(), base.since(), kept, base.closed(),
                 base.rejections(), base.boards(), base.salaryFloorsNeedReverification(),
                 base.alreadyDecided(), base.duplicatesCollapsed(), base.staleSetAside(),
-                shortlisted, ranked.size() - kept.size());
+                shortlisted, listed - keptListed);
     }
 
     /**
@@ -148,19 +153,61 @@ public class DigestService {
      * and left out of the file; {@code openings --done} closes the window over
      * them too, since it closes by time.
      */
-    private List<Digest.Entry> ranked(List<Digest.Entry> entries, LocalDate today) {
+    private List<Digest.Entry> ranked(List<Digest.Entry> entries, LocalDate today,
+            Map<String, String> labels) {
         List<Digest.Entry> scored = entries.stream()
                 .map(e -> new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
                         fitScore.fit(e.posting(), today), false))
                 .sorted(Comparator.comparingInt((Digest.Entry e) -> e.fit().score()).reversed())
                 .toList();
+        List<Digest.Entry> grouped = grouped(scored, labels);
         int full = fitScore.fullDetail();
-        List<Digest.Entry> out = new java.util.ArrayList<>(scored.size());
-        for (int i = 0; i < scored.size(); i++) {
-            Digest.Entry e = scored.get(i);
-            out.add(i < full ? e : new Digest.Entry(e.posting(), e.updated(), e.companyApplied(), e.fit(), true));
+        List<Digest.Entry> out = new java.util.ArrayList<>(grouped.size());
+        for (int i = 0; i < grouped.size(); i++) {
+            Digest.Entry e = grouped.get(i);
+            out.add(i < full ? e : new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
+                    e.fit(), true, e.similar()));
         }
         return out;
+    }
+
+    /**
+     * Folds same-employer openings whose titles differ only in brackets under the
+     * best-scoring one. Unlike {@link #dedupe} nothing is dropped: they may be
+     * different requisitions (Visa's two Data Engineer roles on 2026-10-07 had
+     * different bars), so each keeps its id and needs its own decision. It only
+     * saves reading the same company's pitch twice.
+     */
+    static List<Digest.Entry> grouped(List<Digest.Entry> best, Map<String, String> labels) {
+        Map<String, Digest.Entry> heads = new LinkedHashMap<>();
+        Map<String, List<Digest.Entry>> followers = new LinkedHashMap<>();
+        for (Digest.Entry e : best) {
+            String key = similarKey(e.posting(), labels);
+            if (heads.putIfAbsent(key, e) != null) {
+                followers.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(e);
+            }
+        }
+        return heads.entrySet().stream()
+                .map(h -> {
+                    Digest.Entry e = h.getValue();
+                    List<Digest.Entry> similar = followers.getOrDefault(h.getKey(), List.of());
+                    return similar.isEmpty() ? e : new Digest.Entry(e.posting(), e.updated(),
+                            e.companyApplied(), e.fit(), e.compact(), List.copyOf(similar));
+                })
+                .toList();
+    }
+
+    /** The role key with bracketed qualifiers taken out of the title. */
+    static String similarKey(Posting posting, Map<String, String> labels) {
+        String title = posting.getTitle() == null ? "" : posting.getTitle()
+                .replaceAll("\\([^)]*\\)|\\[[^]]*\\]", " ")
+                .replaceAll("\\s+", " ").strip();
+        String key = com.anuragbhandary.jobradar.domain.Employer.roleKey(
+                labels.getOrDefault(posting.getBoardToken(), posting.getBoardToken()),
+                posting.getSource(), title);
+        String normalised = key.substring(key.indexOf('|') + 1);
+        // As in roleKey: a short generic title is only the same role in one country.
+        return normalised.split(" ").length <= 3 ? key + "|" + posting.getCountryCode() : key;
     }
 
     private Digest assemble(LocalDate date, LocalDate since, List<Posting> all,

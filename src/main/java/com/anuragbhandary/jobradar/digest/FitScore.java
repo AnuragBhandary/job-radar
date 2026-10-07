@@ -46,7 +46,7 @@ public class FitScore {
 
     /** Configuration: the skill words, and how many entries get a full block. */
     @ConfigurationProperties(prefix = "job-radar.ranking")
-    public record Properties(List<String> skills, Integer fullDetail, Integer minFit) {
+    public record Properties(List<String> skills, Integer fullDetail, Integer minFit, String modelPath) {
 
         public int fullDetailOrDefault() {
             return fullDetail == null ? 60 : fullDetail;
@@ -110,6 +110,8 @@ public class FitScore {
     private final Properties properties;
     private final CountryStrategy strategy;
     private final Map<String, Pattern> patterns;
+    /** Learned weights ({@code calibrate --learn}); empty means the hand weights below. */
+    private final java.util.Optional<FitModel> model;
 
     public FitScore(Properties properties, CountryStrategy strategy) {
         this.properties = properties;
@@ -119,6 +121,59 @@ public class FitScore {
         this.patterns = skills.stream().collect(Collectors.toMap(
                 s -> s.split("\\|")[0].trim(), FitScore::groupPattern, (a, b) -> a,
                 java.util.LinkedHashMap::new));
+        this.model = FitModel.load(properties.modelPath() == null ? null
+                : java.nio.file.Path.of(properties.modelPath()));
+    }
+
+    /** The learned score before freshness: the model's chance, then the lane in his order. */
+    public static int learnedScore(double probability, int lanePoints) {
+        return (int) Math.round(75 * probability) + (int) Math.round(lanePoints * 0.6);
+    }
+
+    /** The lane's hand points (0-25), which the learned score adds on top. */
+    public int lanePoints(Posting p) {
+        return lane(p);
+    }
+
+    /** Whether the score comes from learned weights. */
+    public boolean learned() {
+        return model.isPresent();
+    }
+
+    /** The hand-weighted score, whatever the model: {@code calibrate} compares the two. */
+    public int handScore(Posting p, LocalDate today) {
+        return parts(p, today).handScore();
+    }
+
+    /**
+     * The model's inputs, in {@link FitModel#FEATURES} order. Freshness is left
+     * out: a decision is scored long after it was made, when every posting is
+     * old, so the past says nothing about it. It is added after, as before.
+     */
+    public double[] features(Posting p) {
+        Parts parts = parts(p, null);
+        Integer years = parts.years();
+        return new double[] {
+                1,
+                Math.min(6, parts.matched().size()) / 6.0,
+                flag(parts.level() == Level.ENTRY), flag(parts.level() == Level.INTERN),
+                flag(parts.level() == Level.SECOND), flag(parts.level() == Level.SENIOR),
+                flag(years != null && years == 0), flag(years != null && years == 1),
+                flag(years != null && years == 2), flag(years == null),
+                flag(parts.seniorWording() != null), flag(p.isGraduateSignal()), flag(parts.hidden()),
+                flag(p.getSource() != null && switch (p.getSource()) {
+                    case ARBEITNOW, JOBICY, WE_WORK_REMOTELY, HACKER_NEWS -> true;
+                    default -> false;
+                }),
+                flag(p.getSource() != null && switch (p.getSource()) {
+                    case AMAZON, GOOGLE, APPLE, EIGHTFOLD -> true;
+                    default -> false;
+                }),
+                flag(DigestWriter.frontendSignal(p.getDescriptionText()) != null)};
+    }
+
+    private static double flag(boolean on) {
+        return on ? 1 : 0;
     }
 
     /** How many of the best entries get a full block in the openings file. */
@@ -126,12 +181,22 @@ public class FitScore {
         return properties.fullDetailOrDefault();
     }
 
+    /** Where {@code calibrate --learn} saves the weights, or null when unset. */
+    public java.nio.file.Path modelPath() {
+        return properties.modelPath() == null ? null : java.nio.file.Path.of(properties.modelPath());
+    }
+
     /** Entries scoring under this are counted, not listed. */
     public int minFit() {
         return properties.minFitOrDefault();
     }
 
-    public Fit fit(Posting p, LocalDate today) {
+    /** Everything the score is made of, computed once. */
+    private record Parts(List<String> matched, Level level, Integer years, int lane, int fresh,
+            boolean hidden, String seniorWording, int handScore) {
+    }
+
+    private Parts parts(Posting p, LocalDate today) {
         String text = ((p.getTitle() == null ? "" : p.getTitle()) + "\n"
                 + (p.getDescriptionText() == null ? "" : p.getDescriptionText())).toLowerCase(Locale.ROOT);
         List<String> matched = new ArrayList<>();
@@ -157,7 +222,7 @@ public class FitScore {
         int lane = lane(p);
 
         int fresh = 0;
-        if (p.getPostedDate() != null) {
+        if (today != null && p.getPostedDate() != null) {
             long age = ChronoUnit.DAYS.between(p.getPostedDate(), today);
             fresh = age <= 3 ? 10 : age <= 7 ? 7 : age <= 14 ? 4 : 0;
         }
@@ -176,17 +241,31 @@ public class FitScore {
             }
         }
 
-        int score = Math.max(0, Math.min(100,
+        int hand = Math.max(0, Math.min(100,
                 skills + level.points + experience + lane + fresh + graduate - (hidden ? 20 : 0)
                         - (seniorWording == null ? 0 : SENIOR_WORDING_PENALTY)));
+        return new Parts(matched, level, years, lane, fresh, hidden, seniorWording, hand);
+    }
+
+    public Fit fit(Posting p, LocalDate today) {
+        Parts parts = parts(p, today);
+        // Learned: 75 points from the model's balanced chance of a pick, up to 15
+        // for the lane in his order (the hand lane points scaled), and 10 for
+        // freshness, so the scale stays near the one min-fit was set on.
+        int score = model.map(m -> learnedScore(m.probability(features(p)), parts.lane())
+                        + parts.fresh())
+                .orElse(parts.handScore());
+        List<String> matched = parts.matched();
+        Level level = parts.level();
+        Integer years = parts.years();
         String summary = "%d skill%s%s, %s%s, %s".formatted(matched.size(), matched.size() == 1 ? "" : "s",
                 matched.isEmpty() ? "" : " (" + String.join(", ", matched.subList(0, Math.min(6, matched.size())))
                         + (matched.size() > 6 ? ", ..." : "") + ")",
-                (level.words.isEmpty() ? "" : level.words + ", ") + (hidden ? "employer hidden, " : "")
-                        + (seniorWording == null ? "" : "senior wording (\"" + seniorWording + "\"), "),
+                (level.words.isEmpty() ? "" : level.words + ", ") + (parts.hidden() ? "employer hidden, " : "")
+                        + (parts.seniorWording() == null ? "" : "senior wording (\"" + parts.seniorWording() + "\"), "),
                 years == null ? "years not stated" : years + (years == 1 ? " year" : " years"),
                 laneName(p));
-        return new Fit(score, matched, summary);
+        return new Fit(Math.max(0, Math.min(100, score)), matched, summary);
     }
 
     /** What the title says about the level, and what that is worth. */

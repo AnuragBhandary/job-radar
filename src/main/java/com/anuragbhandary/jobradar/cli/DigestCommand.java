@@ -88,8 +88,8 @@ public class DigestCommand {
                     java.nio.file.StandardOpenOption.APPEND);
             Files.writeString(pending, now.toString(), StandardCharsets.UTF_8);
             System.out.printf("%n%d new candidate(s) since %s, %d shortlisted not yet applied.%n",
-                    digest.candidates().size(), STAMP_READABLE.format(since),
-                    digest.shortlisted().size());
+                    digest.candidates().stream().mapToInt(e -> e.ids().size()).sum(),
+                    STAMP_READABLE.format(since), digest.shortlisted().size());
             System.out.println("Openings file: " + file.toAbsolutePath());
             System.out.println("After reviewing: openings --done");
         } catch (IOException | DateTimeParseException e) {
