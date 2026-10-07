@@ -44,6 +44,9 @@ class SignalExtractorTest {
                 "As a result, visa sponsorship and relocation support are not available.",
                 "We do not offer visa sponsorship.",
                 "We cannot provide any work sponsorship.",
+                // Megger, 2026-10-07: read as supportive on "visa sponsorship".
+                "We’re not in a position as a business to offer visa sponsorship, so we’re"
+                        + " unable to consider applications from candidates who require it.",
         })
         @DisplayName("phrases that answer the question with 'not you' are blocking")
         void detectsBlocking(String text) {

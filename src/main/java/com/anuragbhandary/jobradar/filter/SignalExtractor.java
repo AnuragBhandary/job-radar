@@ -36,6 +36,13 @@ public class SignalExtractor {
             compile("(?:not|unable to|cannot|can't|do not|does not|won't|will not)"
                     + "\\s+(?:be\\s+)?(?:able\\s+to\\s+)?(?:(?:offer|provide|support)\\s+)?"
                     + "(?:(?:any|a|visa|work|immigration|employment)\\s+){0,2}sponsor"),
+            // Megger (2026-10-07): "We're not in a position as a business to offer
+            // visa sponsorship, so we're unable to consider applications from
+            // candidates who require it". Read as supportive on "visa sponsorship".
+            compile("not\\s+in\\s+a\\s+position\\b[^.]{0,30}?\\b(?:offer|provide|support)"
+                    + "[^.]{0,20}?sponsor"),
+            compile("unable\\s+to\\s+consider\\s+(?:applications|applicants|candidates)[^.]{0,60}?"
+                    + "(?:require|need)s?\\s+(?:visa\\s+|work\\s+)?(?:sponsorship|it|a\\s+visa)"),
             compile("no\\s+(?:visa\\s+)?sponsorship"),
             compile("without\\s+(?:visa\\s+)?sponsorship"),
             // "Visa sponsorship and relocation support are not available": the

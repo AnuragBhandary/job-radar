@@ -555,4 +555,64 @@ class YearsExtractorTest {
                 + " over 200 years and today we are a leader in investment banking."))
                 .isEqualTo(4);
     }
+
+    /** ClickHouse, 2026-10-07: the part after "including" read as the whole bar. */
+    @Test
+    void aPartOfTheRequirementDoesNotUndercutIt() {
+        assertThat(minYears("What you bring - 5+ years of software engineering experience,"
+                + " including 1–2 years on LLM-powered systems or agents in production."))
+                .isEqualTo(5);
+    }
+
+    /** Ryan Specialty, 2026-10-07: "cumulative experience in" a field is overall. */
+    @Test
+    void cumulativeExperienceIsOverall() {
+        assertThat(minYears("Work Experience: Minimum of 5 years of cumulative experience in"
+                + " Site Reliability Engineering, DevOps or Software Development roles."
+                + " 1-2 years of experience with programming in Bash Scripting."))
+                .isEqualTo(5);
+    }
+
+    /** Cummins, Iberdrola and Zensar, 2026-10-07: bars stated after a wishlist word. */
+    @Test
+    void aStatedBarCountsWhereverItSits() {
+        assertThat(minYears("Qualifications: Power BI certification or equivalent is preferred"
+                + " Experience Minimum 3-4 years of experience in Business Intelligence."))
+                .isEqualTo(3);
+        assertThat(minYears("Preferred: a cloud certification. Experience: Years of experience:"
+                + " 3+ years of hands-on backend development, with Java."))
+                .isEqualTo(3);
+        assertThat(minYears("Preferred Skills Performance tuning. Experience Level 6+ years of IT"
+                + " experience."))
+                .isEqualTo(6);
+    }
+
+    /** Fortive, 2026-10-07: "or related field" names a subject, not an alternative. */
+    @Test
+    void orRelatedFieldIsNotAnAlternativeToTheDegree() {
+        assertThat(minYears("Additional / Preferred Skills Power BI. Education & Experience"
+                + " Bachelor’s degree in Computer Science, Engineering, or related field"
+                + " 2-4 years of experience in data engineering or related role."))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void aWishOrAToolIsStillNotABar() {
+        assertThat(minYears("Requirements: a degree in computer science. Nice to have: at least"
+                + " 3 years of Rust."))
+                .isEqualTo(-1);
+        assertThat(minYears("Requirements: 1+ years of software engineering experience."
+                + " At least 4 years with Kubernetes would help."))
+                .isEqualTo(1);
+    }
+
+    /** Qualcomm, 2026-10-07: a degree-tier line must not undercut the stated 6+ years. */
+    @Test
+    void aStatedBarNeverLowersARequirementAlreadyRead() {
+        assertThat(minYears("Minimum Qualifications: Bachelor's degree in Engineering, Computer"
+                + " Science, or related field and 1+ year of Software Engineering or related work"
+                + " experience. Requirements: Master's/Bachelor's degree in computer science or"
+                + " equivalent. 6+ years of relevant work experience in software development."))
+                .isEqualTo(6);
+    }
 }

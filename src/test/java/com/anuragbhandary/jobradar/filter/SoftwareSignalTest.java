@@ -74,4 +74,23 @@ class SoftwareSignalTest {
         assertThat(SoftwareSignal.missing("Engineer I", upkeep + " Python, SQL and Docker."))
                 .isEmpty();
     }
+
+    /** Amex TCPS and EY conflicts, 2026-10-07: an analyst title over no data work. */
+    @Test
+    void rejectsAnAnalystTitleWithNoDataTool() {
+        String text = padded("Managing inbound customer and seller calls and faxes for prepaid"
+                + " products. Handle claims for lost or stolen travelers cheques and back-end"
+                + " operations. Work in a 24x7 customer facing calling profile.");
+        assertThat(SoftwareSignal.missing("TCPS Analyst", text)).hasValueSatisfying(
+                reason -> assertThat(reason).contains("analyst title"));
+    }
+
+    @Test
+    void keepsAnAnalystTitleThatNamesADataTool() {
+        String text = padded("Proficiency in SQL and familiarity with Power BI or Tableau.");
+        assertThat(SoftwareSignal.missing("Associate Analyst", text)).isEmpty();
+        // A data word in the title is taken at its word, as before.
+        assertThat(SoftwareSignal.missing("Business Operations Specialist - Data Analytics",
+                padded("Weekly reporting for the operations team."))).isEmpty();
+    }
 }

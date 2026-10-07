@@ -305,6 +305,13 @@ public class YearsExtractor {
         Pool chosen = !plain.isEmpty()
                 ? (plainOverall.isEmpty() ? plain : plainOverall)
                 : (allOverall.isEmpty() ? all : allOverall);
+        // Last resort: a bar stated in so many words, wherever it sits. Only when
+        // nothing else was read, so it can never lower a number found above; the
+        // first version fed these into the pools and read a Qualcomm 6-year role as
+        // one year from its degree-tier line (2026-10-07).
+        if (chosen.isEmpty()) {
+            chosen = statedBars(description);
+        }
         return new YearsExtraction(chosen.min, chosen.evidence, nonInternship);
     }
 
@@ -372,8 +379,32 @@ public class YearsExtractor {
                     + "|developing|delivering|writing|working)\\b))",
             Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Part of a larger requirement: "5+ years of software engineering experience,
+     * including 1-2 years on LLM-powered systems". ClickHouse's AI Product
+     * Engineer read as a one-year role on the part (2026-10-07).
+     */
+    private static final Pattern PART_BEFORE = Pattern.compile(
+            "\\b(?:including|incl\\.?|of\\s+which)\\s*$", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Experience counted as a whole, whatever field follows: "Minimum of 5 years of
+     * cumulative experience in Site Reliability Engineering". "Experience in" a
+     * field this does not list read as one tool, and Ryan Specialty's five-year
+     * SRE role read as one year from a Bash line beside it (2026-10-07).
+     */
+    private static final Pattern OVERALL_AFTER = Pattern.compile(
+            "^\\W{0,3}(?:of\\s+)?(?:cumulative|total|overall)\\b", Pattern.CASE_INSENSITIVE);
+
     private static boolean isAboutOneTool(String text, Matcher m) {
+        String before = text.substring(Math.max(0, m.start() - 20), m.start());
+        if (PART_BEFORE.matcher(before).find()) {
+            return true;
+        }
         String after = text.substring(m.end(), Math.min(text.length(), m.end() + 90));
+        if (OVERALL_AFTER.matcher(after).find()) {
+            return false;
+        }
         return ONE_TOOL_AFTER.matcher(after).find();
     }
 
@@ -675,6 +706,63 @@ public class YearsExtractor {
             return false;
         }
         return QUALIFICATION_BEFORE.matcher(before).find();
+    }
+
+    /**
+     * Words that state a bar in themselves, right before the number: "Minimum of
+     * 5 years", "Experience Minimum 3-4 years", "Years of experience: 3+",
+     * "Experience Level 6+ years". Counted wherever they sit, like the
+     * qualification line. All four were missed on 2026-10-07 because each sat
+     * after a wishlist heading or under a heading this does not know.
+     */
+    private static final Pattern STATED_BAR_BEFORE = Pattern.compile(
+            "\\b(?:minimum(?:\\s+of)?|min\\.|at\\s+least"
+                    + "|(?:work\\s+|relevant\\s+|total\\s+)?experience(?:\\s+level)?\\s*:?"
+                    + "|years\\s+of\\s+experience\\s*:)\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * A wishlist word just before, on the same stretch of text: "Nice to have: at
+     * least 3 years of Rust" is not a bar. The colon after it is why
+     * {@link #isOptional} lets this through.
+     */
+    private static final Pattern WISH_BEFORE = Pattern.compile(
+            "\\b(?:preferred|preferably|ideally|nice[\\s-]to[\\s-]have|good[\\s-]to[\\s-]have|bonus"
+                    + "|desirable|desired|a\\s+plus|advantage)\\b[^\\n]{0,50}$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * "Bachelor's degree in Computer Science, Engineering, or related field 2-4
+     * years of experience" (Fortive, 2026-10-07): the field names the degree's
+     * subject, and the years follow it directly. "or related field and 1+ year"
+     * is a degree tier and stays out.
+     */
+    private static final Pattern RELATED_FIELD_BEFORE = Pattern.compile(
+            "\\b(?:related|relevant|similar)\\s+(?:field|discipline|area|subject)\\s*[,:]?\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    private static Pool statedBars(String description) {
+        Pool bars = new Pool();
+        Matcher m = YEARS.matcher(description);
+        while (m.find()) {
+            if (isProgrammeDuration(description, m) || isOptional(description, m)
+                    || isDegreeAlternative(description, m) || isUpperBound(description, m)
+                    || isCompanyTime(description, m) || isAboutOneTool(description, m)) {
+                continue;
+            }
+            String before = description.substring(Math.max(0, m.start() - 60), m.start())
+                    .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
+            if (WISH_BEFORE.matcher(before).find()
+                    || !(STATED_BAR_BEFORE.matcher(before).find()
+                            || RELATED_FIELD_BEFORE.matcher(before).find())) {
+                continue;
+            }
+            int years = Integer.parseInt(m.group(1));
+            if (years < IMPLAUSIBLE_YEARS) {
+                bars.offer(years, phrase(description, m.start(), m.end()));
+            }
+        }
+        return bars;
     }
 
     /**

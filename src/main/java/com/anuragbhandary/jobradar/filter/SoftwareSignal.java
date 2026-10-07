@@ -65,6 +65,28 @@ final class SoftwareSignal {
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     /**
+     * The analyst words in {@link #SOFTWARE_TITLE}. A title whose only software
+     * word is one of these is not taken at its word: on 2026-10-07 a Flavor
+     * Analyst, an Accounts Payable Analyst, Amex's TCPS phone-servicing Analyst
+     * and EY's Conflict Management Associate Analyst all reached review on it.
+     */
+    private static final Pattern ANALYST_TITLE = Pattern.compile(
+            "(?<![\\p{L}])(?:analyst|analytics|bi|business intelligence)(?![\\p{L}])",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+    /** Data tools an analyst role for the data resume names at least one of. */
+    private static final List<String> DATA_TOOLS = List.of(
+            "sql", "python", "power bi", "powerbi", "tableau", "looker", "metabase", "qlik",
+            "superset", "dbt", "snowflake", "bigquery", "redshift", "databricks", "pandas",
+            "spark", "pyspark", "etl", "elt", "data warehouse", "data modeling", "data modelling",
+            "alteryx", "sas", "splunk");
+
+    private static final List<Pattern> DATA_TOOL_PATTERNS = DATA_TOOLS.stream()
+            .map(t -> Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(t)
+                    + "(?![\\p{L}\\p{N}])", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE))
+            .toList();
+
+    /**
      * "Engineer", "Engineer II", "Associate Engineer": says nothing either way,
      * and India's captive centres (Target's Bangalore "Engineer") use it for
      * software roles.
@@ -86,6 +108,11 @@ final class SoftwareSignal {
     /** Why the posting is not a software job, or empty. */
     static Optional<String> missing(String title, String description) {
         if (title != null && SOFTWARE_TITLE.matcher(title).find()) {
+            if (isAnalystOnly(title) && description != null
+                    && description.length() >= MIN_DESCRIPTION_CHARS && !namesDataTool(description)) {
+                return Optional.of("not a data role: an analyst title whose description names "
+                        + "no SQL, Python or BI tool");
+            }
             return Optional.empty();
         }
         if (title != null && BARE_TITLE.matcher(title).matches()) {
@@ -116,6 +143,21 @@ final class SoftwareSignal {
         }
         return Optional.of("not a software role: description names "
                 + (found.isEmpty() ? "no software tools" : "only " + String.join(", ", found)));
+    }
+
+    /** Whether the title's only software word is an analyst word. */
+    private static boolean isAnalystOnly(String title) {
+        return ANALYST_TITLE.matcher(title).find()
+                && !SOFTWARE_TITLE.matcher(ANALYST_TITLE.matcher(title).replaceAll(" ")).find();
+    }
+
+    private static boolean namesDataTool(String description) {
+        for (Pattern tool : DATA_TOOL_PATTERNS) {
+            if (tool.matcher(description).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static Set<String> termsIn(String description) {

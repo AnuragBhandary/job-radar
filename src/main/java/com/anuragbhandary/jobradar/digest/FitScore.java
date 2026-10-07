@@ -75,10 +75,28 @@ public class FitScore {
 
     /** Seniority the title filter lets through, because it is in a longer title. */
     private static final Pattern SENIOR_TITLE = Pattern.compile(
-            "\\b(?:senior|sr\\b|staff|principal|lead|leader|head|manager|director|architect"
-                    + "|distinguished|expert|chief|vp)\\b"
+            "\\b(?:senior|sr\\b|staff|principal|principle|lead|leader|head|manager|director|architect"
+                    // Salesforce's ladder: "Software Engineering PMTS" (2026-10-07).
+                    + "|distinguished|expert|chief|vp|pmts|smts|lmts)\\b"
                     + "|\\b(?:iii|iv)\\b",
             Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Seniority stated in the description when the years are not. On 2026-10-07,
+     * 34 of 143 candidates needed far more than a fresher has, and most said so
+     * only in words: "expert-level experience", "managing and mentoring
+     * engineering teams", "operating at Staff, Principal or a comparable level".
+     * A score, not a rejection: these are judgement, not stated facts.
+     */
+    private static final Pattern SENIOR_WORDING = Pattern.compile(
+            "\\b(?:expert[\\s-]level|extensive\\s+(?:hands-on\\s+)?experience|deep\\s+(?:expertise|experience)"
+                    + "|(?:managing|leading)\\s+and\\s+mentoring|mentor(?:ing)?\\s+(?:junior|other|engineers|the\\s+team)"
+                    + "|operating\\s+at\\s+(?:a\\s+)?(?:staff|principal|senior)|technical\\s+leadership"
+                    + "|proven\\s+(?:track\\s+record|experience\\s+as\\s+a)|demonstrated\\s+experience\\s+as\\s+a"
+                    + "|seasoned|strong\\s+production\\s+(?:software[\\s-])?engineering\\s+experience)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    static final int SENIOR_WORDING_PENALTY = 15;
 
     /** A second-level title. Google's "II" is its entry level, so not there. */
     private static final Pattern SECOND_LEVEL_TITLE = Pattern.compile(
@@ -149,12 +167,23 @@ public class FitScore {
         boolean hidden = com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(
                 p.getSource(), p.getBoardToken());
 
+        // Only when the title has not already been marked down for the same thing.
+        String seniorWording = null;
+        if (level != Level.SENIOR && p.getDescriptionText() != null) {
+            java.util.regex.Matcher senior = SENIOR_WORDING.matcher(p.getDescriptionText());
+            if (senior.find()) {
+                seniorWording = senior.group().toLowerCase(Locale.ROOT);
+            }
+        }
+
         int score = Math.max(0, Math.min(100,
-                skills + level.points + experience + lane + fresh + graduate - (hidden ? 20 : 0)));
+                skills + level.points + experience + lane + fresh + graduate - (hidden ? 20 : 0)
+                        - (seniorWording == null ? 0 : SENIOR_WORDING_PENALTY)));
         String summary = "%d skill%s%s, %s%s, %s".formatted(matched.size(), matched.size() == 1 ? "" : "s",
                 matched.isEmpty() ? "" : " (" + String.join(", ", matched.subList(0, Math.min(6, matched.size())))
                         + (matched.size() > 6 ? ", ..." : "") + ")",
-                (level.words.isEmpty() ? "" : level.words + ", ") + (hidden ? "employer hidden, " : ""),
+                (level.words.isEmpty() ? "" : level.words + ", ") + (hidden ? "employer hidden, " : "")
+                        + (seniorWording == null ? "" : "senior wording (\"" + seniorWording + "\"), "),
                 years == null ? "years not stated" : years + (years == 1 ? " year" : " years"),
                 laneName(p));
         return new Fit(score, matched, summary);

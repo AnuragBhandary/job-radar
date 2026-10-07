@@ -50,7 +50,20 @@ public final class Internship {
                     + "|\\bremaining\\s+(?:semester|term|year)s?\\s+(?:of|in|at)\\b"
                     // Stripe's Bangalore intern (2026-09-28): "through pursuit of a
                     // Bachelor's or Master's degree".
-                    + "|\\bpursuit\\s+of\\s+(?:a|an|your)\\s+(?:bachelor|master|degree|undergraduate)",
+                    + "|\\bpursuit\\s+of\\s+(?:a|an|your)\\s+(?:bachelor|master|degree|undergraduate)"
+                    // UK placements and graduate schemes (2026-10-07): G-Research's "A
+                    // current undergraduate, master's or PhD student", Next's "must be
+                    // studying a relevant University Degree course that includes a
+                    // dedicated placement year", Cummins's "candidates who qualify for a
+                    // placement year" and "Working towards a degree".
+                    + "|\\ba\\s+current\\s+(?:undergraduate|postgraduate|master'?s|masters|ph\\.?d|bachelor'?s"
+                    + "|university)\\b[^.]{0,40}\\bstudent"
+                    + "|\\bmust\\s+be\\s+(?:currently\\s+)?studying"
+                    + "|\\bcurrent(?:ly)?\\s+stud(?:y|ying)\\s+towards"
+                    + "|\\bworking\\s+towards\\s+(?:a|an|your)\\s+(?:\\w+\\s+){0,2}(?:degree|bachelor|master)"
+                    + "|\\bqualify\\s+for\\s+a\\s+placement\\s+year"
+                    + "|\\b(?:includes?|including)\\s+a\\s+(?:dedicated\\s+|\\d{1,2}[- ]month\\s+)?placement(?:\\s+year)?"
+                    + "|\\b(?:second|2nd|third|3rd)\\s+year\\s+of\\s+(?:university|your\\s+degree|your\\s+studies)",
             Pattern.CASE_INSENSITIVE);
 
     /** "Currently pursuing or recently completed": open to a graduate after all. */

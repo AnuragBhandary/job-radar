@@ -75,4 +75,21 @@ class InternshipTest {
         assertThat(Internship.studentOnly("This role suits a recent graduate (or someone with a strong "
                 + "project record).")).isEmpty();
     }
+
+    /** UK graduate schemes and placements, 2026-10-07. */
+    @Test
+    void ukPlacementWordingIsStudentOnly() {
+        assertThat(Internship.studentOnly("The ideal candidate will have the following skills and"
+                + " experience: A current undergraduate, master's or PhD student in machine"
+                + " learning or a related discipline")).isPresent();
+        assertThat(Internship.studentOnly("This is a 12-month industrial placement and applicants"
+                + " must be studying a relevant University Degree course that includes a dedicated"
+                + " placement year July 2027 to July 2028.")).isPresent();
+        assertThat(Internship.studentOnly("This role is available to candidates who qualify for a"
+                + " placement year and will commence Summer of 2027.")).isPresent();
+        assertThat(Internship.studentOnly("Working towards a degree in Engineering, Quality or"
+                + " Data analysis.")).isPresent();
+        assertThat(Internship.studentOnly("You have a degree and are working towards a cloud"
+                + " certification.")).isEmpty();
+    }
 }

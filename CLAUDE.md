@@ -102,6 +102,11 @@ openings" and similar from any directory. In short:
   (`data`, `analyst`, `bi`, `sql`... in `title-include`) for the data resume. At the employers in `big-tech-boards`
   (formal background checks) the cap is 1 year, and a stated non-internship or
   full-time experience requirement rejects; elsewhere that wording is ignored.
+  A title whose only software word is analyst, analytics or BI needs one data
+  tool (SQL, Python, a BI tool...) in a full description (`SoftwareSignal`);
+  UK placement and undergraduate titles are student-only. Senior wording in a
+  description ("expert-level", "mentoring engineers") lowers the fit score but
+  never rejects, since it is judgement rather than a stated fact.
   Full-stack and frontend titles are rejected everywhere except Amazon
   (`full-stack-exclude`); a Hacker News header that also lists backend is kept.
   Abroad only: a stated refusal to sponsor on a

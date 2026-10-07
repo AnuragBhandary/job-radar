@@ -112,4 +112,19 @@ class FitScoreTest {
     private int laneScore(StrategicClass lane, String country) {
         return fit.fit(posting("Engineer", "", null, lane, country, null), TODAY).score();
     }
+
+    @Test
+    @DisplayName("senior wording in the description costs points when the title hides it")
+    void seniorWording() {
+        FitScore.Fit plain = fit.fit(posting("Platform Engineer", "Python and Kafka on AWS.", null,
+                StrategicClass.INDIA_OTHER, "IN", TODAY), TODAY);
+        FitScore.Fit senior = fit.fit(posting("Platform Engineer", "Python and Kafka on AWS."
+                + " Experience managing and mentoring engineering teams.", null,
+                StrategicClass.INDIA_OTHER, "IN", TODAY), TODAY);
+
+        assertThat(plain.score() - senior.score()).isEqualTo(FitScore.SENIOR_WORDING_PENALTY);
+        assertThat(senior.summary()).contains("senior wording");
+        assertThat(FitScore.level(posting("Software Engineering PMTS", "", null,
+                StrategicClass.INDIA_OTHER, "IN", TODAY))).isEqualTo(FitScore.Level.SENIOR);
+    }
 }

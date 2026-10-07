@@ -583,7 +583,12 @@ job-radar:
        facilities & physical,
        site engineer, planning engineer, cost control, qa/qc, contracts engineer,
        commissioning, hvac, data center shift, data centre shift,
-       professor, lecturer, teacher, tutor]
+       professor, lecturer, teacher, tutor,
+       # Paid search-rating gig work, not analysis (2026-10-07).
+       online data analyst,
+       # Enrolment by definition, like werkstudent: Co-op's "Undergraduate Junior
+       # Product Developer", Cummins's "Placement Student" (2026-10-07).
+       undergraduate, placement student, industrial placement]
 
     # Finance, risk and operations work, rejected unless the title also names
     # software or data (domain-keep). Built on 2026-10-01 from skip reasons:
@@ -597,7 +602,10 @@ job-radar:
        fund servicing, fund controller, trading services, equity research,
        financial planning, fp&a, reconciliation, collections, procurement,
        reference data, operations analyst, payment processing, wealth management,
-       investment banking, private equity]
+       investment banking, private equity,
+       # From the 2026-10-07 review: finance, procurement and service desks.
+       finance, accounts payable, p2p, conflict management, customer service,
+       non voice, non-voice, webchat, flavor, flavour]
     domain-keep:
       [software, developer, engineer, engineering, sde, programmer, data,
        machine learning, ml, ai, python, java, sql, bi, backend, platform,
