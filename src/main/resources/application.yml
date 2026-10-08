@@ -661,13 +661,6 @@ job-radar:
                       morganstanley, bnymellon, aexp, micron]
     big-tech-max-min-years: 1
 
-    # Full-stack and frontend titles, rejected at every employer except Amazon
-    # (2026-09-25). Title only: a "Software Engineer" whose description turns out
-    # to be full-stack is caught in review.
-    full-stack-exclude: [full stack, full-stack, fullstack, frontend, front-end,
-                         front end, ui engineer, ui developer, react developer,
-                         web developer]
-
   # ---------------------------------------------------------------------------
   # Salary floors. See AppProperties.SalaryFloors for why these numbers are
   # shaped the way they are - they look wrong without the reasoning.
@@ -682,8 +675,9 @@ job-radar:
   ranking:
     full-detail: 60
     # Openings scoring under this are counted on the "Withheld" line, not listed.
-    # 40 keeps all but a handful of entry-level titles (2026-10-01 window).
-    min-fit: 40
+    # It was 40 until 2026-10-08. calibrate showed roles scoring 30-39 picked as often
+    # as those at 40-49 (7% against 5%), so the cut was hiding real picks.
+    min-fit: 30
     # Learned weights from `calibrate --learn`, private like applicant.yml. When the
     # file is absent the hand weights in FitScore are used.
     model-path: ${JOB_RADAR_FIT_MODEL:${user.home}/.config/job-radar/fit-model.properties}
@@ -696,7 +690,12 @@ job-radar:
        sql, dbt, airflow, "etl|elt", "data warehouse|data warehousing",
        "data modeling|data modelling|dimensional modeling|dimensional modelling",
        metabase, pandas, mysql, "cdc|debezium|change data capture", data quality,
-       "data pipeline|data pipelines", analytics engineering]
+       "data pipeline|data pipelines", analytics engineering,
+       # Asked for in analytics roles but not yet on a resume (2026-10-08): scored
+       # anyway, so those roles rank with the rest. Until the first job a skill
+       # gap is a Stretch to name, not a reason to rank a role down.
+       "power bi|powerbi", tableau, looker, "excel|advanced excel",
+       "statistics|statistical analysis"]
 
   salary-floors:
     mumbai-inr: 500000

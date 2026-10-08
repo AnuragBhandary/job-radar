@@ -85,8 +85,6 @@ public record AppProperties(
      *                    non-internship or full-time experience requirement
      *                    rejects.
      * @param bigTechMaxMinYears the years cap for {@code bigTechBoards}.
-     * @param fullStackExclude title words for full-stack and frontend roles,
-     *                    rejected everywhere except Amazon.
      * @param domainExclude title words for finance, risk and operations work
      *                    (tax, KYC, audit), rejected unless the title also has a
      *                    {@code domainKeep} word: "Analyst - TAX" goes,
@@ -102,7 +100,6 @@ public record AppProperties(
             int maxMinYears,
             List<String> bigTechBoards,
             int bigTechMaxMinYears,
-            List<String> fullStackExclude,
             List<String> domainExclude,
             List<String> domainKeep) {
 

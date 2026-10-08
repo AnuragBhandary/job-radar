@@ -32,12 +32,14 @@ public class JobRadarCli implements ApplicationRunner {
     private final BoardsCommand boards;
     private final DiscoverCommand discover;
     private final CalibrateCommand calibrate;
+    private final SheetCategoriesCommand sheetCategories;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
             NotifyCommand notify, LinksCommand links, BoardsCommand boards,
-            DiscoverCommand discover, CalibrateCommand calibrate) {
+            DiscoverCommand discover, CalibrateCommand calibrate,
+            SheetCategoriesCommand sheetCategories) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -52,6 +54,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.boards = boards;
         this.discover = discover;
         this.calibrate = calibrate;
+        this.sheetCategories = sheetCategories;
     }
 
     @Override
@@ -85,6 +88,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "links" -> links.run(options);
             case "boards" -> boards.run(options);
             case "calibrate" -> calibrate.run(options);
+            case "sheet-categories" -> sheetCategories.run(options);
             case "discover" -> discover.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
@@ -135,6 +139,7 @@ public class JobRadarCli implements ApplicationRunner {
                                                           applied and later go to the tracker sheet
                   sheet-list                              print the tracker (read-only)
                   sheet-append --posting-id=123 [--yes]   append one row to the tracker
+                  sheet-categories [--dry-run]            fill the Category column and the count table at L1
 
                 Resume:
                   resume --list                           every summary and bullet, with references

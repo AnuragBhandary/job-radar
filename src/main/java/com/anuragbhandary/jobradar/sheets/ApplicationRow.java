@@ -31,7 +31,7 @@ public record ApplicationRow(
     /** Column headings as they appear in row 6. */
     public static final List<String> COLUMNS = List.of(
             "Company", "Role", "Country/City", "Date Applied", "Status",
-            "Posting Date", "Experience Wording on Req", "Official Link", "Notes");
+            "Posting Date", "Experience Wording on Req", "Official Link", "Notes", "Category");
 
     /** The only status a newly appended row may carry. */
     public static final String STATUS_APPLIED = "Applied";
@@ -75,9 +75,15 @@ public record ApplicationRow(
         List<Object> cells = new ArrayList<>(COLUMNS.size());
         for (Object value : new Object[]{
                 company, role, countryCity, dateApplied, status,
-                postingDate, experienceWording, officialLink, notes}) {
+                postingDate, experienceWording, officialLink, notes, category()}) {
             cells.add(value == null ? "" : value.toString());
         }
         return cells;
     }
+
+    /** Column J, read from the role (added 2026-10-08). */
+    public String category() {
+        return com.anuragbhandary.jobradar.domain.RoleCategory.of(role).label();
+    }
+
 }

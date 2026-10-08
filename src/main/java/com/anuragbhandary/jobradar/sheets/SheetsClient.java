@@ -48,7 +48,7 @@ public class SheetsClient {
     private static final String HEADER_FIRST_CELL = "company";
 
     /** Columns A to I - Company through Notes. */
-    private static final String COLUMN_RANGE = "A:I";
+    private static final String COLUMN_RANGE = "A:J";
 
     private final SheetsClientFactory factory;
     private final AppProperties.Google config;
@@ -148,6 +148,30 @@ public class SheetsClient {
         return row;
     }
 
+    /** The cells of an A1 range on the tracker's sheet, rows as returned (ragged). */
+    public List<List<Object>> read(String cells) throws IOException {
+        List<List<Object>> values = factory.sheets().spreadsheets().values()
+                .get(config.spreadsheetId(), range(cells)).execute().getValues();
+        return values == null ? List.of() : values;
+    }
+
+    /**
+     * Writes a block of cells. {@code formulas} makes Sheets read "=COUNTIF(...)"
+     * as a formula; otherwise everything is stored as typed text.
+     */
+    public void write(String cells, List<List<Object>> values, boolean formulas) throws IOException {
+        factory.sheets().spreadsheets().values()
+                .update(config.spreadsheetId(), range(cells), new ValueRange().setValues(values))
+                .setValueInputOption(formulas ? "USER_ENTERED" : "RAW")
+                .execute();
+        log.info("Wrote {}", cells);
+    }
+
+    /** One-indexed row of the header ("Company", "Role", ...), found by looking. */
+    public static int headerRow(List<List<Object>> values) {
+        return findFirstDataRow(values) - 1;
+    }
+
     /**
      * Locates the row after the header, by looking for it rather than assuming.
      *
@@ -201,8 +225,8 @@ public class SheetsClient {
         }
         for (var entry : byColumn.entrySet()) {
             String column = entry.getKey().toUpperCase(Locale.ROOT);
-            if (!column.matches("[A-I]")) {
-                throw new IllegalArgumentException("Column " + column + " is outside A:I");
+            if (!column.matches("[A-J]")) {
+                throw new IllegalArgumentException("Column " + column + " is outside A:J");
             }
             factory.sheets().spreadsheets().values()
                     .update(config.spreadsheetId(), range(column + rowNumber),

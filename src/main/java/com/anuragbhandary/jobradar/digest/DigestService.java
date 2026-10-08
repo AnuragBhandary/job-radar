@@ -136,8 +136,10 @@ public class DigestService {
                 .filter(b -> b.getLabel() != null)
                 .collect(Collectors.toMap(BoardToken::getToken, BoardToken::getLabel, (a, b) -> a));
         List<Digest.Entry> ranked = ranked(base.candidates(), date, labels);
+        // The best few of each category are kept whatever their score: every kind
+        // of role he could do is shown, not only the ones that score well.
         List<Digest.Entry> kept = ranked.stream()
-                .filter(e -> e.fit().score() >= fitScore.minFit())
+                .filter(e -> e.featured() || e.fit().score() >= fitScore.minFit())
                 .toList();
         int listed = ranked.stream().mapToInt(e -> e.ids().size()).sum();
         int keptListed = kept.stream().mapToInt(e -> e.ids().size()).sum();
@@ -160,14 +162,40 @@ public class DigestService {
                         fitScore.fit(e.posting(), today), false))
                 .sorted(Comparator.comparingInt((Digest.Entry e) -> e.fit().score()).reversed())
                 .toList();
-        List<Digest.Entry> grouped = grouped(scored, labels);
+        List<Digest.Entry> ordered = featuredFirst(grouped(scored, labels), PER_CATEGORY);
         int full = fitScore.fullDetail();
-        List<Digest.Entry> out = new java.util.ArrayList<>(grouped.size());
-        for (int i = 0; i < grouped.size(); i++) {
-            Digest.Entry e = grouped.get(i);
-            out.add(i < full ? e : new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
-                    e.fit(), true, e.similar()));
+        List<Digest.Entry> out = new java.util.ArrayList<>(ordered.size());
+        for (int i = 0; i < ordered.size(); i++) {
+            Digest.Entry e = ordered.get(i);
+            boolean compact = !e.featured() && i >= full;
+            out.add(new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
+                    e.fit(), compact, e.similar(), e.featured()));
         }
+        return out;
+    }
+
+    /** How many of each category open the file in full. */
+    static final int PER_CATEGORY = 5;
+
+    /**
+     * The best {@code perCategory} of each category first, in the categories'
+     * display order, then everything else by score. Asked for on 2026-10-08:
+     * software roles outnumber every other kind, so sorting by score alone
+     * buried data, AI/ML and SRE roles he could also do.
+     */
+    static List<Digest.Entry> featuredFirst(List<Digest.Entry> byScore, int perCategory) {
+        List<Digest.Entry> featured = new java.util.ArrayList<>();
+        java.util.Set<Digest.Entry> taken = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (com.anuragbhandary.jobradar.domain.RoleCategory category
+                : com.anuragbhandary.jobradar.domain.RoleCategory.displayOrder()) {
+            byScore.stream().filter(e -> e.category() == category).limit(perCategory).forEach(e -> {
+                featured.add(new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
+                        e.fit(), false, e.similar(), true));
+                taken.add(e);
+            });
+        }
+        List<Digest.Entry> out = new java.util.ArrayList<>(featured);
+        byScore.stream().filter(e -> !taken.contains(e)).forEach(out::add);
         return out;
     }
 

@@ -119,11 +119,24 @@ public class DigestWriter {
             out.append("\n## Candidates (").append(digest.candidates().size())
                     .append(folded == 0 ? "" : ", plus " + folded + " similar listed under them")
                     .append(")\n");
-            if (!compact.isEmpty()) {
+            boolean anyFeatured = full.stream().anyMatch(Digest.Entry::featured);
+            if (anyFeatured) {
+                out.append("The best few of each category first, then everything else by fit")
+                        .append(compact.isEmpty() ? ".\n" : "; the rest one line each under \"Lower fit\".\n");
+            } else if (!compact.isEmpty()) {
                 out.append("Sorted by fit; the ").append(full.size())
                         .append(" best in full, the rest one line each under \"Lower fit\".\n");
             }
+            com.anuragbhandary.jobradar.domain.RoleCategory section = null;
+            boolean restHeading = false;
             for (Digest.Entry entry : full) {
+                if (entry.featured() && entry.category() != section) {
+                    section = entry.category();
+                    out.append("\n## Best of ").append(section.label()).append('\n');
+                } else if (!entry.featured() && anyFeatured && !restHeading) {
+                    restHeading = true;
+                    out.append("\n## Everything else, by fit\n");
+                }
                 candidate(out, entry, labels, digest.date());
                 similar(out, entry);
             }
@@ -134,6 +147,7 @@ public class DigestWriter {
                     out.append("- ").append(p.getId()).append(" · ").append(company(p, labels))
                             .append(" · ").append(p.getTitle()).append(" · ")
                             .append(p.getLocation() == null ? "-" : p.getLocation())
+                            .append(" · ").append(e.category().label())
                             .append(" · fit ").append(e.fit().score())
                             .append(com.anuragbhandary.jobradar.domain.Employer.hidesEmployer(
                                     p.getSource(), p.getBoardToken()) ? " · employer hidden" : "")
@@ -278,6 +292,8 @@ public class DigestWriter {
             out.append("Fit ").append(entry.fit().score()).append("/100: ")
                     .append(entry.fit().summary()).append('\n');
         }
+        out.append("Category: ").append(entry.category().label())
+                .append(" · ").append(entry.category().resume().label()).append('\n');
         if (entry.companyApplied()) {
             out.append("**Already applied to this company** (this role or another)\n");
         }

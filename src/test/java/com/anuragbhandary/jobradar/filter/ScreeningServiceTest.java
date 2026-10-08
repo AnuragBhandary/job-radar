@@ -145,15 +145,13 @@ class ScreeningServiceTest {
     }
 
     @Test
-    @DisplayName("full-stack titles are rejected except at Amazon")
-    void fullStackOnlyAtAmazon() {
+    @DisplayName("full-stack titles are in since 2026-10-08, everywhere")
+    void fullStackIsIn() {
         Posting startup = posting("Full-Stack Engineer", "Bengaluru, India", "Build features.");
-        Posting amazon = posting(Source.AMAZON, "IND", "Software Development Engineer, Full Stack",
-                "Bengaluru, India", "Build features.");
+        Posting frontend = posting("Frontend Developer", "Bengaluru, India", "Build features.");
 
-        assertThat(startup.getVerdict()).isEqualTo(Verdict.REJECTED);
-        assertThat(startup.getRejectReason()).contains("full-stack");
-        assertThat(amazon.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(startup.getVerdict()).isEqualTo(Verdict.CANDIDATE);
+        assertThat(frontend.getVerdict()).isEqualTo(Verdict.CANDIDATE);
     }
 
     @Test

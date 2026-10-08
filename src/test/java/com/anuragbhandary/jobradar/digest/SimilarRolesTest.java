@@ -40,4 +40,18 @@ class SimilarRolesTest {
 
         assertThat(DigestService.grouped(List.of(india, ireland), Map.of())).hasSize(2);
     }
+
+    @Test
+    void theBestOfEachCategoryComeFirstThenTheRestByScore() {
+        List<Digest.Entry> byScore = List.of(
+                entry("1", "Backend Engineer"), entry("2", "Software Engineer II"),
+                entry("3", "Java Developer"), entry("4", "Data Engineer"), entry("5", "QA Engineer"));
+
+        List<Digest.Entry> out = DigestService.featuredFirst(byScore, 1);
+
+        assertThat(out).extracting(e -> e.posting().getExternalId())
+                .containsExactly("1", "4", "5", "2", "3");
+        assertThat(out).extracting(Digest.Entry::featured)
+                .containsExactly(true, true, true, false, false);
+    }
 }

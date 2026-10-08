@@ -261,6 +261,15 @@ public class NotifyCommand {
         String note = latestNote(row.getNotes());
 
         StringBuilder body = new StringBuilder();
+        // The category and its resume beside the link (2026-10-08), so the phone
+        // shows which resume to send without opening anything.
+        com.anuragbhandary.jobradar.domain.RoleCategory category =
+                com.anuragbhandary.jobradar.domain.RoleCategory.of(companyRole[1]);
+        body.append("🏷️ ").append(category.label()).append(" · ").append(category.resume().label());
+        if (url != null && url.startsWith("http")) {
+            body.append("\n🔗 ").append(clip(url, 300));
+        }
+        body.append('\n');
         if (!location.isBlank()) {
             body.append("📍 ").append(clip(location, 150)).append('\n');
         }

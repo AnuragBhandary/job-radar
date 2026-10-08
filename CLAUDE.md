@@ -107,8 +107,8 @@ openings" and similar from any directory. In short:
   UK placement and undergraduate titles are student-only. Senior wording in a
   description ("expert-level", "mentoring engineers") lowers the fit score but
   never rejects, since it is judgement rather than a stated fact.
-  Full-stack and frontend titles are rejected everywhere except Amazon
-  (`full-stack-exclude`); a Hacker News header that also lists backend is kept.
+  Full-stack and frontend titles are no longer rejected (2026-10-08): until his
+  first job a stack gap is flagged as a Stretch, never filtered out.
   Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
   Internships: only in India or remote into India, and not when the text
@@ -140,6 +140,15 @@ openings" and similar from any directory. In short:
   title words common among read skips and absent from picks (suggestions only),
   the commonest skip reasons, and, once applications exist, replies by source,
   lane and resume.
+- `RoleCategory` reads a title as Software / Backend, Data Engineering, Data
+  Science / Analytics, AI / ML, Platform / SRE / DevOps, QA / Test Automation,
+  Full-stack / Frontend (or Other for non-tech), and names the resume that goes
+  with it (data categories: Data resume; the rest: Software resume). The
+  openings file shows the best five of each category in full first, whatever
+  their score, then everything else by fit; each block and each Discord card
+  names the category and resume. The tracker's column J holds the category and
+  L1:M10 counts applications by category (`sheet-categories`, which fills only
+  empty cells; new rows get it on append).
 - In the openings file, same-employer openings whose titles differ only in
   brackets are listed under the best one as "Similar at this employer". Each id
   still needs its own decision.

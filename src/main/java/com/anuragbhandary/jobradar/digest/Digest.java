@@ -77,13 +77,25 @@ public record Digest(
      * @param similar other openings at the same employer whose titles differ only
      *                in brackets (Visa's "Data Engineer" and "Data Engineer (1 - 2
      *                years ... Kafka)"): listed under this one, each still decided
+     * @param featured one of the best few of its category, shown in full ahead of
+     *                 the rest whatever its score
      */
     public record Entry(Posting posting, boolean updated, boolean companyApplied,
-            FitScore.Fit fit, boolean compact, List<Entry> similar) {
+            FitScore.Fit fit, boolean compact, List<Entry> similar, boolean featured) {
+
+        public Entry(Posting posting, boolean updated, boolean companyApplied,
+                FitScore.Fit fit, boolean compact, List<Entry> similar) {
+            this(posting, updated, companyApplied, fit, compact, similar, false);
+        }
 
         public Entry(Posting posting, boolean updated, boolean companyApplied,
                 FitScore.Fit fit, boolean compact) {
             this(posting, updated, companyApplied, fit, compact, List.of());
+        }
+
+        /** The kind of role, from the title. */
+        public com.anuragbhandary.jobradar.domain.RoleCategory category() {
+            return com.anuragbhandary.jobradar.domain.RoleCategory.of(posting.getTitle());
         }
 
         public Entry(Posting posting, boolean updated, boolean companyApplied) {
