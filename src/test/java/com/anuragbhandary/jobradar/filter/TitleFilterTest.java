@@ -320,6 +320,14 @@ class TitleFilterTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"Junior iOS Engineer - Payments", "Android Engineer: Device Foundations",
+            "Flutter Developer", "React Native Developer"})
+    @DisplayName("mobile titles pass since 2026-10-08")
+    void mobileIsIn(String title) {
+        assertThat(filter.screen(title).accepted()).isTrue();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"Software Engineering Intern", "SDE Intern", "Backend Developer Internship"})
     @DisplayName("software internships pass the title; screening decides them")
     void internshipsPassTheTitle(String title) {
@@ -329,8 +337,6 @@ class TitleFilterTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "SAP Test Automation Engineer",
-            "Junior iOS Engineer - Payments",
-            "Android Engineer: Device Foundations",
             "Salesforce Developer and Admin, ISS",
             "Model-Based Design (MBD) Engineer_ECT",
             "VM Brakes BSW Developer Indian OEM",

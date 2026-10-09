@@ -552,7 +552,8 @@ job-radar:
        # Outside the stack (2026-09-19). Not judgement about fit, which is read
        # per posting now: each of these is a platform with its own skill set that
        # the resume does not have, so the role cannot be applied to honestly.
-       ios, android, flutter, react native, kotlin multiplatform,
+       # Mobile (iOS, Android, Flutter, React Native) was here until 2026-10-08,
+       # reopened at his request: a Stretch with the gap named.
        salesforce, sap, abap, servicenow, dynamics 365, power platform, uipath, rpa,
        citizen developer, mainframe, cobol,
        bsw, autosar, mbd, model-based design, simulink, mes,

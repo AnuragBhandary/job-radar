@@ -24,6 +24,8 @@ public enum RoleCategory {
     OTHER("Other (non-tech)", Resume.SOFTWARE,
             "\\blegal\\b|equity research|investment research|\\bsales\\b|client solutions"
                     + "|controls governance|\\bcompliance\\b"),
+    MOBILE("Mobile", Resume.SOFTWARE,
+            "\\bios\\b|android|flutter|react native|\\bmobile\\b|kotlin multiplatform|swift(?:ui)?\\b"),
     FULL_STACK("Full-stack / Frontend", Resume.SOFTWARE,
             "full[\\s-]?stack|front[\\s-]?end|\\breact\\b|\\bangular\\b|\\bui (?:engineer|developer)|web developer"),
     QA("QA / Test Automation", Resume.SOFTWARE,
@@ -88,7 +90,7 @@ public enum RoleCategory {
 
     /** The order the openings file shows categories in. */
     public static List<RoleCategory> displayOrder() {
-        return List.of(SOFTWARE, DATA_ENGINEERING, DATA_ANALYTICS, AI_ML, PLATFORM, QA, FULL_STACK);
+        return List.of(SOFTWARE, DATA_ENGINEERING, DATA_ANALYTICS, AI_ML, PLATFORM, QA, FULL_STACK, MOBILE);
     }
 
     /**

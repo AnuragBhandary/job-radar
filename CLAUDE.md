@@ -107,8 +107,10 @@ openings" and similar from any directory. In short:
   UK placement and undergraduate titles are student-only. Senior wording in a
   description ("expert-level", "mentoring engineers") lowers the fit score but
   never rejects, since it is judgement rather than a stated fact.
-  Full-stack and frontend titles are no longer rejected (2026-10-08): until his
-  first job a stack gap is flagged as a Stretch, never filtered out.
+  Full-stack, frontend and mobile titles are no longer rejected (2026-10-08):
+  until his first job a stack gap is flagged as a Stretch, never filtered out.
+  The other platform exclusions (Salesforce, SAP, .NET, security, support...)
+  stay, by his choice.
   Abroad only: a stated refusal to sponsor on a
   relocation role, and a requirement to live in the country already.
   Internships: only in India or remote into India, and not when the text
@@ -142,7 +144,7 @@ openings" and similar from any directory. In short:
   lane and resume.
 - `RoleCategory` reads a title as Software / Backend, Data Engineering, Data
   Science / Analytics, AI / ML, Platform / SRE / DevOps, QA / Test Automation,
-  Full-stack / Frontend (or Other for non-tech), and names the resume that goes
+  Full-stack / Frontend, Mobile (or Other for non-tech), and names the resume that goes
   with it (data categories: Data resume; the rest: Software resume). The
   openings file shows the best five of each category in full first, whatever
   their score, then everything else by fit; each block and each Discord card
