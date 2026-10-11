@@ -54,8 +54,17 @@ public class SignalExtractor {
             compile("(?:existing|current|valid)\\s+right\\s+to\\s+work"),
             // Deliveroo's new-grad role (2026-10-01): "Right to Work: Applicants
             // must be authorised to work in the UK".
+            // "to live and work" (2026-10-11): "Candidates must be legally
+            // authorized to live and work in the country where the position is
+            // based" passed as a candidate on twelve postings.
             compile("must\\s+(?:already\\s+)?be\\s+(?:legally\\s+)?(?:authori[sz]ed|eligible|entitled|permitted)"
-                    + "\\s+to\\s+work"),
+                    + "\\s+to\\s+(?:live\\s+and\\s+)?work"),
+            // The same requirement as a bare bullet, with no "must be": "Legally
+            // entitled to live and work in the European Union". "Legally" is what
+            // makes it a condition rather than a description.
+            compile("legally\\s+(?:authori[sz]ed|eligible|entitled|permitted)\\s+to\\s+(?:live\\s+and\\s+)?work"),
+            // "Entry Requirements: Right to live and work in the UK".
+            compile("right\\s+to\\s+live\\s+and\\s+work"),
             compile("(?:require|need)s?\\s+(?:the\\s+|full\\s+|existing\\s+){0,2}right\\s+to\\s+work"),
             compile("right\\s+to\\s+work[^.]{0,40}?\\s+(?:is\\s+)?(?:required|essential|mandatory)"),
             compile("security\\s+clearance"),

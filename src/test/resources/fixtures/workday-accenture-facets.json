@@ -1,0 +1,79 @@
+{
+ "total": 2000,
+ "jobPostings": [
+  {
+   "title": "Contract Specialist (French Speaker)",
+   "externalPath": "/job/Cairo-CO55-Uvenues/Contract-Specialist--French-Speaker-_R00359939",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "R00359939",
+    "Cairo, Co55-Uvenues"
+   ]
+  },
+  {
+   "title": "Employment Law Senior Manager",
+   "externalPath": "/job/Cairo-CO55-Uvenues/Employment-Law-Senior-Manager_R00351295",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "R00351295",
+    "Location Negotiable"
+   ]
+  }
+ ],
+ "facets": [
+  {
+   "facetParameter": "jobFamilyGroup",
+   "descriptor": "Area of Work",
+   "values": [
+    {
+     "descriptor": "Software Engineering",
+     "id": "bb69a804fb120130e52200ed1301d275",
+     "count": 19091
+    },
+    {
+     "descriptor": "AI & Data",
+     "id": "99f04fef1b5710010b161504c3910000",
+     "count": 3997
+    },
+    {
+     "descriptor": "Finance",
+     "id": "bb69a804fb1201284a6eefec1301b275",
+     "count": 586
+    }
+   ]
+  },
+  {
+   "facetParameter": "locationMainGroup",
+   "values": [
+    {
+     "facetParameter": "locationCountry",
+     "descriptor": "Country",
+     "values": [
+      {
+       "descriptor": "India",
+       "id": "c4f78be1a8f14da0ab49ce1162348a5e",
+       "count": 35708
+      },
+      {
+       "descriptor": "Philippines",
+       "id": "e56f1daf83e04bacae794ba5c5593560",
+       "count": 760
+      }
+     ]
+    },
+    {
+     "facetParameter": "locations",
+     "descriptor": "City",
+     "values": [
+      {
+       "descriptor": "Bengaluru",
+       "id": "3666ef49a96a019a589ae377cf00b659",
+       "count": 14007
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "userAuthenticated": false
+}

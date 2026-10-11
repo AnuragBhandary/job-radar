@@ -5,10 +5,16 @@ import com.anuragbhandary.jobradar.filter.TargetPlaces;
 import com.anuragbhandary.jobradar.filter.TitleFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.StringJoiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -37,6 +43,14 @@ import org.springframework.stereotype.Component;
  * of the Indian ones. Workday's own search matches location text, so "india"
  * returns the India desks and nothing else needs to change.
  *
+ * <p>When even one country is more than Workday will list, the fourth part names
+ * facets instead, by the label the site shows, joined by {@code +}:
+ * {@code accenture/wd103/AccentureCareers/@India+Software Engineering}. Accenture
+ * lists 17,929 software jobs in India; Workday answers any query with at most
+ * {@link #RESULT_CAP} of them, newest first, which is eleven days of that slice.
+ * The labels are looked up in the facets of an unfiltered first page, since the
+ * ids behind them are opaque and differ per tenant.
+ *
  * <p><b>The search is a POST.</b> Paging is a JSON body, not a query string,
  * which is why {@link HttpFetchClient} learned to post.
  *
@@ -54,8 +68,28 @@ public class WorkdayFetcher implements AtsFetcher {
     /** Workday rejects a larger page than this on most tenants. */
     private static final int PAGE_SIZE = 20;
 
-    /** Guards against a pagination bug turning into an unbounded crawl. */
-    private static final int MAX_PAGES = 60;
+    /**
+     * Workday lists no more than this for any one query: past offset 2,000 it
+     * starts again from the top (Accenture, 2026-10-11).
+     */
+    static final int RESULT_CAP = 2000;
+
+    /** The whole of {@link #RESULT_CAP}, and a guard against an unbounded crawl. */
+    private static final int MAX_PAGES = RESULT_CAP / PAGE_SIZE;
+
+    /**
+     * On a board that lists only its newest {@link #RESULT_CAP}, a stored posting
+     * that has slid past the end is kept this long after it was posted rather than
+     * read as closed. Otherwise a shortlisted Accenture job would be dropped as
+     * dead eleven days after it appeared.
+     */
+    static final int CAPPED_KEEP_DAYS = 45;
+
+    /**
+     * Detail reads per board per run. A new slice of Accenture is two thousand
+     * jobs; past this the rest are read on the following runs.
+     */
+    static final int MAX_READS_PER_RUN = 500;
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
@@ -78,7 +112,10 @@ public class WorkdayFetcher implements AtsFetcher {
         return Source.WORKDAY;
     }
 
-    /** {@code tenant/wdN/site[/search]}, as seeded. The search is "" when absent. */
+    /**
+     * {@code tenant/wdN/site[/search]}, as seeded. The search is "" when absent;
+     * a search starting with "@" is a list of facet labels instead.
+     */
     record Board(String tenant, String datacentre, String site, String search) {
 
         static Board parse(String token) throws FetchException {
@@ -88,11 +125,22 @@ public class WorkdayFetcher implements AtsFetcher {
                         "Workday token must be tenant/wdN/site[/search], got: " + token);
             }
             String search = parts.length == 4 ? parts[3] : "";
-            // It goes into a JSON body verbatim, so nothing that would need escaping.
-            if (!search.matches("[A-Za-z0-9 ]*")) {
-                throw new FetchException("Workday search must be letters, digits and spaces, got: " + search);
+            if (!search.matches("[A-Za-z0-9 ]*|@[A-Za-z0-9 &+,-]+")) {
+                throw new FetchException("Workday search must be letters, digits and spaces,"
+                        + " or @facet+facet, got: " + search);
             }
             return new Board(parts[0], parts[1], parts[2], search);
+        }
+
+        /** The facet labels, or empty for a plain search. */
+        List<String> facetLabels() {
+            return search.startsWith("@")
+                    ? Arrays.stream(search.substring(1).split("\\+")).map(String::trim).toList()
+                    : List.of();
+        }
+
+        String searchText() {
+            return search.startsWith("@") ? "" : search;
         }
 
         String base() {
@@ -110,20 +158,18 @@ public class WorkdayFetcher implements AtsFetcher {
     public FetchBatch fetch(String boardToken) throws FetchException {
         Board board = Board.parse(boardToken);
 
+        ObjectNode facets = board.facetLabels().isEmpty()
+                ? json.createObjectNode()
+                : resolveFacets(board, boardToken);
+
         List<JsonNode> shortlist = new ArrayList<>();
         int boardTotal = 0;
         int skipped = 0;
 
         for (int page = 0; page < MAX_PAGES; page++) {
             int offset = page * PAGE_SIZE;
-            String body = http.post(
-                    board.base() + "/jobs",
-                    """
-                    {"appliedFacets":{},"limit":%d,"offset":%d,"searchText":"%s"}"""
-                            .formatted(PAGE_SIZE, offset, board.search()),
-                    page == 0 ? "workday-" + board.tenant() + "-" + board.site() : null);
-
-            JsonNode root = read(body, boardToken);
+            JsonNode root = read(listPage(board, facets, offset,
+                    page == 0 ? "workday-" + board.tenant() + "-" + board.site() : null), boardToken);
             // The board's own count, so health reflects the board and not our
             // filters - but Workday does not report it consistently. Philips
             // answers total=809 at offset 0, total=0 at offset 780 and 800, and
@@ -162,29 +208,136 @@ public class WorkdayFetcher implements AtsFetcher {
 
         List<RawPosting> detailed = new ArrayList<>(shortlist.size());
         StoredPostings.Known known = stored.open(Source.WORKDAY, boardToken);
+        Set<String> listedIds = new HashSet<>();
+        boolean capped = boardTotal >= RESULT_CAP;
+        int reads = 0;
         for (JsonNode summary : shortlist) {
             // The list's first bullet is the requisition id, the same id the
             // detail gives and the posting is stored under.
             JsonNode bullets = summary.path("bulletFields");
-            RawPosting posting = known.reuse(bullets.isArray() && !bullets.isEmpty()
-                    ? bullets.get(0).asText(null) : null);
-            if (posting == null) {
+            String reqId = bullets.isArray() && !bullets.isEmpty() ? bullets.get(0).asText(null) : null;
+            // A capped board is not re-read weekly: Accenture adds about 180 jobs
+            // a day to a slice, and re-reading the other 2,000 one day in seven
+            // more than doubled each run.
+            RawPosting posting = capped ? known.stored(reqId) : known.reuse(reqId);
+            if (posting == null && reads >= MAX_READS_PER_RUN) {
+                // The list is newest first, so a capped run has read the latest;
+                // a stored posting stays as stored, a new one waits a run.
+                posting = known.stored(reqId);
+            } else if (posting == null) {
+                reads++;
                 posting = withDescription(board, summary);
             }
             if (posting != null) {
                 detailed.add(posting);
+                listedIds.add(posting.externalId());
             }
+        }
+        if (capped) {
+            int kept = keepPastTheCap(known, listedIds, detailed, LocalDate.now());
+            log.debug("{}: list capped at {}, {} older stored postings kept", boardToken, RESULT_CAP, kept);
         }
         log.debug("{}: {} details reused from the database", boardToken, known.reused());
         return new FetchBatch(detailed, boardTotal);
     }
 
+    /**
+     * Adds the stored postings that a capped list no longer reaches, while they are
+     * young enough to still be open. Returns how many were kept.
+     */
+    static int keepPastTheCap(StoredPostings.Known known, Set<String> listedIds,
+            List<RawPosting> out, LocalDate today) {
+        LocalDate cutoff = today.minusDays(CAPPED_KEEP_DAYS);
+        int kept = 0;
+        for (RawPosting old : known.all()) {
+            if (!listedIds.contains(old.externalId())
+                    && old.postedDate() != null && !old.postedDate().isBefore(cutoff)) {
+                out.add(old);
+                kept++;
+            }
+        }
+        return kept;
+    }
+
+    private String listPage(Board board, ObjectNode facets, int offset, String fixtureName)
+            throws FetchException {
+        ObjectNode body = json.createObjectNode();
+        body.set("appliedFacets", facets);
+        body.put("limit", PAGE_SIZE);
+        body.put("offset", offset);
+        body.put("searchText", board.searchText());
+        return http.post(board.base() + "/jobs", body.toString(), fixtureName);
+    }
+
+    /**
+     * Turns the token's facet labels into the ids Workday filters on, read from
+     * the facets of an unfiltered first page. A label matches a value's
+     * descriptor exactly, ignoring case, at any depth (Accenture's countries sit
+     * inside a "locationMainGroup" group under the parameter "locationCountry").
+     */
+    ObjectNode resolveFacets(Board board, String boardToken) throws FetchException {
+        JsonNode root = read(listPage(board, json.createObjectNode(), 0, null), boardToken);
+        ObjectNode applied = json.createObjectNode();
+        for (String label : board.facetLabels()) {
+            String[] hit = findFacet(root.path("facets"), null, label);
+            if (hit == null) {
+                throw new FetchException("No Workday facet labelled '" + label + "' on " + boardToken);
+            }
+            JsonNode existing = applied.get(hit[0]);
+            ArrayNode ids = existing instanceof ArrayNode array ? array : applied.putArray(hit[0]);
+            ids.add(hit[1]);
+        }
+        return applied;
+    }
+
+    /** {@code [facetParameter, id]} of the first value labelled {@code label}, or null. */
+    static String[] findFacet(JsonNode values, String parameter, String label) {
+        if (!values.isArray()) {
+            return null;
+        }
+        for (JsonNode value : values) {
+            String own = value.path("facetParameter").asText(parameter);
+            if (value.has("values")) {
+                String[] nested = findFacet(value.path("values"), own, label);
+                if (nested != null) {
+                    return nested;
+                }
+            } else if (own != null && value.has("id")
+                    && label.equalsIgnoreCase(value.path("descriptor").asText("").trim())) {
+                return new String[] {own, value.path("id").asText()};
+            }
+        }
+        return null;
+    }
+
     private boolean passesCheapFilters(JsonNode summary) {
         String title = summary.path("title").asText(null);
-        String location = summary.path("locationsText").asText(null);
+        String location = location(summary);
         return title != null
                 && places.wanted(location, title)
                 && titleFilter.screen(title).accepted();
+    }
+
+    /**
+     * The list's place. Most tenants fill {@code locationsText}; Accenture leaves
+     * it out and puts the city in the bullets after the requisition id
+     * ({@code ["R00336744", "Bengaluru"]}), which until 2026-10-11 failed every
+     * one of its postings on geography before a detail was read.
+     */
+    static String location(JsonNode summary) {
+        String text = summary.path("locationsText").asText(null);
+        if (text != null && !text.isBlank()) {
+            return text;
+        }
+        JsonNode bullets = summary.path("bulletFields");
+        if (!bullets.isArray() || bullets.size() < 2) {
+            return null;
+        }
+        StringJoiner rest = new StringJoiner(", ");
+        for (int i = 1; i < bullets.size(); i++) {
+            rest.add(bullets.get(i).asText(""));
+        }
+        return rest.toString();
     }
 
     /**
@@ -206,7 +359,7 @@ public class WorkdayFetcher implements AtsFetcher {
             return new RawPosting(
                     externalId(summary, info, externalPath),
                     info.path("title").asText(summary.path("title").asText(null)),
-                    info.path("location").asText(summary.path("locationsText").asText(null)),
+                    info.path("location").asText(location(summary)),
                     Html.toPlainText(info.path("jobDescription").asText("")),
                     info.path("externalUrl").asText(board.publicUrl(externalPath)),
                     // The list only offers "Posted 30+ Days Ago", which stops being

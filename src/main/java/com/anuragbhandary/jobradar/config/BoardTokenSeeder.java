@@ -83,6 +83,9 @@ public class BoardTokenSeeder {
      */
     private static final Map<String, String> SITEMAP = new LinkedHashMap<>();
 
+    /** Avature careers sites, keyed {@code name/host/lang/portal[/search]}. */
+    private static final Map<String, String> AVATURE = new LinkedHashMap<>();
+
     /** One board: the current month's "Ask HN: Who is hiring?" thread. */
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
@@ -137,6 +140,11 @@ public class BoardTokenSeeder {
         // answer on a guessed tenant/site.
         WORKDAY.put("broadcom/wd1/External_Career/india", "Broadcom");
         WORKDAY.put("expedia/wd108/search/india", "Expedia");
+        // 2026-10-11: Accenture lists 17,929 software jobs in India, and Workday
+        // shows any one query only its newest 2,000, so the site is read as facet
+        // slices. The "india" text search that discovery added found 2 of them.
+        WORKDAY.put("accenture/wd103/AccentureCareers/@India+Software Engineering", "Accenture");
+        WORKDAY.put("accenture/wd103/AccentureCareers/@India+AI & Data", "Accenture");
 
         // 2026-09-28: probed and counted; each had India engineering roles that day
         // (Okta 73, Zscaler 41, PubMatic 29, Commvault 9, Twilio 8, ChargePoint 6,
@@ -335,6 +343,10 @@ public class BoardTokenSeeder {
         SITEMAP.put("stanchart/jobs.standardchartered.com/sitemap.xml", "Standard Chartered");
         SITEMAP.put("wipro/careers.wipro.com/sitemap.xml", "Wipro");
 
+        // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
+        AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
+        AVATURE.put("deloitte/usijobs.deloitte.com/en_US/careersUSI", "Deloitte USI");
+
         GOOGLE.put("India", "Google India");
         GOOGLE.put("Ireland", "Google Ireland");
         GOOGLE.put("Germany", "Google Germany");
@@ -446,7 +458,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.GOOGLE, GOOGLE)
                 + seedSource(Source.APPLE, APPLE)
                 + seedSource(Source.ORACLE_HCM, ORACLE_HCM)
-                + seedSource(Source.SITEMAP, SITEMAP);
+                + seedSource(Source.SITEMAP, SITEMAP)
+                + seedSource(Source.AVATURE, AVATURE);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

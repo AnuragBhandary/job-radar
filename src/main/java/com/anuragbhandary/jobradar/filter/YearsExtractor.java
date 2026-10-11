@@ -732,6 +732,16 @@ public class YearsExtractor {
             Pattern.CASE_INSENSITIVE);
 
     /**
+     * Accenture's header (2026-10-11): "Must have skills : LLMs Good to have
+     * skills : NA Minimum 12 year(s) of experience is required". The wish word
+     * labels a skills field that ends before "Minimum"; read as a wish, it hid
+     * the bar on 206 Accenture postings, 12- and 15-year roles among them.
+     */
+    private static final Pattern SKILLS_FIELD_THEN_MINIMUM = Pattern.compile(
+            "(?:nice|good)[\\s-]to[\\s-]have\\s+skills?\\s*:[^:]{0,60}?\\bminimum\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
      * "Bachelor's degree in Computer Science, Engineering, or related field 2-4
      * years of experience" (Fortive, 2026-10-07): the field names the degree's
      * subject, and the years follow it directly. "or related field and 1+ year"
@@ -752,7 +762,9 @@ public class YearsExtractor {
             }
             String before = description.substring(Math.max(0, m.start() - 60), m.start())
                     .replaceAll("[\\r\\n\\t\\u00a0]+", " ");
-            if (WISH_BEFORE.matcher(before).find()
+            boolean wish = WISH_BEFORE.matcher(before).find()
+                    && !SKILLS_FIELD_THEN_MINIMUM.matcher(before).find();
+            if (wish
                     || !(STATED_BAR_BEFORE.matcher(before).find()
                             || RELATED_FIELD_BEFORE.matcher(before).find())) {
                 continue;

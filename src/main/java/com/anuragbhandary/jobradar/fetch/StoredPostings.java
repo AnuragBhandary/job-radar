@@ -5,6 +5,7 @@ import com.anuragbhandary.jobradar.domain.PostingStatus;
 import com.anuragbhandary.jobradar.domain.Source;
 import com.anuragbhandary.jobradar.repo.PostingRepository;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -85,6 +86,11 @@ public class StoredPostings {
         /** The stored posting whatever the day, or null: for a run that has hit its read cap. */
         public RawPosting stored(String externalId) {
             return externalId == null ? null : byId.get(externalId);
+        }
+
+        /** Every stored open posting: for a list that cannot reach them all. */
+        public Collection<RawPosting> all() {
+            return byId.values();
         }
 
         public int reused() {

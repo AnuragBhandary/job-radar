@@ -119,7 +119,8 @@ openings" and similar from any directory. In short:
   and new-grad titles are rejected on the same wording (current enrolment,
   graduating 2026 or later, "graduated within the last year"), in every lane.
   "Authorised to work in <country>" and "right to work ... required" are
-  sponsorship refusals. US-only remote with no place ("Remote (Any State)",
+  sponsorship refusals, as are "legally entitled to (live and) work" and
+  "right to live and work" (2026-10-11). US-only remote with no place ("Remote (Any State)",
   "Nationwide Remote") is US in `geo.countries`. Big tech also
   includes the banks and large India offices (`big-tech-boards`).
   Not software: a title with no software word (and not a bare "Engineer") whose
@@ -160,6 +161,23 @@ openings" and similar from any directory. In short:
   `config/BoardTokenSeeder` as `tenant/wdN/site`, with an optional fourth part
   that becomes the site search (`mastercard/wd1/CorporateCareers/india`). Big
   global sites need it, or the page limit stops before the India desks.
+  Workday lists at most 2,000 per query, newest first. A site bigger than that
+  in one country is read as facet slices: a fourth part starting with `@` names
+  facet labels joined by `+` (`accenture/wd103/AccentureCareers/@India+Software
+  Engineering`), looked up in the site's facets each run. On a capped list a
+  stored posting that slid past the end is kept for 45 days after posting
+  instead of being closed, and stored postings are not re-read weekly (a first
+  run of a slice reads ~500 pages at ~2 s each; later runs only the ~180 new a
+  day). A list with no `locationsText` (Accenture) takes the
+  place from the bullets after the requisition id. At most 500 detail reads per
+  board per run.
+- Avature sites (`AVATURE`, `name/host/lang/portal[/search]`: Siemens India,
+  Deloitte USI) are read from the server-rendered search page, following its
+  "Next" link; job pages give JSON-LD or labelled fields, and the list row's
+  place is the fallback (Deloitte's JSON-LD has no address). Siemens answers in
+  about 4 s a page at 6 jobs a page, so its list alone takes ~9 minutes.
+  Cognizant (403), HCLTech (location loaded by script, job API closed by
+  robots.txt) and Heizen (hand-built page) are on `browser-watch` instead.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

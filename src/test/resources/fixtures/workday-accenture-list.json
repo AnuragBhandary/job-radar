@@ -1,0 +1,33 @@
+{
+ "total": 2000,
+ "jobPostings": [
+  {
+   "title": "Custom Software Engineer",
+   "externalPath": "/job/Bengaluru/Custom-Software-Engineer_ATCI-5313904-S1937509",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "ATCI-5313904-S1937509",
+    "Bengaluru"
+   ]
+  },
+  {
+   "title": "Custom Software Engineer",
+   "externalPath": "/job/Bengaluru/Software-Development-Lead_ATCI-5145629-S1897932-1",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "ATCI-5145629-S1897932",
+    "Bengaluru"
+   ]
+  },
+  {
+   "title": "Custom Software Engineer",
+   "externalPath": "/job/Chennai/Custom-Software-Engineer_ATCI-5694907-S2061205-1",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "ATCI-5694907-S2061205",
+    "Chennai"
+   ]
+  }
+ ],
+ "userAuthenticated": false
+}

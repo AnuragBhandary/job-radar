@@ -85,6 +85,21 @@ job-radar:
         city: India, Dublin
         url: https://www.metacareers.com/jobsearch/?offices[0]=Bangalore%2C%20India&offices[1]=Gurgaon%2C%20India&offices[2]=Mumbai%2C%20India&offices[3]=Dublin%2C%20Ireland
         note: "mostly hardware and sales in India on 2026-10-01"
+      # 2026-10-11. Cognizant answers 403 to every job page. HCLTech's pages load
+      # their location by script and robots.txt closes its job API, so a fetch
+      # could not tell India from abroad. Heizen is a hand-built page of about
+      # eight roles, not worth a fetcher.
+      - company: Cognizant
+        city: India
+        url: https://careers.cognizant.com/india-en/jobs/
+      - company: HCLTech
+        city: India
+        url: https://careers.hcltech.com/search/?q=&locationsearch=India&sortColumn=referencedate&sortDirection=desc
+        note: "9,151 jobs worldwide on 2026-10-11; sorted newest first"
+      - company: Heizen
+        city: Remote, Hyderabad
+        url: https://www.heizen.work/careers
+        note: "Associate Software Engineer (0-2 years) and SDE intern open on 2026-10-11"
 
   # ---------------------------------------------------------------------------
   # Country strategy.

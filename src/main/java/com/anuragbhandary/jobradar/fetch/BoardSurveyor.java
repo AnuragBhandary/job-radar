@@ -280,7 +280,7 @@ public class BoardSurveyor {
                         "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\""
                                 + country.getValue() + "\"}", null), token);
                 for (JsonNode job : hits.path("jobPostings")) {
-                    String code = places.countryCode(job.path("locationsText").asText(null));
+                    String code = places.countryCode(WorkdayFetcher.location(job));
                     if (country.getKey().equals(code)) {
                         byCode.merge(code, 1, Integer::sum);
                     }

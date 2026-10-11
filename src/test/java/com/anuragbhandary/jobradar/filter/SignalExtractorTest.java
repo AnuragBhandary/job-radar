@@ -47,6 +47,11 @@ class SignalExtractorTest {
                 // Megger, 2026-10-07: read as supportive on "visa sponsorship".
                 "We’re not in a position as a business to offer visa sponsorship, so we’re"
                         + " unable to consider applications from candidates who require it.",
+                // 2026-10-11: "live and" between "to" and "work" hid all three.
+                "Candidates must be legally authorized to live and work in the country where the"
+                        + " position is based, without requiring employer sponsorship.",
+                "Legally entitled to live and work in the European Union.",
+                "Entry Requirements: Right to live and work in the UK.",
         })
         @DisplayName("phrases that answer the question with 'not you' are blocking")
         void detectsBlocking(String text) {
@@ -60,6 +65,9 @@ class SignalExtractorTest {
                 "Visa sponsorship is available for this role.",
                 "We sponsor candidates from outside the EU.",
                 "Visa sponsorship is available, and we do not require you to relocate before starting.",
+                // Scale's Qatar role: the employer gets the permission for you.
+                "Scale will request the necessary permissions for you to live and work in Qatar,"
+                        + " and offers visa sponsorship.",
         })
         @DisplayName("phrases that offer help are supportive")
         void detectsSupportive(String text) {

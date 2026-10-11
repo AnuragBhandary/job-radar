@@ -615,4 +615,21 @@ class YearsExtractorTest {
                 + " equivalent. 6+ years of relevant work experience in software development."))
                 .isEqualTo(6);
     }
+
+    /** Accenture, 2026-10-11: a "Good to have skills" field does not hedge the "Minimum" after it. */
+    @Test
+    void accentureHeaderBarAfterSkillsField() {
+        assertThat(minYears("Project Role : AI / ML Engineer Must have skills : Large Language"
+                + " Models (LLMs) Good to have skills : NA Minimum 12 year(s) of experience is"
+                + " required Educational Qualification : 15 years full time education"))
+                .isEqualTo(12);
+        assertThat(minYears("Must have skills : Aveva OSIsoft PI Good to have skills : NA Minimum"
+                + " 0-2 year(s) of experience is required Educational Qualification : 15 years"
+                + " full time education"))
+                .isEqualTo(0);
+        // The wish still holds when the number belongs to the skills field itself.
+        assertThat(minYears("Requirements: a degree in computer science. Good to have skills :"
+                + " 3 years of Rust."))
+                .isEqualTo(-1);
+    }
 }

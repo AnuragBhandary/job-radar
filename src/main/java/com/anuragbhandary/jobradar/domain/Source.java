@@ -52,5 +52,7 @@ public enum Source {
     /** Apple's own careers site, one employer like Google (added 2026-10-07). */
     APPLE,
     /** Any careers site whose sitemap lists its job pages; see {@code SitemapFetcher}. */
-    SITEMAP
+    SITEMAP,
+    /** Careers sites on Avature: Siemens, Deloitte US-India (added 2026-10-11). */
+    AVATURE
 }
