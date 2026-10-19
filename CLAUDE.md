@@ -170,7 +170,11 @@ openings" and similar from any directory. In short:
   run of a slice reads ~500 pages at ~2 s each; later runs only the ~180 new a
   day). A list with no `locationsText` (Accenture) takes the
   place from the bullets after the requisition id. At most 500 detail reads per
-  board per run.
+  board per run, 8 in flight at once (the per-site gap still spaces them; one
+  at a time, Accenture's two slices took 46 minutes after a 3-day gap). Keep the
+  cap above ~180: a slice gains that many a day, so a lower cap never catches up.
+- `HttpFetchClient` holds at most 64 requests in flight across all sites, so
+  the ~3,500 boards starting together no longer time out on connect.
 - Avature sites (`AVATURE`, `name/host/lang/portal[/search]`: Siemens India,
   Deloitte USI) are read from the server-rendered search page, following its
   "Next" link; job pages give JSON-LD or labelled fields, and the list row's

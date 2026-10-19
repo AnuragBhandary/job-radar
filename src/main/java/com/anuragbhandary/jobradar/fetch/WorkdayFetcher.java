@@ -91,6 +91,12 @@ public class WorkdayFetcher implements AtsFetcher {
      */
     static final int MAX_READS_PER_RUN = 500;
 
+    /**
+     * Detail reads in flight per board. The client's per-site gap still decides
+     * how often a request leaves; this only lets answers overlap.
+     */
+    static final int DETAIL_READERS = 8;
+
     private final HttpFetchClient http;
     private final ObjectMapper json;
     private final TargetPlaces places;
@@ -210,7 +216,10 @@ public class WorkdayFetcher implements AtsFetcher {
         StoredPostings.Known known = stored.open(Source.WORKDAY, boardToken);
         Set<String> listedIds = new HashSet<>();
         boolean capped = boardTotal >= RESULT_CAP;
-        int reads = 0;
+        // Decided in list order on this thread, since the stored postings are not
+        // shared across threads; only the detail reads below run concurrently.
+        List<Object> slots = new ArrayList<>(shortlist.size());
+        List<JsonNode> toRead = new ArrayList<>();
         for (JsonNode summary : shortlist) {
             // The list's first bullet is the requisition id, the same id the
             // detail gives and the posting is stored under.
@@ -220,14 +229,20 @@ public class WorkdayFetcher implements AtsFetcher {
             // a day to a slice, and re-reading the other 2,000 one day in seven
             // more than doubled each run.
             RawPosting posting = capped ? known.stored(reqId) : known.reuse(reqId);
-            if (posting == null && reads >= MAX_READS_PER_RUN) {
+            if (posting == null && toRead.size() >= MAX_READS_PER_RUN) {
                 // The list is newest first, so a capped run has read the latest;
                 // a stored posting stays as stored, a new one waits a run.
                 posting = known.stored(reqId);
             } else if (posting == null) {
-                reads++;
-                posting = withDescription(board, summary);
+                toRead.add(summary);
+                slots.add(summary);
+                continue;
             }
+            slots.add(posting);
+        }
+        java.util.Map<JsonNode, RawPosting> read = readDetails(board, toRead);
+        for (Object slot : slots) {
+            RawPosting posting = slot instanceof RawPosting stored ? stored : read.get(slot);
             if (posting != null) {
                 detailed.add(posting);
                 listedIds.add(posting.externalId());
@@ -338,6 +353,53 @@ public class WorkdayFetcher implements AtsFetcher {
             rest.add(bullets.get(i).asText(""));
         }
         return rest.toString();
+    }
+
+    /**
+     * Reads several postings' details, {@link #DETAIL_READERS} at a time.
+     *
+     * <p>A detail takes Workday about five seconds to answer, so one at a time
+     * Accenture's 499 new jobs took 46 minutes (2026-10-19). The client's gap
+     * still spaces the requests to the site; this only stops each one waiting
+     * for the previous answer.
+     *
+     * @return each read summary's posting; a summary that could not be read is absent
+     */
+    private java.util.Map<JsonNode, RawPosting> readDetails(Board board, List<JsonNode> summaries) {
+        java.util.Map<JsonNode, RawPosting> read = new java.util.IdentityHashMap<>();
+        if (summaries.isEmpty()) {
+            return read;
+        }
+        java.util.concurrent.Semaphore readers = new java.util.concurrent.Semaphore(DETAIL_READERS);
+        List<java.util.concurrent.Future<RawPosting>> pending = new ArrayList<>(summaries.size());
+        try (java.util.concurrent.ExecutorService pool =
+                     java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            for (JsonNode summary : summaries) {
+                pending.add(pool.submit(() -> {
+                    readers.acquire();
+                    try {
+                        return withDescription(board, summary);
+                    } finally {
+                        readers.release();
+                    }
+                }));
+            }
+            for (int i = 0; i < summaries.size(); i++) {
+                try {
+                    RawPosting posting = pending.get(i).get();
+                    if (posting != null) {
+                        read.put(summaries.get(i), posting);
+                    }
+                } catch (java.util.concurrent.ExecutionException e) {
+                    log.debug("Skipping a detail on {}: {}", board.tenant(), e.getCause().getMessage());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    pool.shutdownNow();
+                    break;
+                }
+            }
+        }
+        return read;
     }
 
     /**

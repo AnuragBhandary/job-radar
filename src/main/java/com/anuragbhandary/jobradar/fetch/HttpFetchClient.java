@@ -30,6 +30,17 @@ public class HttpFetchClient {
     private final FixtureRecorder fixtures;
 
     /**
+     * Requests in flight at once, across every site. Each board starts on its own
+     * thread, and with ~3,500 boards opening connections together the first three
+     * minutes of a run were ~3,400 connect timeouts and retries (2026-10-19). The
+     * gap between requests is still per site; this only caps the burst.
+     */
+    static final int MAX_IN_FLIGHT = 64;
+
+    private final java.util.concurrent.Semaphore inFlight =
+            new java.util.concurrent.Semaphore(MAX_IN_FLIGHT);
+
+    /**
      * One gap per site, not one for the whole application. The delay is a courtesy
      * to whoever runs the server; a request to Lever costs Greenhouse nothing, and
      * a single global gap made a run of ~150 boards take over ten minutes.
@@ -134,26 +145,38 @@ public class HttpFetchClient {
                 // the Mac slept mid-run) blocked send() for hours and froze the
                 // whole daily run, so the full exchange gets a hard deadline.
                 HttpResponse<String> response;
-                java.util.concurrent.CompletableFuture<HttpResponse<String>> pending =
-                        http.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString());
+                Throwable failure = null;
+                inFlight.acquire();
                 try {
-                    response = pending.get(timeoutSeconds * 3L,
-                            java.util.concurrent.TimeUnit.SECONDS);
-                } catch (java.util.concurrent.TimeoutException e) {
-                    pending.cancel(true);
-                    throw new IOException("no complete response within "
-                            + timeoutSeconds * 3 + "s");
-                } catch (java.util.concurrent.ExecutionException e) {
-                    if (e.getCause() instanceof IOException io) {
+                    java.util.concurrent.CompletableFuture<HttpResponse<String>> pending =
+                            http.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString());
+                    try {
+                        response = pending.get(timeoutSeconds * 3L,
+                                java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (java.util.concurrent.TimeoutException e) {
+                        pending.cancel(true);
+                        throw new IOException("no complete response within "
+                                + timeoutSeconds * 3 + "s");
+                    } catch (java.util.concurrent.ExecutionException e) {
+                        response = null;
+                        failure = e.getCause();
+                    }
+                } finally {
+                    inFlight.release();
+                }
+                // Handled after the permit is back, since the redirect repair
+                // makes requests of its own.
+                if (failure != null) {
+                    if (failure instanceof IOException io) {
                         throw io;
                     }
-                    if (e.getCause() instanceof IllegalArgumentException && jsonBody == null) {
+                    if (failure instanceof IllegalArgumentException && jsonBody == null) {
                         String next = repairedRedirect(url, timeoutSeconds);
                         if (next != null && !next.equals(url)) {
                             return execute(next, null, fixtureName, timeoutSeconds);
                         }
                     }
-                    throw new IOException(e.getCause());
+                    throw new IOException(failure);
                 }
 
                 int status = response.statusCode();
