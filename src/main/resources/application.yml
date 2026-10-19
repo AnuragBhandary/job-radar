@@ -722,6 +722,59 @@ job-radar:
     dublin-comfort-eur: 48000
     verify-by: 2027-01-01
 
+  # Expected pay on every card (2026-10-19, his request). A stated range is used
+  # when the posting gives one; otherwise these ESTIMATES, which are market
+  # rough-cuts (about +-25%), never a figure from the posting. Annual gross for a
+  # Software / Backend role at 0 years; intern figures are monthly stipends.
+  # Tier order: big-tech > bank > service > standard. Its own big-tech list, not
+  # screening.big-tech-boards: that one is about formal experience checks and holds
+  # Citi, Bosch and HP, which do not pay at this tier.
+  pay:
+    verify-by: 2027-04-01
+    # Rupees per unit, for the "about Rs X/month" beside foreign pay.
+    inr-per: {"[GBP]": 112, "[EUR]": 97, "[USD]": 88, "[AED]": 24}
+    countries:
+      "[IN]":
+        currency: INR
+        standard: [600000, 1000000]
+        service: [350000, 650000]
+        bank: [900000, 1600000]
+        big-tech: [1800000, 3000000]
+        intern-monthly: [15000, 40000]
+        intern-monthly-big-tech: [60000, 120000]
+      # Remote for a foreign employer, worked from India.
+      "[REMOTE]":
+        currency: INR
+        standard: [1000000, 2000000]
+        big-tech: [2000000, 3500000]
+      "[GB]": {currency: GBP, standard: [38000, 52000], bank: [45000, 60000], big-tech: [50000, 75000]}
+      "[IE]": {currency: EUR, standard: [40000, 55000], bank: [45000, 60000], big-tech: [60000, 85000]}
+      "[DE]": {currency: EUR, standard: [48000, 62000], bank: [55000, 70000], big-tech: [65000, 85000]}
+      "[NL]": {currency: EUR, standard: [45000, 58000], bank: [50000, 65000], big-tech: [65000, 85000]}
+      "[AE]": {currency: AED, standard: [150000, 220000], big-tech: [220000, 320000]}
+      "[US]": {currency: USD, standard: [85000, 115000], big-tech: [130000, 170000]}
+    big-tech-employers:
+      [google, amazon, apple, microsoft, meta, netflix, nvidia, adobe, salesforce,
+       databricks, openai, anthropic, stripe, datadog, mongodb, uber, atlassian,
+       linkedin, airbnb, snowflake, coinbase, rubrik, elastic, gitlab, cloudflare]
+    # Each is the board tenant exactly (the token before its first "/"), or a
+    # whole word in an aggregator's "Role @ Company"; "ubs" must not hit "hubspot".
+    bank-employers:
+      [citi, hsbc, morganstanley, morgan stanley, jpmorgan, jpmc, goldman, goldmansachs,
+       barclays, deutsche, db, ubs, wellsfargo, wells fargo, mastercard, visa, paypal,
+       amex, american express, nomura, bny, statestreet, state street, ntrs,
+       northerntrust, natwest, standardchartered, standard chartered, bankofamerica,
+       blackrock, fidelity]
+    service-employers:
+      [accenture, tcs, infosys, wipro, cognizant, capgemini, hcl, techmahindra,
+       ltimindtree, genpact, mphasis, hexaware, nttdata, dxc, persistent, coforge]
+    # Multipliers on the Software / Backend figure; categories not listed are 1.0.
+    category-factor: {"[QA]": 0.8, "[DATA_ANALYTICS]": 0.85, "[OTHER]": 0.8}
+    # A stated minimum of 1-2 years.
+    experienced-factor: 1.2
+    # A whole word of the location; the country row is a national figure.
+    city-factor: {london: 1.15}
+
 spring:
   application:
     name: job-radar

@@ -76,6 +76,14 @@ openings" and similar from any directory. In short:
 
 ## Standing rules
 
+- **Pay on every card (2026-10-19).** `Pay:` in the openings file and the Discord
+  card: a stated range when the posting gives one, otherwise an estimate from the
+  `job-radar.pay` table (country, employer tier, category, years, London), always
+  labelled "estimate" with +-25%. The ask is ~30% up a wide range (top at least
+  1.5x bottom), the middle of a narrow one, never under a visa country's floor,
+  never the bottom. Pay's big-tech list is its own: `screening.big-tech-boards`
+  is about experience checks and holds Citi and Bosch. Re-check the table by its
+  `verify-by`.
 - **Never invent or inflate a resume claim.** No years, no "expert", no technology
   the resume does not name. Selection and ordering only.
 - **Write like a person.** No em or en dashes as punctuation, and none of the stock
@@ -225,6 +233,7 @@ openings" and similar from any directory. In short:
 | Fetchers, one per ATS or feed (incl. HN, Jobicy, We Work Remotely, Arbeitnow) | `fetch/` |
 | Screening rules (title, years, geography, strategy) | `filter/`, `strategy/`, `application.yml` |
 | Handoff file | `digest/` |
+| Expected pay and the ask (`PayAdvisor`, table at `job-radar.pay`) | `digest/` |
 | Decisions and tracker sync | `pipeline/`, `sheets/`, `cli/MarkCommand` |
 | Resume rendering | `resume/` |
 | Earlier form filling, knowledge resolver and web UI | tag `v1-full` |

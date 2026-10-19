@@ -38,6 +38,10 @@ final class RealConfig {
         return new AppProperties(null, null, null, null, screening(), null);
     }
 
+    static com.anuragbhandary.jobradar.digest.PayProperties pay() {
+        return bind("job-radar.pay", com.anuragbhandary.jobradar.digest.PayProperties.class);
+    }
+
     static GeoVocabulary geo() {
         return bind("job-radar.geo", GeoVocabulary.class);
     }

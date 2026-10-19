@@ -52,12 +52,15 @@ public class NotifyCommand {
     private final ObjectMapper json;
     private final String webhook;
     private final com.anuragbhandary.jobradar.pipeline.LinkService links;
+    private final com.anuragbhandary.jobradar.digest.PayAdvisor pay;
 
     public NotifyCommand(JobInterestRepository interests, PostingRepository postings,
             HttpClient http, ObjectMapper json,
             @Value("${job-radar.notify.discord-webhook:}") String webhook,
-            com.anuragbhandary.jobradar.pipeline.LinkService links) {
+            com.anuragbhandary.jobradar.pipeline.LinkService links,
+            com.anuragbhandary.jobradar.digest.PayAdvisor pay) {
         this.links = links;
+        this.pay = pay;
         this.interests = interests;
         this.postings = postings;
         this.http = http;
@@ -272,6 +275,10 @@ public class NotifyCommand {
         body.append('\n');
         if (!location.isBlank()) {
             body.append("📍 ").append(clip(location, 150)).append('\n');
+        }
+        String payLine = posting == null ? null : pay.line(posting);
+        if (payLine != null) {
+            body.append("💰 ").append(clip(payLine, 300)).append('\n');
         }
         if (!note.isBlank()) {
             body.append(clip(note, 1500));

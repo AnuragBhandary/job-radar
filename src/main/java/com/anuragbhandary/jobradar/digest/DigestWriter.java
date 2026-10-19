@@ -43,10 +43,18 @@ public class DigestWriter {
 
     private final AppProperties properties;
     private final SalaryFloorAdvisor salaries;
+    private final PayAdvisor pay;
 
+    /** Without expected pay, as the tests that predate it build it. */
     public DigestWriter(AppProperties properties, SalaryFloorAdvisor salaries) {
+        this(properties, salaries, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DigestWriter(AppProperties properties, SalaryFloorAdvisor salaries, PayAdvisor pay) {
         this.properties = properties;
         this.salaries = salaries;
+        this.pay = pay;
     }
 
     /**
@@ -337,6 +345,10 @@ public class DigestWriter {
                 .append('\n');
         if (p.getSalaryText() != null) {
             out.append("Stated pay: ").append(p.getSalaryText()).append('\n');
+        }
+        String payLine = pay == null ? null : pay.line(p);
+        if (payLine != null) {
+            out.append("Pay: ").append(payLine).append('\n');
         }
         out.append("Floor: ").append(salaries.floorFor(p)).append('\n');
         String belowFloor = salaries.belowFloorWarning(p);

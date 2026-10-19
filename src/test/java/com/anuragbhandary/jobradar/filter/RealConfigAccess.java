@@ -21,6 +21,11 @@ public final class RealConfigAccess {
         return RealConfig.countryStrategy();
     }
 
+    /** The shipped pay estimate table. */
+    public static com.anuragbhandary.jobradar.digest.PayProperties pay() {
+        return RealConfig.pay();
+    }
+
     public static LocationClassifier locations() {
         return RealConfig.locations();
     }

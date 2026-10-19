@@ -36,7 +36,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         // Careers pages read in a browser during review, not fetched.
         com.anuragbhandary.jobradar.digest.BrowserWatch.class,
         // Skill words and the full-entry count for ranking the openings file.
-        com.anuragbhandary.jobradar.digest.FitScore.Properties.class})
+        com.anuragbhandary.jobradar.digest.FitScore.Properties.class,
+        // Expected pay: the estimate table beside the salary floors.
+        com.anuragbhandary.jobradar.digest.PayProperties.class})
 public class JobRadarApplication {
 
     public static void main(String[] args) {
