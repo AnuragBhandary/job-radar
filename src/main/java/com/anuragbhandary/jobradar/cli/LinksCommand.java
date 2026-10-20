@@ -31,9 +31,13 @@ public class LinksCommand {
     }
 
     public void run(Map<String, String> options) {
+        if (options.containsKey("shortlist")) {
+            pruneShortlist();
+            return;
+        }
         String ids = options.get("ids");
         if (ids == null || ids.isBlank()) {
-            System.out.println("Usage: links --ids=<id>,<id>,...");
+            System.out.println("Usage: links --ids=<id>,<id>,...  |  links --shortlist");
             return;
         }
         for (String raw : ids.split(",")) {
@@ -63,5 +67,38 @@ public class LinksCommand {
                     link.url() == null ? "-" : link.url(), link.check().reason(),
                     link.note() == null ? "" : " · " + link.note());
         }
+    }
+
+    /**
+     * {@code links --shortlist}: checks every shortlisted posting and drops the
+     * closed ones. Before 2026-10-20 that happened only inside {@code notify}, so
+     * the backlog listed in a review could hold roles that had already closed
+     * (Amazon Dublin and Tekion that day). An UNKNOWN answer leaves a row alone.
+     */
+    private void pruneShortlist() {
+        int checked = 0;
+        int dropped = 0;
+        for (com.anuragbhandary.jobradar.pipeline.JobInterest row
+                : interests.findByStageOrderByUpdatedAtDesc(com.anuragbhandary.jobradar.pipeline.PipelineStage.SAVED)) {
+            if (row.getPostingId() == null) {
+                continue;
+            }
+            Posting posting = postings.findById(row.getPostingId()).orElse(null);
+            if (posting == null) {
+                continue;
+            }
+            checked++;
+            LinkService.Link link = links.forPosting(posting);
+            if (!link.check().dead()) {
+                continue;
+            }
+            dropped++;
+            System.out.println("Dropped " + row.getPostingId() + " (" + row.getCompany() + " · "
+                    + row.getRole() + "): " + link.check().reason());
+            row.setStage(com.anuragbhandary.jobradar.pipeline.PipelineStage.DROPPED);
+            row.addNote(java.time.LocalDate.now() + ": link dead, " + link.check().reason());
+            interests.save(row);
+        }
+        System.out.printf("Checked %d shortlisted, dropped %d closed.%n", checked, dropped);
     }
 }

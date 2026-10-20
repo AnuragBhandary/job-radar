@@ -131,6 +131,7 @@ public class JobRadarCli implements ApplicationRunner {
                   export --since=YYYY-MM-DD               handoff file for every open candidate since a day
 
                   links --ids=a,b,c                       employer's own link for each, and whether it is open
+                  links --shortlist                       drop shortlisted roles whose page has closed
                   notify [--ids=a,b,c] [--dry-run]        post the shortlist (or these ids, in order)
                                                           to the Discord webhook in secrets.yml
                   notify --quiet-day [--note="..."]       say a review found nothing (lists the shortlist)
