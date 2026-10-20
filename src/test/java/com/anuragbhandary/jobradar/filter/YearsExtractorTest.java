@@ -650,4 +650,17 @@ class YearsExtractorTest {
                 + " lead developer or junior architect role"))
                 .isEqualTo(5);
     }
+
+    /** Workday Dublin, 2026-10-20: a leadership add-on does not undercut the engineering years. */
+    @Test
+    void leadershipYearsDoNotUndercutTheBar() {
+        assertThat(minYears("Basic Qualifications 5+ years of software engineering experience using one"
+                + " or more of the following: Java/Scala, Golang 4+ years of distributed systems experience"
+                + " 3+ years of development and DevOps experience in designing and operating large-scale"
+                + " deployments. 1+ year of leading a NoSQL technology related product"))
+                .isEqualTo(3);
+        // Leadership alone is still a stated bar.
+        assertThat(minYears("Requirements: 2+ years of experience leading engineering teams."))
+                .isEqualTo(2);
+    }
 }

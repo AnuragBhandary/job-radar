@@ -694,6 +694,14 @@ job-radar:
     # It was 40 until 2026-10-08. calibrate showed roles scoring 30-39 picked as often
     # as those at 40-49 (7% against 5%), so the cut was hiding real picks.
     min-fit: 30
+    # Rejection history (two rejections cost points) applies to small and medium
+    # employers only. Big tech (big-tech-boards) is exempt, and so are these large
+    # firms, which screen most applicants out automatically (2026-10-20). Company
+    # names as the tracker writes them; case and spacing do not matter.
+    history-exempt: "Accenture, Goldman Sachs, Deloitte, PwC, KPMG, EY, Capgemini, Cognizant, Infosys,
+      TCS, Tata Consultancy Services, Wipro, HCLTech, HCL, Tech Mahindra, IBM, NTT Data, Nttdata,
+      JPMorgan Chase, JPMC, Citi, HSBC, Barclays, Deutsche Bank, Morgan Stanley, Google, Microsoft,
+      Meta, Amazon, Apple, Oracle, SAP, Siemens, Bosch"
     # Learned weights from `calibrate --learn`, private like applicant.yml. When the
     # file is absent the hand weights in FitScore are used.
     model-path: ${JOB_RADAR_FIT_MODEL:${user.home}/.config/job-radar/fit-model.properties}

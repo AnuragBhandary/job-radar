@@ -50,6 +50,7 @@ public class DigestService {
     private final SheetsClient sheets;
     private final JobInterestRepository interests;
     private final AppProperties.SalaryFloors floors;
+    private final AppProperties.Screening screening;
     private final int staleDays;
     private final java.util.Set<String> staleExempt;
 
@@ -70,6 +71,7 @@ public class DigestService {
         this.sheets = sheets;
         this.interests = interests;
         this.floors = properties.salaryFloors();
+        this.screening = properties.screening();
         this.staleDays = staleDays;
         this.staleExempt = java.util.Arrays.stream(staleExempt.split(","))
                 .map(s -> s.trim().toLowerCase(Locale.ROOT))
@@ -208,6 +210,16 @@ public class DigestService {
                 Math.max(0, fit.floorScore() - NOT_A_SPONSOR_PENALTY));
     }
 
+    /** Large employers outside big-tech-boards whose rejections are not held against them. */
+    private Set<String> historyExempt = Set.of();
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setHistoryExempt(@Value("${job-radar.ranking.history-exempt:}") String exempt) {
+        this.historyExempt = java.util.Arrays.stream(exempt.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).map(DigestService::companyKey)
+                .collect(Collectors.toSet());
+    }
+
     /** Points off at an employer that has already rejected him this many times or more. */
     static final int REPEAT_REJECTION_COUNT = 2;
     static final int REPEAT_REJECTION_PENALTY = 10;
@@ -235,7 +247,13 @@ public class DigestService {
             Map<String, Long> rejections) {
         String company = com.anuragbhandary.jobradar.domain.Employer.company(
                 labels.getOrDefault(p.getBoardToken(), p.getBoardToken()), p.getSource(), p.getTitle());
-        long count = company == null ? 0 : rejections.getOrDefault(companyKey(company), 0L);
+        // Big tech and the large firms reject most applicants by design; he
+        // applies to them anyway, so their history neither scores nor shows
+        // (his rule, 2026-10-20). It applies to small and medium employers.
+        if (company == null || screening.isBigTech(p) || historyExempt.contains(companyKey(company))) {
+            return fit;
+        }
+        long count = rejections.getOrDefault(companyKey(company), 0L);
         if (count == 0) {
             return fit;
         }

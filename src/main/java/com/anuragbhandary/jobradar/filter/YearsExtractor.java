@@ -408,12 +408,27 @@ public class YearsExtractor {
     private static final Pattern OVERALL_AFTER = Pattern.compile(
             "^\\W{0,3}(?:of\\s+)?(?:cumulative|total|overall)\\b", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Time spent leading or managing, a requirement on top of the engineering
+     * years: Workday Dublin's "1+ year of leading a NoSQL technology related
+     * product" undercut its "5+ years of software engineering experience" and
+     * read the role as one year (2026-10-20). Counted like a single tool.
+     */
+    private static final Pattern LEADERSHIP_AFTER = Pattern.compile(
+            "^\\W{0,3}(?:of\\s+)?(?:(?:hands-on\\s+|relevant\\s+)?experience\\s+)?(?:in\\s+)?"
+                    + "(?:leading|managing|mentoring|people\\s+management|team\\s+leadership"
+                    + "|technical\\s+leadership|leadership)\\b",
+            Pattern.CASE_INSENSITIVE);
+
     private static boolean isAboutOneTool(String text, Matcher m) {
         String before = text.substring(Math.max(0, m.start() - 20), m.start());
         if (PART_BEFORE.matcher(before).find()) {
             return true;
         }
         String after = text.substring(m.end(), Math.min(text.length(), m.end() + 90));
+        if (LEADERSHIP_AFTER.matcher(after).find()) {
+            return true;
+        }
         if (OVERALL_AFTER.matcher(after).find()) {
             return false;
         }
