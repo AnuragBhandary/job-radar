@@ -92,4 +92,18 @@ class InternshipTest {
         assertThat(Internship.studentOnly("You have a degree and are working towards a cloud"
                 + " certification.")).isEmpty();
     }
+
+    /** 2026-10-20: graduate schemes for a later graduation year, which he (2025) is not. */
+    @Test
+    void aLaterGraduationYearClosesAGraduateScheme() {
+        assertThat(Internship.studentOnly("What you'll bring: You have graduated in 2026 or will be in"
+                + " 2027 with a Bachelors or Masters degree")).isPresent();
+        assertThat(Internship.studentOnly("Requirements: Expected to graduate with a degree in Computer"
+                + " Science, Computer Engineering, or related field by Summer 2027")).isPresent();
+        // Still open: graduated within two years, or graduated in a subject.
+        assertThat(Internship.studentOnly("Graduated within the past two years or currently in the final"
+                + " year of university.")).isEmpty();
+        assertThat(Internship.studentOnly("Currently pursuing or have graduated in Computer Science."))
+                .isEmpty();
+    }
 }

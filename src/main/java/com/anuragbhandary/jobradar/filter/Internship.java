@@ -63,14 +63,26 @@ public final class Internship {
                     + "|\\bworking\\s+towards\\s+(?:a|an|your)\\s+(?:\\w+\\s+){0,2}(?:degree|bachelor|master)"
                     + "|\\bqualify\\s+for\\s+a\\s+placement\\s+year"
                     + "|\\b(?:includes?|including)\\s+a\\s+(?:dedicated\\s+|\\d{1,2}[- ]month\\s+)?placement(?:\\s+year)?"
-                    + "|\\b(?:second|2nd|third|3rd)\\s+year\\s+of\\s+(?:university|your\\s+degree|your\\s+studies)",
+                    + "|\\b(?:second|2nd|third|3rd)\\s+year\\s+of\\s+(?:university|your\\s+degree|your\\s+studies)"
+                    // 2026-10-20, both read as open to an earlier graduate: Wise's
+                    // "You have graduated in 2026 or will be in 2027", and DV's
+                    // "Expected to graduate with a degree in Computer Science ... by
+                    // Summer 2027", where the year sits past the subject.
+                    + "|\\bgraduated\\s+in\\s+20(?:2[6-9]|3\\d)\\b"
+                    + "|\\bexpected\\s+to\\s+graduate\\b[^.;]{0,100}?\\b20(?:2[6-9]|3\\d)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    /** "Currently pursuing or recently completed": open to a graduate after all. */
+    /** A graduation year still to come, after "graduated in" or "have graduated in". */
+    private static final String FUTURE_YEAR = "\\s+in\\s+20(?:2[6-9]|3\\d)";
+
+    /**
+     * "Currently pursuing or recently completed": open to a graduate after all.
+     * Not "have graduated in 2026": a year still to come keeps it closed.
+     */
     private static final Pattern GRADUATES_WELCOME = Pattern.compile(
-            "\\b(?:recently\\s+(?:completed|graduated)|recent\\s+graduates?|have\\s+graduated"
-                    + "|or\\s+(?:have\\s+)?completed|graduated\\s+(?:in|within)|freshers?\\s+(?:and|or)"
-                    + "|open\\s+to\\s+(?:recent\\s+)?graduates)",
+            "\\b(?:recently\\s+(?:completed|graduated)|recent\\s+graduates?|have\\s+graduated(?!" + FUTURE_YEAR + ")"
+                    + "|or\\s+(?:have\\s+)?completed|graduated\\s+within|graduated\\s+in(?!\\s+20(?:2[6-9]|3\\d))"
+                    + "|freshers?\\s+(?:and|or)|open\\s+to\\s+(?:recent\\s+)?graduates)",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern CONVERSION = Pattern.compile(
