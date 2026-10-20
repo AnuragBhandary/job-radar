@@ -139,7 +139,7 @@ public class DigestService {
         // The best few of each category are kept whatever their score: every kind
         // of role he could do is shown, not only the ones that score well.
         List<Digest.Entry> kept = ranked.stream()
-                .filter(e -> e.featured() || e.fit().score() >= fitScore.minFit())
+                .filter(e -> e.featured() || e.fit().floorScore() >= fitScore.minFit())
                 .toList();
         int listed = ranked.stream().mapToInt(e -> e.ids().size()).sum();
         int keptListed = kept.stream().mapToInt(e -> e.ids().size()).sum();
@@ -186,13 +186,18 @@ public class DigestService {
     static List<Digest.Entry> featuredFirst(List<Digest.Entry> byScore, int perCategory) {
         List<Digest.Entry> featured = new java.util.ArrayList<>();
         java.util.Set<Digest.Entry> taken = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-        for (com.anuragbhandary.jobradar.domain.RoleCategory category
-                : com.anuragbhandary.jobradar.domain.RoleCategory.displayOrder()) {
-            byScore.stream().filter(e -> e.category() == category).limit(perCategory).forEach(e -> {
-                featured.add(new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
-                        e.fit(), false, e.similar(), true));
-                taken.add(e);
-            });
+        // India's best of each category, then abroad's: each set competes only with
+        // itself, so the lane points cannot crowd one out of the other.
+        for (boolean abroad : new boolean[] {false, true}) {
+            for (com.anuragbhandary.jobradar.domain.RoleCategory category
+                    : com.anuragbhandary.jobradar.domain.RoleCategory.displayOrder()) {
+                byScore.stream().filter(e -> e.abroad() == abroad && e.category() == category)
+                        .limit(perCategory).forEach(e -> {
+                            featured.add(new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
+                                    e.fit(), false, e.similar(), true));
+                            taken.add(e);
+                        });
+            }
         }
         List<Digest.Entry> out = new java.util.ArrayList<>(featured);
         byScore.stream().filter(e -> !taken.contains(e)).forEach(out::add);

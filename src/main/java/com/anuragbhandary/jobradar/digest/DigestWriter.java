@@ -129,18 +129,22 @@ public class DigestWriter {
                     .append(")\n");
             boolean anyFeatured = full.stream().anyMatch(Digest.Entry::featured);
             if (anyFeatured) {
-                out.append("The best few of each category first, then everything else by fit")
+                out.append("The best few of each category in India, then abroad, then everything else by fit")
                         .append(compact.isEmpty() ? ".\n" : "; the rest one line each under \"Lower fit\".\n");
             } else if (!compact.isEmpty()) {
                 out.append("Sorted by fit; the ").append(full.size())
                         .append(" best in full, the rest one line each under \"Lower fit\".\n");
             }
             com.anuragbhandary.jobradar.domain.RoleCategory section = null;
+            Boolean sectionAbroad = null;
             boolean restHeading = false;
             for (Digest.Entry entry : full) {
-                if (entry.featured() && entry.category() != section) {
+                if (entry.featured() && (entry.category() != section
+                        || !Boolean.valueOf(entry.abroad()).equals(sectionAbroad))) {
                     section = entry.category();
-                    out.append("\n## Best of ").append(section.label()).append('\n');
+                    sectionAbroad = entry.abroad();
+                    out.append("\n## Best of ").append(section.label())
+                            .append(entry.abroad() ? " · Abroad" : " · India").append('\n');
                 } else if (!entry.featured() && anyFeatured && !restHeading) {
                     restHeading = true;
                     out.append("\n## Everything else, by fit\n");

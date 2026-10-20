@@ -147,4 +147,14 @@ class FitScoreTest {
         assertThat(mumbai).isGreaterThan(abroad);
         assertThat(mumbai).isEqualTo(FitScore.learnedScore(0.5, 23));
     }
+
+    @Test
+    @DisplayName("the fit floor scores every lane alike, so a role abroad is not cut for being abroad (2026-10-20)")
+    void floorIgnoresTheLane() {
+        FitScore.Fit india = fit.fit(posting("Engineer", "", null, StrategicClass.INDIA_OTHER, "IN", null), TODAY);
+        FitScore.Fit uk = fit.fit(posting("Engineer", "", null,
+                StrategicClass.INTERNATIONAL_RELOCATION, "GB", null), TODAY);
+        assertThat(india.score()).isGreaterThan(uk.score());
+        assertThat(uk.floorScore()).isEqualTo(india.floorScore());
+    }
 }

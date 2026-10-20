@@ -102,6 +102,18 @@ public record Digest(
             this(posting, updated, companyApplied, null, false);
         }
 
+        /**
+         * Relocation or remote for a foreign employer. The file lists India and
+         * abroad as two sets of "Best of" sections (2026-10-20): he wants a job in
+         * India and a route abroad equally, and one list let India's lane points
+         * push every European role below the fold.
+         */
+        public boolean abroad() {
+            com.anuragbhandary.jobradar.domain.StrategicClass lane = posting.getStrategicClass();
+            return lane == com.anuragbhandary.jobradar.domain.StrategicClass.INTERNATIONAL_RELOCATION
+                    || lane == com.anuragbhandary.jobradar.domain.StrategicClass.INTERNATIONAL_REMOTE;
+        }
+
         /** This entry's posting id and every similar one's, for marking. */
         public List<Long> ids() {
             List<Long> ids = new java.util.ArrayList<>();

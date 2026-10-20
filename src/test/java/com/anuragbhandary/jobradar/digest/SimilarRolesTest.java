@@ -54,4 +54,21 @@ class SimilarRolesTest {
         assertThat(out).extracting(Digest.Entry::featured)
                 .containsExactly(true, true, true, false, false);
     }
+
+    @Test
+    void indiaAndAbroadEachGetTheirOwnBestOf() {
+        Digest.Entry india = entry("1", "Backend Engineer");
+        india.posting().setStrategicClass(com.anuragbhandary.jobradar.domain.StrategicClass.INDIA_OTHER);
+        Digest.Entry indiaToo = entry("2", "Software Engineer");
+        indiaToo.posting().setStrategicClass(com.anuragbhandary.jobradar.domain.StrategicClass.INDIA_HOME);
+        Digest.Entry berlin = entry("3", "Backend Engineer (Berlin)");
+        berlin.posting().setStrategicClass(
+                com.anuragbhandary.jobradar.domain.StrategicClass.INTERNATIONAL_RELOCATION);
+
+        List<Digest.Entry> out = DigestService.featuredFirst(List.of(india, indiaToo, berlin), 1);
+
+        // Berlin scores lowest but still leads the abroad set, ahead of India's second.
+        assertThat(out).extracting(e -> e.posting().getExternalId()).containsExactly("1", "3", "2");
+        assertThat(out).extracting(Digest.Entry::featured).containsExactly(true, true, false);
+    }
 }

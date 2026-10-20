@@ -103,9 +103,25 @@ public class FitScore {
             "\\b(?:ii|2)\\s*$|\\b(?:engineer|developer|analyst|scientist)\\s+(?:ii|2)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    /** A score and the reasons for it, for the line under the entry's heading. */
-    public record Fit(int score, List<String> matched, String summary) {
+    /**
+     * A score and the reasons for it, for the line under the entry's heading.
+     *
+     * @param floorScore the score with every lane given the same points, which is
+     *                   what {@code min-fit} is checked against. The lane orders the
+     *                   file but must not decide what is left out of it: with the
+     *                   lane in, a Berlin or Dublin role needed 4-13 more points than
+     *                   the same role in India to be shown, and about 115 European
+     *                   candidates were never read in two weeks (2026-10-20).
+     */
+    public record Fit(int score, List<String> matched, String summary, int floorScore) {
+
+        public Fit(int score, List<String> matched, String summary) {
+            this(score, matched, summary, score);
+        }
     }
+
+    /** The lane points every posting is scored at for the floor: the rest of India's. */
+    static final int FLOOR_LANE = 18;
 
     private final Properties properties;
     private final CountryStrategy strategy;
@@ -255,6 +271,10 @@ public class FitScore {
         int score = model.map(m -> learnedScore(m.probability(features(p)), parts.lane())
                         + parts.fresh())
                 .orElse(parts.handScore());
+        // The same score with the lane swapped for FLOOR_LANE, in either scale.
+        int floorScore = model.isPresent()
+                ? score - learnedScore(0, parts.lane()) + learnedScore(0, FLOOR_LANE)
+                : score - parts.lane() + FLOOR_LANE;
         List<String> matched = parts.matched();
         Level level = parts.level();
         Integer years = parts.years();
@@ -265,7 +285,8 @@ public class FitScore {
                         + (parts.seniorWording() == null ? "" : "senior wording (\"" + parts.seniorWording() + "\"), "),
                 years == null ? "years not stated" : years + (years == 1 ? " year" : " years"),
                 laneName(p));
-        return new Fit(Math.max(0, Math.min(100, score)), matched, summary);
+        return new Fit(Math.max(0, Math.min(100, score)), matched, summary,
+                Math.max(0, Math.min(100, floorScore)));
     }
 
     /** What the title says about the level, and what that is worth. */
