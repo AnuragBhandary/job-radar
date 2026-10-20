@@ -94,13 +94,15 @@ public class SheetAppendCommand {
     }
 
     /**
-     * {@code sheet-set --row=N [--company=..] [--role=..] [--link=..]} - correct
+     * {@code sheet-set --row=N [--company=..] [--role=..] [--city=..] [--date=..]
+     * [--posted=..] [--experience=..] [--link=..] [--notes=..] [--category=..]} - correct
      * cells in one tracker row. Nothing else in the row is touched.
      */
     public void set(Map<String, String> options) {
         String row = options.get("row");
         if (row == null) {
-            System.out.println("Usage: sheet-set --row=N [--company=...] [--role=...] [--link=...]");
+            System.out.println("Usage: sheet-set --row=N [--company=...] [--role=...] [--city=...] [--date=...] "
+                    + "[--posted=...] [--experience=...] [--link=...] [--notes=...] [--category=...]");
             return;
         }
         Map<String, String> cells = new java.util.LinkedHashMap<>();
@@ -110,8 +112,26 @@ public class SheetAppendCommand {
         if (options.containsKey("role")) {
             cells.put("B", options.get("role"));
         }
+        if (options.containsKey("city")) {
+            cells.put("C", options.get("city"));
+        }
+        if (options.containsKey("date")) {
+            cells.put("D", options.get("date"));
+        }
+        if (options.containsKey("posted")) {
+            cells.put("F", options.get("posted"));
+        }
+        if (options.containsKey("experience")) {
+            cells.put("G", options.get("experience"));
+        }
         if (options.containsKey("link")) {
             cells.put("H", options.get("link"));
+        }
+        if (options.containsKey("notes")) {
+            cells.put("I", options.get("notes"));
+        }
+        if (options.containsKey("category")) {
+            cells.put("J", options.get("category"));
         }
         if (cells.isEmpty()) {
             System.out.println("Nothing to set.");
