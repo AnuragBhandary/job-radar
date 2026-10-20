@@ -71,4 +71,10 @@ class SimilarRolesTest {
         assertThat(out).extracting(e -> e.posting().getExternalId()).containsExactly("1", "3", "2");
         assertThat(out).extracting(Digest.Entry::featured).containsExactly(true, true, false);
     }
+
+    @Test
+    void oneEmployerUnderItsTrackerAndBoardNamesIsOneKey() {
+        assertThat(DigestService.companyKey("ScalableGmbH")).isEqualTo(DigestService.companyKey("Scalable GmbH"));
+        assertThat(DigestService.companyKey("Gousto1")).isEqualTo("gousto");
+    }
 }

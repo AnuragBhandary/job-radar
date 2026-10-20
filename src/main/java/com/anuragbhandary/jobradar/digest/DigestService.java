@@ -157,9 +157,11 @@ public class DigestService {
      */
     private List<Digest.Entry> ranked(List<Digest.Entry> entries, LocalDate today,
             Map<String, String> labels) {
+        Map<String, Long> rejections = rejectionsByCompany();
         List<Digest.Entry> scored = entries.stream()
                 .map(e -> new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
-                        sponsorAdjusted(e.posting(), fitScore.fit(e.posting(), today), labels), false))
+                        historyAdjusted(e.posting(), sponsorAdjusted(e.posting(),
+                                fitScore.fit(e.posting(), today), labels), labels, rejections), false))
                 .sorted(Comparator.comparingInt((Digest.Entry e) -> e.fit().score()).reversed())
                 .toList();
         List<Digest.Entry> ordered = featuredFirst(grouped(scored, labels), PER_CATEGORY);
@@ -204,6 +206,43 @@ public class DigestService {
         return new FitScore.Fit(Math.max(0, fit.score() - NOT_A_SPONSOR_PENALTY), fit.matched(),
                 fit.summary() + ", not a licensed sponsor",
                 Math.max(0, fit.floorScore() - NOT_A_SPONSOR_PENALTY));
+    }
+
+    /** Points off at an employer that has already rejected him this many times or more. */
+    static final int REPEAT_REJECTION_COUNT = 2;
+    static final int REPEAT_REJECTION_PENALTY = 10;
+
+    /** Rejections so far, by employer: the tracker's company, lowercased, letters and digits only. */
+    private Map<String, Long> rejectionsByCompany() {
+        return interests.findAll().stream()
+                .filter(i -> i.getStage() == PipelineStage.REJECTED && i.getCompany() != null)
+                .collect(Collectors.groupingBy(i -> companyKey(i.getCompany()), Collectors.counting()));
+    }
+
+    /** "Scalable GmbH", "ScalableGmbH" and "scalablegmbh" are one key. */
+    static String companyKey(String company) {
+        return company.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "").replaceAll("\\d+$", "");
+    }
+
+    /**
+     * What the tracker says about the employer (2026-10-20): an employer that has
+     * already turned down two applications often posts a near-identical third
+     * role the same week. One rejection is said, not scored:
+     * one "no" is often the role. Two or more cost points, since the screen is
+     * likely the same for the next role.
+     */
+    private FitScore.Fit historyAdjusted(Posting p, FitScore.Fit fit, Map<String, String> labels,
+            Map<String, Long> rejections) {
+        String company = com.anuragbhandary.jobradar.domain.Employer.company(
+                labels.getOrDefault(p.getBoardToken(), p.getBoardToken()), p.getSource(), p.getTitle());
+        long count = company == null ? 0 : rejections.getOrDefault(companyKey(company), 0L);
+        if (count == 0) {
+            return fit;
+        }
+        String note = fit.summary() + ", rejected " + count + (count == 1 ? " time" : " times") + " here before";
+        int off = count >= REPEAT_REJECTION_COUNT ? REPEAT_REJECTION_PENALTY : 0;
+        return new FitScore.Fit(Math.max(0, fit.score() - off), fit.matched(), note,
+                Math.max(0, fit.floorScore() - off));
     }
 
     /** How many of each category open the file in full. */
