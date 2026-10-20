@@ -54,5 +54,8 @@ public enum Source {
     /** Any careers site whose sitemap lists its job pages; see {@code SitemapFetcher}. */
     SITEMAP,
     /** Careers sites on Avature: Siemens, Deloitte US-India (added 2026-10-11). */
-    AVATURE
+    AVATURE,
+    PERSONIO,
+    TEAMTAILOR,
+    WORKABLE
 }

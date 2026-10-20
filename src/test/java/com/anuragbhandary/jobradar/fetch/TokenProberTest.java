@@ -36,9 +36,13 @@ class TokenProberTest {
     private TokenProber prober;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         prober = new TokenProber(http, new ObjectMapper(), boards);
         when(boards.findBySourceAndToken(any(), anyString())).thenReturn(Optional.empty());
+        // The European ATSs added 2026-10-20 answer 404 unless a test says otherwise.
+        answer("personio.de", 404, "");
+        answer("teamtailor.com", 404, "");
+        answer("workable.com", 404, "");
     }
 
     private void answer(String urlFragment, int status, String body) throws Exception {
@@ -64,7 +68,8 @@ class TokenProberTest {
         // a Workday board is a tenant/datacentre/site triple behind a POST.
         assertThat(prober.probe("acme")).extracting(ProbeResult::source)
                 .containsExactly(Source.GREENHOUSE, Source.ASHBY, Source.LEVER,
-                        Source.SMARTRECRUITERS, Source.RECRUITEE);
+                        Source.SMARTRECRUITERS, Source.RECRUITEE,
+                        Source.PERSONIO, Source.TEAMTAILOR, Source.WORKABLE);
     }
 
     @Test

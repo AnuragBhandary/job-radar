@@ -86,7 +86,7 @@ public class BoardSurveyor {
 
     public Survey survey(Source source, String token) throws FetchException {
         return switch (source) {
-            case GREENHOUSE, LEVER, ASHBY, RECRUITEE -> {
+            case GREENHOUSE, LEVER, ASHBY, RECRUITEE, PERSONIO, TEAMTAILOR, WORKABLE -> {
                 FetchBatch batch = fetchers.get(source).fetch(token);
                 yield count(batch.postings(), batch.boardTotal());
             }

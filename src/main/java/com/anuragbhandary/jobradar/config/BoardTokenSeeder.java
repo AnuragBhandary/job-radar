@@ -37,6 +37,9 @@ public class BoardTokenSeeder {
 
     private static final Map<String, String> SMARTRECRUITERS = new LinkedHashMap<>();
     private static final Map<String, String> RECRUITEE = new LinkedHashMap<>();
+    private static final Map<String, String> PERSONIO = new LinkedHashMap<>();
+    private static final Map<String, String> TEAMTAILOR = new LinkedHashMap<>();
+    private static final Map<String, String> WORKABLE = new LinkedHashMap<>();
 
     /**
      * Amazon has one job site, not one board per company, so the "token" is a
@@ -459,7 +462,10 @@ public class BoardTokenSeeder {
                 + seedSource(Source.APPLE, APPLE)
                 + seedSource(Source.ORACLE_HCM, ORACLE_HCM)
                 + seedSource(Source.SITEMAP, SITEMAP)
-                + seedSource(Source.AVATURE, AVATURE);
+                + seedSource(Source.AVATURE, AVATURE)
+                + seedSource(Source.PERSONIO, PERSONIO)
+                + seedSource(Source.TEAMTAILOR, TEAMTAILOR)
+                + seedSource(Source.WORKABLE, WORKABLE);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

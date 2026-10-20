@@ -48,7 +48,8 @@ public class DiscoveryService {
     /** The sources the archive can find. */
     public static final List<Source> SOURCES = List.of(
             Source.GREENHOUSE, Source.LEVER, Source.ASHBY, Source.RECRUITEE,
-            Source.SMARTRECRUITERS, Source.WORKDAY, Source.EIGHTFOLD, Source.ORACLE_HCM);
+            Source.SMARTRECRUITERS, Source.WORKDAY, Source.EIGHTFOLD, Source.ORACLE_HCM,
+            Source.PERSONIO, Source.TEAMTAILOR, Source.WORKABLE);
 
     /**
      * A Workday site larger than this is added as one search per target country

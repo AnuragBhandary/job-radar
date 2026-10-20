@@ -28,7 +28,8 @@ public class TokenProber {
     /** Probing is a guess by definition, so each platform gets exactly one request. */
     private static final List<Source> PLATFORMS =
             List.of(Source.GREENHOUSE, Source.ASHBY, Source.LEVER,
-                    Source.SMARTRECRUITERS, Source.RECRUITEE);
+                    Source.SMARTRECRUITERS, Source.RECRUITEE,
+                    Source.PERSONIO, Source.TEAMTAILOR, Source.WORKABLE);
 
     private final HttpFetchClient http;
     private final ObjectMapper json;
@@ -86,12 +87,17 @@ public class TokenProber {
 
     private int countPostings(Source platform, String body) {
         try {
-            JsonNode root = json.readTree(body);
+            JsonNode root = platform == Source.PERSONIO || platform == Source.TEAMTAILOR
+                    ? json.missingNode() : json.readTree(body);
             return switch (platform) {
                 case GREENHOUSE, ASHBY -> root.path("jobs").size();
                 case LEVER -> root.isArray() ? root.size() : 0;
                 case SMARTRECRUITERS -> root.path("totalFound").asInt(0);
                 case RECRUITEE -> root.path("offers").size();
+                case WORKABLE -> root.path("jobs").size();
+                // XML feeds: count the job elements.
+                case PERSONIO -> body.split("<position>", -1).length - 1;
+                case TEAMTAILOR -> body.split("<item>", -1).length - 1;
                 // None is probed this way: Amazon has no per-company board,
                 // Workday's search is a POST against a two-part tenant/site token,
                 // and Hacker News has one board.
@@ -128,6 +134,9 @@ public class TokenProber {
             // 404s an unknown subdomain, so - like Greenhouse and unlike
             // SmartRecruiters - an empty board here is a real one with no openings.
             case RECRUITEE -> "https://%s.recruitee.com/api/offers/".formatted(token);
+            case PERSONIO -> PersonioFetcher.FEED.formatted(token);
+            case TEAMTAILOR -> TeamtailorFetcher.feed(token);
+            case WORKABLE -> WorkableFetcher.BOARD_URL.formatted(token);
             case AMAZON -> throw new IllegalArgumentException("Amazon is not probed by token");
             case HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW ->
                     throw new IllegalArgumentException(platform + " has one board");

@@ -109,7 +109,7 @@ public class DirectLinkResolver {
                     root -> root.path("offers"), "title", "careers_url", title, platform, h,
                     Source.RECRUITEE);
             case "workable" -> fromJson("https://apply.workable.com/api/v1/widget/accounts/" + h,
-                    root -> root.path("jobs"), "title", "url", title, platform, h, null);
+                    root -> root.path("jobs"), "title", "url", title, platform, h, Source.WORKABLE);
             case "smartrecruiters" -> smartRecruiters(h, title);
             case "personio" -> personio(h, title);
             default -> Optional.empty();

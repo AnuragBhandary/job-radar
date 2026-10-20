@@ -112,7 +112,20 @@ public class ArchiveIndex {
                         ".*/hcmUI/CandidateExperience/[a-z]+/sites/[A-Za-z0-9_]+.*")),
                 Pattern.compile("^https?://([a-z0-9.-]+\\.oraclecloud\\.com)/hcmUI/CandidateExperience/[a-z]+/sites/([A-Za-z0-9_]+)",
                         Pattern.CASE_INSENSITIVE),
-                false);
+                false),
+        // European startups' ATSs, added 2026-10-20: none of their boards was read.
+        PERSONIO(Source.PERSONIO, List.of(
+                new Query("jobs.personio.de", "domain", "^https?://[^./]+\\.jobs\\.personio\\.de/?$")),
+                Pattern.compile("^https?://([^./]+)\\.jobs\\.personio\\.(?:de|com)(?:[/?#]|$)"),
+                true),
+        TEAMTAILOR(Source.TEAMTAILOR, List.of(
+                new Query("teamtailor.com", "domain", "^https?://[^./]+\\.teamtailor\\.com/(?:jobs/?)?$")),
+                Pattern.compile("^https?://([^./]+)\\.teamtailor\\.com(?:[/?#]|$)"),
+                true),
+        WORKABLE(Source.WORKABLE, List.of(
+                new Query("apply.workable.com/", "prefix", "^https?://apply\\.workable\\.com/[^/?#]+/?$")),
+                Pattern.compile("^https?://apply\\.workable\\.com/([^/?#]+)"),
+                true);
 
         final Source source;
         final List<Query> queries;
