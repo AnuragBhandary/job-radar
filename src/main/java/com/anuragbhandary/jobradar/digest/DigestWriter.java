@@ -57,6 +57,31 @@ public class DigestWriter {
         this.pay = pay;
     }
 
+    /** Null in tests that build the writer by hand: no sponsor line then. */
+    private com.anuragbhandary.jobradar.sponsor.SponsorRegister sponsors;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSponsors(com.anuragbhandary.jobradar.sponsor.SponsorRegister sponsors) {
+        this.sponsors = sponsors;
+    }
+
+    /**
+     * The visa-sponsor register's verdict for a UK or Dutch posting, as the line
+     * the review reads; null where there is no register.
+     */
+    static String sponsorLine(com.anuragbhandary.jobradar.sponsor.SponsorRegister.Match m, String country) {
+        String register = "GB".equals(country) ? "UK Skilled Worker register" : "Dutch IND recognised-sponsor register";
+        return switch (m.status()) {
+            case LICENSED -> "Sponsor: on the " + register + " (" + m.registeredName() + ")";
+            case POSSIBLE -> "Sponsor: possibly, the " + register + " has \"" + m.registeredName()
+                    + "\"; check it is the same company";
+            case NOT_LISTED -> "**Not a licensed sponsor:** not on the " + register
+                    + "; it cannot sponsor the visa unless the name differs there, so check before applying";
+            case UNCLEAR_NAME -> "Sponsor: unknown, the board names a careers site, not the employer";
+            case NO_REGISTER -> "Sponsor: unknown, run `sponsors --refresh`";
+        };
+    }
+
     /**
      * Writes {@code <output-dir>/YYYY-MM-DD.md}, or
      * {@code <output-dir>/since-YYYY-MM-DD.md} for an export.
@@ -361,6 +386,11 @@ public class DigestWriter {
         }
         if (p.getSponsorshipSignal() != null) {
             out.append("Visa: ").append(p.getSponsorshipSignal()).append('\n');
+        }
+        if (sponsors != null) {
+            sponsors.check(p.getCountryCode(), com.anuragbhandary.jobradar.domain.Employer.company(
+                            labels.getOrDefault(p.getBoardToken(), p.getBoardToken()), p.getSource(), p.getTitle()))
+                    .ifPresent(m -> out.append(sponsorLine(m, p.getCountryCode())).append('\n'));
         }
         if (p.getUrl() != null) {
             out.append(p.getUrl()).append('\n');

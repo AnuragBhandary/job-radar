@@ -159,7 +159,7 @@ public class DigestService {
             Map<String, String> labels) {
         List<Digest.Entry> scored = entries.stream()
                 .map(e -> new Digest.Entry(e.posting(), e.updated(), e.companyApplied(),
-                        fitScore.fit(e.posting(), today), false))
+                        sponsorAdjusted(e.posting(), fitScore.fit(e.posting(), today), labels), false))
                 .sorted(Comparator.comparingInt((Digest.Entry e) -> e.fit().score()).reversed())
                 .toList();
         List<Digest.Entry> ordered = featuredFirst(grouped(scored, labels), PER_CATEGORY);
@@ -172,6 +172,38 @@ public class DigestService {
                     e.fit(), compact, e.similar(), e.featured()));
         }
         return out;
+    }
+
+    /** Null in tests that build the service by hand: no sponsor check then. */
+    private com.anuragbhandary.jobradar.sponsor.SponsorRegister sponsors;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSponsors(com.anuragbhandary.jobradar.sponsor.SponsorRegister sponsors) {
+        this.sponsors = sponsors;
+    }
+
+    /** Points off for a UK or Dutch employer missing from its country's sponsor register. */
+    static final int NOT_A_SPONSOR_PENALTY = 15;
+
+    /**
+     * A UK or Dutch employer that is not a licensed sponsor cannot hire him, so it
+     * sorts down and nearer the floor. Points, not a rejection: the board's name
+     * for the employer is not always the registered one, and the review checks.
+     */
+    private FitScore.Fit sponsorAdjusted(Posting p, FitScore.Fit fit, Map<String, String> labels) {
+        if (sponsors == null) {
+            return fit;
+        }
+        boolean notListed = sponsors.check(p.getCountryCode(), com.anuragbhandary.jobradar.domain.Employer.company(
+                        labels.getOrDefault(p.getBoardToken(), p.getBoardToken()), p.getSource(), p.getTitle()))
+                .map(m -> m.status() == com.anuragbhandary.jobradar.sponsor.SponsorRegister.Status.NOT_LISTED)
+                .orElse(false);
+        if (!notListed) {
+            return fit;
+        }
+        return new FitScore.Fit(Math.max(0, fit.score() - NOT_A_SPONSOR_PENALTY), fit.matched(),
+                fit.summary() + ", not a licensed sponsor",
+                Math.max(0, fit.floorScore() - NOT_A_SPONSOR_PENALTY));
     }
 
     /** How many of each category open the file in full. */

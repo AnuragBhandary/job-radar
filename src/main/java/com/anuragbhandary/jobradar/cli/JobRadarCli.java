@@ -33,13 +33,14 @@ public class JobRadarCli implements ApplicationRunner {
     private final DiscoverCommand discover;
     private final CalibrateCommand calibrate;
     private final SheetCategoriesCommand sheetCategories;
+    private final SponsorsCommand sponsors;
 
     public JobRadarCli(FetchCommand fetch, ScreenCommand screen, DigestCommand digest,
             RunCommand runCommand, MarkCommand mark, ResumeCommand resume,
             SheetAppendCommand sheetAppend, SheetListCommand sheetList, ProbeCommand probe,
             NotifyCommand notify, LinksCommand links, BoardsCommand boards,
             DiscoverCommand discover, CalibrateCommand calibrate,
-            SheetCategoriesCommand sheetCategories) {
+            SheetCategoriesCommand sheetCategories, SponsorsCommand sponsors) {
         this.fetch = fetch;
         this.screen = screen;
         this.digest = digest;
@@ -55,6 +56,7 @@ public class JobRadarCli implements ApplicationRunner {
         this.discover = discover;
         this.calibrate = calibrate;
         this.sheetCategories = sheetCategories;
+        this.sponsors = sponsors;
     }
 
     @Override
@@ -90,6 +92,7 @@ public class JobRadarCli implements ApplicationRunner {
             case "calibrate" -> calibrate.run(options);
             case "sheet-categories" -> sheetCategories.run(options);
             case "discover" -> discover.run(options);
+            case "sponsors" -> sponsors.run(options);
             default -> {
                 System.out.println("Unknown command: " + command);
                 printUsage();
@@ -154,6 +157,9 @@ public class JobRadarCli implements ApplicationRunner {
                   discover [--platforms=lever,...] [--deep] [--recheck | --recheck-days=N] [--limit=N] [--dry-run]
                                                           find boards in the Internet Archive, survey them,
                                                           add those with roles in target countries
+                  sponsors [--refresh] [--check="Name" --country=GB]
+                                                          UK and Dutch visa-sponsor registers: status,
+                                                          download again, or look one employer up
                 """);
     }
 }

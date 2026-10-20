@@ -96,6 +96,12 @@ openings" and similar from any directory. In short:
   verdicts against a backup before trusting it. A green unit test has more than
   once hidden a rule that fired on nothing in the real data.
   `JOB_RADAR_DB=jdbc:sqlite:<copy> ... screen`
+- Visa sponsors: `sponsors --refresh` downloads the UK Skilled Worker register
+  (gov.uk CSV) and the Dutch IND recognised-sponsor list into
+  `~/.config/job-radar/sponsors/` (refresh monthly). UK and NL blocks then carry a
+  "Sponsor:" line; an employer not on its register loses 15 fit points and is
+  flagged, never rejected (Standard Life is licensed as Phoenix Group).
+  `sponsors --check="Name" --country=GB` looks one up.
 - Adding a board: `probe --tokens=a,b,c` tries every supported ATS; `--add` saves hits.
   `boards` shows what each board has yielded (`--idle`: stored 20+, never
   recommended); `boards --disable=SOURCE/token` stops fetching one.
