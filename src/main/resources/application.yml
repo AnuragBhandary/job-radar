@@ -23,6 +23,9 @@ job-radar:
       "[microsoft.com]": 1500
       # Eightfold's shared host refused detail requests at 500 ms (2026-10-01).
       "[eightfold.ai]": 1500
+      # Workable's widget API answered 429 to nearly every board of the first
+      # full fetch (119 of 119, 2026-10-21) at the default pace.
+      "[workable.com]": 3000
     # Parallel lanes for operators that host many customers' sites; see
     # AppProperties.Http.lanesFor. Each lane still waits the full gap.
     operator-lanes:
