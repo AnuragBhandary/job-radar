@@ -312,6 +312,18 @@ public class YearsExtractor {
         if (chosen.isEmpty()) {
             chosen = statedBars(description);
         }
+        // A form field stating the bar outright is a floor nothing in the prose
+        // lowers, and is trusted past IMPLAUSIBLE_YEARS: "Minimum 18 year(s)" means
+        // 18. Only a floor: Accenture's header says 2 on roles whose body asks for
+        // "a minimum of 5 years", and the higher bar is the real one.
+        Matcher header = HEADER_BAR.matcher(description);
+        if (header.find()) {
+            int headerYears = Integer.parseInt(header.group(1));
+            if (headerYears > chosen.min) {
+                return new YearsExtraction(headerYears,
+                        phrase(description, header.start(), header.end()), nonInternship);
+            }
+        }
         return new YearsExtraction(chosen.min, chosen.evidence, nonInternship);
     }
 
@@ -739,6 +751,19 @@ public class YearsExtractor {
      */
     private static final Pattern SKILLS_FIELD_THEN_MINIMUM = Pattern.compile(
             "(?:nice|good)[\\s-]to[\\s-]have\\s+skills?\\s*:[^:]{0,60}?\\bminimum\\s*$",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Accenture's header field in full: "Minimum 12 year(s) of experience is
+     * required", "Minimum 0-2 year(s) ...". It is a form field, not prose, so it
+     * is the posting's bar and nothing else in the text overrides it. Read only
+     * as a last resort, it lost to "A minimum of 2 years specializing in Agentic
+     * AI Architecture" further down; and 15 or 18 fell to the implausible-number
+     * guard. Both let 12- to 18-year roles through as candidates (2026-10-20).
+     */
+    private static final Pattern HEADER_BAR = Pattern.compile(
+            "\\bminimum\\s+(\\d{1,2})(?:\\s*[-–—]\\s*\\d{1,2})?\\s*\\+?\\s*year\\(s\\)\\s+of\\s+experience"
+                    + "\\s+is\\s+required",
             Pattern.CASE_INSENSITIVE);
 
     /**

@@ -632,4 +632,22 @@ class YearsExtractorTest {
                 + " 3 years of Rust."))
                 .isEqualTo(-1);
     }
+
+    /** Accenture, 2026-10-20: the header bar is a floor prose cannot lower, trusted past 15. */
+    @Test
+    void accentureHeaderBarIsAFloor() {
+        assertThat(minYears("Must have skills : Microsoft Agentic AI Architecture Good to have"
+                + " skills : NA Minimum 12 year(s) of experience is required Educational"
+                + " Qualification : 15 years full time education Summary: ... A minimum of 2 years"
+                + " specializing in Agentic AI Architecture."))
+                .isEqualTo(12);
+        assertThat(minYears("Must have skills : Java Full Stack Development Good to have skills :"
+                + " NA Minimum 18 year(s) of experience is required Educational Qualification :"
+                + " 15 years full time education"))
+                .isEqualTo(18);
+        assertThat(minYears("Must have skills : Java Full Stack Development Good to have skills :"
+                + " NA Minimum 5 year(s) of experience is required ... with at least 2 years in a"
+                + " lead developer or junior architect role"))
+                .isEqualTo(5);
+    }
 }
