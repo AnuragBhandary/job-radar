@@ -69,5 +69,9 @@ public enum Source {
     /** D. E. Shaw India's own careers site (added 2026-10-23). */
     DESHAW,
     /** Careers sites on RippleHire: LTIMindtree (added 2026-10-23). */
-    RIPPLEHIRE
+    RIPPLEHIRE,
+    /** Careers sites on Spire2Grow: Myntra (added 2026-10-23). */
+    SPIRE2GROW,
+    /** Zoho Recruit portals, read from their RSS feed: Zoho (added 2026-10-23). */
+    ZOHO_RECRUIT
 }

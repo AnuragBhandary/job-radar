@@ -98,6 +98,13 @@ public class BoardTokenSeeder {
     /** Atlassian's careers listing: one board for the whole company. */
     private static final Map<String, String> ATLASSIAN = Map.of("atlassian", "Atlassian");
 
+    /** Spire2Grow careers sites, keyed {@code name/host}: Myntra 44 jobs on 2026-10-23. */
+    private static final Map<String, String> SPIRE2GROW = Map.of("myntra/jobs.myntra.com", "Myntra");
+
+    /** Zoho Recruit portals, keyed {@code name/host/portal}: Zoho 9 on 2026-10-23. */
+    private static final Map<String, String> ZOHO_RECRUIT =
+            Map.of("zoho/careers.zohocorp.com/Careers", "Zoho");
+
     /** RippleHire careers sites, keyed {@code name/host/careerSiteToken}. */
     private static final Map<String, String> RIPPLEHIRE =
             Map.of("ltm/ltimindtree.ripplehire.com/xviyQvbnyYZdGtozXoNm", "LTIMindtree");
@@ -368,6 +375,8 @@ public class BoardTokenSeeder {
         // job pages, whose URLs carry the city and whose JSON-LD has the rest.
         SITEMAP.put("arm/careers.arm.com/sitemap.xml", "Arm");
         SITEMAP.put("synopsys/careers.synopsys.com/sitemap.xml", "Synopsys");
+        // ING is Radancy too: 723 jobs, Amsterdam 35 and Frankfurt 47 among them.
+        SITEMAP.put("ing/careers.ing.com/en/sitemap.xml", "ING");
 
         // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
@@ -549,7 +558,9 @@ public class BoardTokenSeeder {
                 + seedSource(Source.ATLASSIAN, ATLASSIAN)
                 + seedSource(Source.JIBE, JIBE)
                 + seedSource(Source.DESHAW, DESHAW)
-                + seedSource(Source.RIPPLEHIRE, RIPPLEHIRE);
+                + seedSource(Source.RIPPLEHIRE, RIPPLEHIRE)
+                + seedSource(Source.SPIRE2GROW, SPIRE2GROW)
+                + seedSource(Source.ZOHO_RECRUIT, ZOHO_RECRUIT);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

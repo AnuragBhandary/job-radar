@@ -151,6 +151,30 @@ job-radar:
       - company: MathWorks
         city: Bengaluru, Hyderabad
         url: https://www.mathworks.com/company/jobs/opportunities/search?location=India
+      # 2026-10-23, fourth batch. Zepto's site is behind a bot challenge (its
+      # BambooHR namesake is an Australian company); Postman's open-positions
+      # page loads no list without a full browser; ABN AMRO's sitemap has no
+      # places and is mostly Dutch; Rabobank and Revolut answer 403.
+      # Zomato/Blinkit (Eternal) post no jobs: applications by referral only.
+      - company: Zepto
+        city: Mumbai, Bengaluru
+        url: https://www.zeptonow.com/careers
+      - company: Postman
+        city: Bengaluru
+        url: https://www.postman.com/company/careers/open-positions/
+      - company: Media.net
+        city: Mumbai, Bengaluru
+        url: https://careers.media.net/#openings
+        note: "0 engineering and 1 data science opening on 2026-10-23"
+      - company: ABN AMRO
+        city: Amsterdam
+        url: https://www.werkenbijabnamro.nl/en/vacancies
+      - company: Rabobank
+        city: Utrecht
+        url: https://www.rabobank.jobs/en/vacancies/
+      - company: Revolut
+        city: Bengaluru, Dublin, London
+        url: https://www.revolut.com/careers/
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -729,7 +753,7 @@ job-radar:
                       # Own careers APIs added 2026-10-23.
                       ibm, capgemini, atlassian,
                       amd, booking, redhat, asml, dell, deshaw,
-                      ebay, paloaltonetworks, sec, cadence, arm, synopsys, ltm]
+                      ebay, paloaltonetworks, sec, cadence, arm, synopsys, ltm, ing]
     big-tech-max-min-years: 1
 
   # ---------------------------------------------------------------------------

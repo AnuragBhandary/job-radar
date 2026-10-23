@@ -88,6 +88,21 @@ public class HttpFetchClient {
     }
 
     /**
+     * As {@link #get}, with extra request headers.
+     *
+     * <p>For Spire2Grow, whose job search names the employer in a
+     * {@code workspaceId} header rather than in the URL.
+     */
+    public String get(String url, String fixtureName, java.util.Map<String, String> headers)
+            throws FetchException {
+        HttpResult result = execute(url, null, fixtureName, config.timeoutSeconds(), headers);
+        if (result.isSuccess()) {
+            return result.body();
+        }
+        throw new FetchException("HTTP " + result.status() + " from " + url);
+    }
+
+    /**
      * POSTs a JSON body and returns the response body.
      *
      * <p>Only Workday needs this. Its job search is a POST with a paging body
@@ -124,6 +139,11 @@ public class HttpFetchClient {
 
     private HttpResult execute(String url, String jsonBody, String fixtureName, int timeoutSeconds)
             throws FetchException {
+        return execute(url, jsonBody, fixtureName, timeoutSeconds, java.util.Map.of());
+    }
+
+    private HttpResult execute(String url, String jsonBody, String fixtureName, int timeoutSeconds,
+            java.util.Map<String, String> headers) throws FetchException {
         IOException lastIoFailure = null;
 
         for (int attempt = 1; attempt <= config.maxRetries(); attempt++) {
@@ -133,6 +153,7 @@ public class HttpFetchClient {
                         .header("User-Agent", config.userAgent())
                         .header("Accept", "application/json")
                         .timeout(Duration.ofSeconds(timeoutSeconds));
+                headers.forEach(request::header);
                 if (jsonBody == null) {
                     request.GET();
                 } else {

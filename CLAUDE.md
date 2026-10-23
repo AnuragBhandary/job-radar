@@ -226,6 +226,14 @@ openings" and similar from any directory. In short:
   Workday searches per country; Arm and Synopsys (Radancy) are `SITEMAP` boards.
   Tech Mahindra (ASP.NET postbacks), Nutanix (Cloudflare) and MathWorks (403)
   are on `browser-watch`.
+- Fourth batch (2026-10-23): `SPIRE2GROW` (Myntra; token `name/host`, the
+  workspace looked up from the domain and sent as a `workspaceId` header via
+  `HttpFetchClient.get(url, fixture, headers)`), `ZOHO_RECRUIT` (Zoho; the
+  portal's RSS feed, token `name/host/portal`), and ING as a Radancy `SITEMAP`
+  board. Title role words now match their plural ("QA Engineers", "Web
+  Developers") when four letters or longer; exclusions stay exact (15 verdicts
+  changed, all plurals). Zepto, Postman, Media.net, ABN AMRO, Rabobank and
+  Revolut are on `browser-watch`; Zomato/Blinkit (Eternal) post no jobs.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

@@ -57,6 +57,18 @@ class TitleFilterTest {
     }
 
     @Test
+    @DisplayName("a plural role word counts: 'QA Engineers', 'Web Developers'")
+    void pluralRoleWords() {
+        // Zoho's openings are plural (2026-10-23) and a whole-word match missed them.
+        assertThat(filter.screen("QA Engineers").accepted()).isTrue();
+        assertThat(filter.screen("Web Developers").accepted()).isTrue();
+        // Exclusions stay exact, and still win over a plural role word.
+        assertThat(filter.screen("Senior Developers").accepted()).isFalse();
+        // Short role words stay exact: "bi" must not take the German "bis".
+        assertThat(filter.screen("System Administrator befr. bis 31.12.2027").accepted()).isFalse();
+    }
+
+    @Test
     @DisplayName("exclusion beats inclusion")
     void exclusionWins() {
         // "Senior Software Engineer" contains "software". A filter that checked

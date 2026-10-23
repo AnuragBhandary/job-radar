@@ -260,4 +260,64 @@ class CareersApiFetchersTest {
             assertThat(board.page("903856")).endsWith("#detail/job/903856");
         }
     }
+
+    @Nested
+    class Spire2Grow {
+
+        private final Spire2GrowFetcher fetcher = new Spire2GrowFetcher(null, json);
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.SPIRE2GROW);
+        }
+
+        @Test
+        @DisplayName("the display id makes the page link, and the months become stated years")
+        void mapsARequisition() throws Exception {
+            List<RawPosting> postings = fetcher.parse(FixtureSupport.load("spire2grow-myntra.json"), "jobs.myntra.com");
+            assertThat(postings).hasSize(2);
+            RawPosting first = postings.getFirst();
+            assertThat(first.externalId()).isEqualTo("3787207691");
+            assertThat(first.url()).isEqualTo("https://jobs.myntra.com/jobs/3787207691");
+            assertThat(first.location()).isEqualTo("Bangalore, Karnataka, India");
+            assertThat(first.description()).startsWith("Experience: 4 - 7 years\n\n").doesNotContain("<p>");
+            assertThat(first.postedDate()).isNotNull();
+        }
+
+        @Test
+        void rejectsATokenWithoutAHost() {
+            assertThatThrownBy(() -> Spire2GrowFetcher.Board.parse("myntra")).isInstanceOf(FetchException.class);
+        }
+    }
+
+    @Nested
+    class ZohoRecruit {
+
+        private final ZohoRecruitFetcher fetcher = new ZohoRecruitFetcher(null);
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.ZOHO_RECRUIT);
+        }
+
+        @Test
+        @DisplayName("each item gives title, the long id in its link, and the Location line")
+        void readsTheFeed() throws Exception {
+            List<RawPosting> postings = fetcher.parse(FixtureSupport.load("zoho-recruit-careers.xml"));
+            assertThat(postings).hasSize(2);
+            RawPosting first = postings.getFirst();
+            assertThat(first.title()).isEqualTo("Software Developers");
+            assertThat(first.externalId()).isEqualTo("193779000024446019");
+            assertThat(first.location()).endsWith("India");
+            assertThat(first.url()).doesNotContain("source=RSS");
+            assertThat(first.description()).contains("low-latency").doesNotContain("<span");
+            // "Content&#x2f;Technical Writers": entities in titles are decoded.
+            assertThat(postings.get(1).title()).isEqualTo("Content/Technical Writers");
+        }
+
+        @Test
+        void rejectsSomethingElse() {
+            assertThatThrownBy(() -> fetcher.parse("<html></html>")).isInstanceOf(FetchException.class);
+        }
+    }
 }

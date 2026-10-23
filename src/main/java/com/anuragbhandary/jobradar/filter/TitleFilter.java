@@ -116,7 +116,7 @@ public class TitleFilter {
             return FilterVerdict.reject("finance, risk or operations role: '" + domain + "'");
         }
 
-        String included = firstMatch(normalised, screening.titleInclude());
+        String included = firstMatch(normalised, screening.titleInclude(), true);
         if (included == null && requireRoleWord) {
             return FilterVerdict.reject("title is not a software role");
         }
@@ -152,23 +152,35 @@ public class TitleFilter {
     }
 
     private String firstMatch(String haystack, List<String> needles) {
+        return firstMatch(haystack, needles, false);
+    }
+
+    /**
+     * @param plural also match the word with an "s" after it. Only the role words
+     *               ask for this: Zoho titles its openings "Software Developers",
+     *               "QA Engineers", "Web Developers" (2026-10-23), and a whole-word
+     *               "developer" missed all three. Exclusions stay exact.
+     */
+    private String firstMatch(String haystack, List<String> needles, boolean plural) {
         if (needles == null) {
             return null;
         }
         for (String needle : needles) {
-            if (pattern(needle).matcher(haystack).find()) {
+            if (pattern(needle, plural).matcher(haystack).find()) {
                 return needle.trim();
             }
         }
         return null;
     }
 
-    private Pattern pattern(String needle) {
-        return patterns.computeIfAbsent(needle, n -> {
-            String trimmed = n.trim();
+    private Pattern pattern(String needle, boolean plural) {
+        return patterns.computeIfAbsent((plural ? "s|" : "|") + needle, key -> {
+            String trimmed = needle.trim();
             String prefix = Character.isLetterOrDigit(trimmed.charAt(0)) ? "\\b" : "";
-            String suffix = Character.isLetterOrDigit(trimmed.charAt(trimmed.length() - 1))
-                    ? "\\b" : "";
+            boolean wordEnd = Character.isLetterOrDigit(trimmed.charAt(trimmed.length() - 1));
+            // Short words keep exact matching: "bi" would take German "bis" ("befr.
+            // bis 31.12.2027", "(BIS)"), as the first diff of this change showed.
+            String suffix = !wordEnd ? "" : plural && trimmed.length() >= 4 ? "s?\\b" : "\\b";
             return Pattern.compile(prefix + Pattern.quote(trimmed) + suffix,
                     Pattern.CASE_INSENSITIVE);
         });

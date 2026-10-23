@@ -1,0 +1,165 @@
+{
+ "entities": [
+  {
+   "id": "r_1ac2275bfd763eae9221bb18232d2c72",
+   "displayId": "3787207691",
+   "workspaceId": "MYNTRA-93as3",
+   "jobTitle": "Lead Associate - Business Development",
+   "requiredExperienceInMonths": {
+    "from": 48,
+    "to": 84
+   },
+   "jobType": "ONSITE",
+   "skills": [
+    {
+     "skill": "business development",
+     "isMandatory": true,
+     "reqId": "r_1ac2275bfd763eae9221bb18232d2c72"
+    },
+    {
+     "skill": "onboarding sellers",
+     "isMandatory": true,
+     "reqId": "r_1ac2275bfd763eae9221bb18232d2c72"
+    },
+    {
+     "skill": "brand management",
+     "isMandatory": true,
+     "reqId": "r_1ac2275bfd763eae9221bb18232d2c72"
+    },
+    {
+     "skill": "e commerce",
+     "isMandatory": true,
+     "reqId": "r_1ac2275bfd763eae9221bb18232d2c72"
+    }
+   ],
+   "jobLocation": [
+    {
+     "city": "Bangalore",
+     "state": "Karnataka",
+     "country": "India",
+     "fqLocationName": "Bangalore, Karnataka, India",
+     "cityCode": "Bangalore",
+     "stateCode": "Karnataka",
+     "countryCode": "India",
+     "geoCode": {
+      "lat": 12.9715987,
+      "lon": 77.5945627
+     },
+     "originalCityName": "MYNHQ",
+     "originalStatename": "Karnataka",
+     "originalCountryName": "India"
+    }
+   ],
+   "requiredEducation": [],
+   "hotJob": {
+    "isHot": false,
+    "markedOn": 1792752899000
+   },
+   "departmentName": "Marketplace (F1441)",
+   "employmentType": "FULL_TIME",
+   "jobPosting": {
+    "startDate": 1792752899000,
+    "endDate": 1797936899000,
+    "status": "ACTIVE"
+   },
+   "createdOn": 1792753498000,
+   "updatedOn": 1792753498000,
+   "jobDescription": "<p><strong>Job Title:</strong> Business Development Lead – Seller Identification &amp; Onboarding<br><strong>Company:</strong> Myntra<br><strong>Experience:</strong> 5–7 years (fashion/appare background preferred)<br><strong>Location:</strong> Bengaluru</p><p><strong>About the role</strong><br> Own the identification and onboarding of sellers that fill Myntra’s selection gaps. You will target specific sellers by business unit, article type and price point, and make sure every identified seller is taken through to go-live.</p><p><strong>Responsibilities</strong></p><ul><li>Use data (demand, search, competitor and catalog gaps) to define target seller lists by business unit, article type and price point.</li><li>Identify and source sellers and manufacturers through market mapping, trade networks, B2B portals, clusters and referrals.</li><li>Pitch Myntra’s marketplace proposition, negotiate terms and close targeted sellers.</li><li>Own onboarding to 100% completion for every identified seller</li><li>Run a structured funnel, from target list to outreach, pitch, signed, live and ramped. Chase blockers and escalate to get sellers live on time.</li></ul><p><strong>Requirements</strong></",
+   "aboutCompany": "",
+   "jobStatus": {
+    "statusDisplay": "Open",
+    "statusCode": "OPEN"
+   },
+   "fcpr": {
+    "id": null,
+    "roleSkill": null,
+    "jobFamily": null
+   },
+   "recruiter": {
+    "fullName": "Recruiter",
+    "emailId": "recruiter@example.com"
+   }
+  },
+  {
+   "id": "r_ca8f74ceadb53d16a56a424ac9fe2416",
+   "displayId": "3004686832",
+   "workspaceId": "MYNTRA-93as3",
+   "jobTitle": "Associate - Marketplace",
+   "requiredExperienceInMonths": {
+    "from": 12,
+    "to": 48
+   },
+   "jobType": "ONSITE",
+   "skills": [
+    {
+     "skill": "account management",
+     "isMandatory": true,
+     "reqId": "r_ca8f74ceadb53d16a56a424ac9fe2416"
+    },
+    {
+     "skill": "profit and loss",
+     "isMandatory": true,
+     "reqId": "r_ca8f74ceadb53d16a56a424ac9fe2416"
+    },
+    {
+     "skill": "plan management",
+     "isMandatory": true,
+     "reqId": "r_ca8f74ceadb53d16a56a424ac9fe2416"
+    },
+    {
+     "skill": "business planning",
+     "isMandatory": true,
+     "reqId": "r_ca8f74ceadb53d16a56a424ac9fe2416"
+    }
+   ],
+   "jobLocation": [
+    {
+     "city": "Bangalore",
+     "state": "Karnataka",
+     "country": "India",
+     "fqLocationName": "Bangalore, Karnataka, India",
+     "cityCode": "Bangalore",
+     "stateCode": "Karnataka",
+     "countryCode": "India",
+     "geoCode": {
+      "lat": 12.9715987,
+      "lon": 77.5945627
+     },
+     "originalCityName": "MYNHQ",
+     "originalStatename": "Karnataka",
+     "originalCountryName": "India"
+    }
+   ],
+   "requiredEducation": [],
+   "hotJob": {
+    "isHot": false,
+    "markedOn": 1792675438000
+   },
+   "departmentName": "Supply (F1425)",
+   "employmentType": "FULL_TIME",
+   "jobPosting": {
+    "startDate": 1792675438000,
+    "endDate": 1797859438000,
+    "status": "ACTIVE"
+   },
+   "createdOn": 1792675765000,
+   "updatedOn": 1792675765000,
+   "jobDescription": "<div><div>About the Role</div><p>The Category Manager will own the strategic and operational management of a key fashion or lifestyle category, driving business growth through assortment planning, pricing strategy, and brand partnerships.&nbsp;</p><p>This role requires a blend of merchandising expertise, analytical skills, and commercial acumen to maximize category performance.</p></div><div><div><br></div><div>What You Will Be Doing</div><ul><li>Own P&amp;L for assigned category and drive revenue, margin, and growth targets</li><li>Develop category strategy, assortment planning, and pricing optimization</li><li>Identify and onboard new brands and vendors to expand category offerings</li><li>Analyze market trends, consumer insights, and competitive landscape to identify opportunities</li><li>Drive promotional campaigns, sale events, and marketing initiatives for the category</li><li>Collaborate with marketing, supply chain, and technology teams to enhance customer experience</li></ul></div>",
+   "aboutCompany": "",
+   "jobStatus": {
+    "statusDisplay": "Open",
+    "statusCode": "OPEN"
+   },
+   "fcpr": {
+    "id": null,
+    "roleSkill": null,
+    "jobFamily": null
+   },
+   "recruiter": {
+    "fullName": "Recruiter",
+    "emailId": "recruiter@example.com"
+   }
+  }
+ ],
+ "total": 2
+}
