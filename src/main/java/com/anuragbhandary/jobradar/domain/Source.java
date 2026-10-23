@@ -63,5 +63,9 @@ public enum Source {
     /** Capgemini's job-search API, one country per board (added 2026-10-23). */
     CAPGEMINI,
     /** Atlassian's careers listing, the whole company in one board (added 2026-10-23). */
-    ATLASSIAN
+    ATLASSIAN,
+    /** Careers sites on Jibe (iCIMS): AMD, Booking Holdings (added 2026-10-23). */
+    JIBE,
+    /** D. E. Shaw India's own careers site (added 2026-10-23). */
+    DESHAW
 }

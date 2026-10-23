@@ -205,7 +205,18 @@ openings" and similar from any directory. In short:
   level: Experienced Professionals") on the description's first line, because
   their India jobs rarely state years. SAP, Uber (Cloudflare challenge), Goldman
   Sachs (robots.txt allows only single roles), Flipkart (TurboHire disallows all
-  bots), TCS (403) and Infosys (listed nothing) are on `browser-watch`.
+  bots) and Infosys (listed nothing) are on `browser-watch`; TCS is left out by
+  his choice.
+- Second batch (2026-10-23): `JIBE` reads Jibe careers sites (iCIMS behind
+  them), token `name/host/location` (`amd/careers.amd.com/India`,
+  `booking/jobs.booking.com/Netherlands`); `/api/jobs` carries the full text.
+  `DESHAW` reads D. E. Shaw India from its sitemap's `/careers/<slug>-<id>` pages
+  (JSON-LD, empty address, so the place is the offices the text names), slug
+  title-screened first and stored jobs reused. Red Hat (`redhat/wd5/jobs`) and
+  ASML (`asml/wd3/ASMLEXT1`; asml.com's job pages apply through it) are Workday
+  seeds; Dell is Oracle on its own host (`dell/enterpriseplatform.dell.com/CX_1/<country id>`).
+  Meta (400), LinkedIn (its jobs live on linkedin.com), Zalando (private API)
+  and UBS (403) are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

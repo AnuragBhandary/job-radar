@@ -1,0 +1,284 @@
+{
+ "jobs": [
+  {
+   "data": {
+    "slug": "89389",
+    "language": "en-us",
+    "languages": [
+     "en-us"
+    ],
+    "req_id": "89389",
+    "title": "SOC Design verification engineer",
+    "description": "ADVANCE YOUR CAREER. ADVANCE THE WORLD. At AMD, we believe technology can change lives for the better. It can heal us, entertain us, and make us more connected, productive, and understanding of the world around us. And we’re looking for talent who feel the same: people who want to leave the planet better than they found it, those who don’t shy away from humanity’s challenges but are determined to help solve them. AMD is powering the next generation of supercomputing, high-performance computing, cloud, and AI. Whether you’re designing next-gen processors, enabling AI breakthroughs, or creating go-to-market plans, every role at AMD contributes to something bigger — technology that moves the world forward.   THE ROLE: The focus of this role is to plan, build, and execute the verification of new and existing features for pre-silicon verification for full chip, blocks, multi-chip and system-l",
+    "location_name": "IN,Hyderabad-Design Center",
+    "street_address": "4F to 11F, Building #11, Mindspace, Hitech City, Madhapur",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "country": "India",
+    "country_code": "IN",
+    "postal_code": "500081",
+    "location_type": "LAT_LNG",
+    "latitude": 17.438198,
+    "longitude": 78.38216539999999,
+    "categories": [
+     {
+      "name": "Engineering"
+     }
+    ],
+    "tags1": [
+     "No"
+    ],
+    "tags2": [
+     "INR ₹3,338,160.00/Yr."
+    ],
+    "tags3": [
+     "INR ₹4,768,800.00/Yr."
+    ],
+    "tags4": [
+     "Global Careers (do not use for US or Canada)"
+    ],
+    "promotion_value": 0,
+    "employment_type": "FULL_TIME",
+    "qualifications": "Benefits offered are described: AMD benefits at a glance. AMD does not accept unsolicited resumes from headhunters, recruitment agencies, or fee-based recruitment services. AMD and its subsidiaries are equal opportunity, inclusive employers and will consider all applicants without regard to age, ancestry, color, marital status, medical condition, mental or physical disability, national origin, race, religion, political and/or third-party affiliation, sex, pregnancy, sexual orientation, gender identity, military or veteran status, or any other characteristic protected by law. We encourage applications from all qualified candidates and will accommodate applicants’ needs under the respective laws throughout all stages of the recruitment and selection process. AMD may use Artificial Intelligence to help screen, assess or select applicants for this position. AMD’s “Responsible AI Policy” is a",
+    "hiring_organization": "Advanced Micro Devices, Inc",
+    "hiring_organization_logo": "https://www.amd.com/content/dam/code/images/header/amd-header-logo.svg",
+    "responsibilities": "  THE ROLE: The focus of this role is to plan, build, and execute the verification of new and existing features for pre-silicon verification for full chip, blocks, multi-chip and system-level verification, resulting in no bugs in the final design.     THE PERSON:  You have a passion for modern, complex processor architecture, digital design, and verification in general. You are a team player who has excellent communication skills and experience collaborating with other engineers located in different sites/timezones. You have strong analytical and problem-solving skills and are willing to learn and ready to take on problems.   KEY RESPONSIBILITIES:  Collaborate with architects, hardware engineers, and firmware engineers to understand the new features to be verified Build test plan documentation, accounting for interactions with other features, the hardware, the firmware, and the software ",
+    "posted_date": "2026-09-08T10:51:00+0000",
+    "apply_url": "https://global-external-amd.icims.com/jobs/89389/login",
+    "internal": false,
+    "external": false,
+    "searchable": true,
+    "applyable": true,
+    "li_easy_applyable": true,
+    "ats_code": "icims",
+    "isFrontLineAIJob": false,
+    "isApplyFlowJob": false,
+    "meta_data": {
+     "canonical_url": "https://careers.amd.com/jobs/89389?lang=en-us"
+    },
+    "update_date": "2026-10-23T10:50:36+0000",
+    "create_date": "2026-09-08T10:53:08+0000",
+    "category": [
+     " Engineering"
+    ],
+    "full_location": "Hyderabad, India",
+    "short_location": "Hyderabad, India",
+    "multipleLocations": false
+   }
+  },
+  {
+   "data": {
+    "slug": "87931",
+    "language": "en-us",
+    "languages": [
+     "en-us"
+    ],
+    "req_id": "87931",
+    "title": "Physical Verification Engineer",
+    "description": "WHAT YOU DO AT AMD CHANGES EVERYTHING At AMD, our mission is to build great products that accelerate next-generation computing experiences—from AI and data centers, to PCs, gaming and embedded systems. Grounded in a culture of innovation and collaboration, we believe real progress comes from bold ideas, human ingenuity and a shared passion to create something extraordinary. When you join AMD, you’ll discover the real differentiator is our culture. We push the limits of innovation to solve the world’s most important challenges—striving for execution excellence, while being direct, humble, collaborative, and inclusive of diverse perspectives. Join us as we shape the future of AI and beyond. Together, we advance your career. Physical Verification / RDL Engineer   KEY RESPONSIBILITIES:  Hands on experience with Block level and Top-level physical verification. Good understanding and hands-on ",
+    "location_name": "IN,Hyderabad-Design Center",
+    "street_address": "4F to 11F, Building #11, Mindspace, Hitech City, Madhapur",
+    "city": "Hyderabad",
+    "state": "Telangana",
+    "country": "India",
+    "country_code": "IN",
+    "postal_code": "500081",
+    "location_type": "LAT_LNG",
+    "latitude": 17.438198,
+    "longitude": 78.38216539999999,
+    "categories": [
+     {
+      "name": "Engineering"
+     }
+    ],
+    "tags1": [
+     "No"
+    ],
+    "tags2": [
+     "INR ₹3,338,160.00/Yr."
+    ],
+    "tags3": [
+     "INR ₹4,768,800.00/Yr."
+    ],
+    "tags4": [
+     "Global Careers (do not use for US or Canada)"
+    ],
+    "promotion_value": 0,
+    "employment_type": "FULL_TIME",
+    "qualifications": "Benefits offered are described: AMD benefits at a glance. AMD does not accept unsolicited resumes from headhunters, recruitment agencies, or fee-based recruitment services. AMD and its subsidiaries are equal opportunity, inclusive employers and will consider all applicants without regard to age, ancestry, color, marital status, medical condition, mental or physical disability, national origin, race, religion, political and/or third-party affiliation, sex, pregnancy, sexual orientation, gender identity, military or veteran status, or any other characteristic protected by law. We encourage applications from all qualified candidates and will accommodate applicants’ needs under the respective laws throughout all stages of the recruitment and selection process. AMD may use Artificial Intelligence to help screen, assess or select applicants for this position. AMD’s “Responsible AI Policy” is a",
+    "hiring_organization": "Advanced Micro Devices, Inc",
+    "hiring_organization_logo": "https://www.amd.com/content/dam/code/images/header/amd-header-logo.svg",
+    "responsibilities": "Physical Verification / RDL Engineer   KEY RESPONSIBILITIES:  Hands on experience with Block level and Top-level physical verification. Good understanding and hands-on experience in lower node technologies. (3nm and below) Drive the RDL and MIMCAP closure for complex chiplets Collaborate closely with cross-functional teams, including Physical Design, RTL Designers, to facilitate seamless integration and problem resolution. Demonstrate strong problem-solving and work well with cross-functional teams Good listening, writing, and speaking English Good communication skills, strong interpersonal skills and flexibility Dedicated, hardworking and good team player Familiar with Unix/Linux environment and good at scripts   PREFERRED EXPERIENCE:  Hands on experience in Physical Verification incl. multi-voltage designs Hands on experience in industry standard Place & Route tools such as Fusion Comp",
+    "posted_date": "2026-09-17T06:00:00+0000",
+    "apply_url": "https://global-external-amd.icims.com/jobs/87931/login",
+    "internal": false,
+    "external": false,
+    "searchable": true,
+    "applyable": true,
+    "li_easy_applyable": true,
+    "ats_code": "icims",
+    "isFrontLineAIJob": false,
+    "isApplyFlowJob": false,
+    "meta_data": {
+     "canonical_url": "https://careers.amd.com/jobs/87931?lang=en-us"
+    },
+    "update_date": "2026-10-23T09:27:40+0000",
+    "create_date": "2026-09-17T06:01:52+0000",
+    "category": [
+     " Engineering"
+    ],
+    "full_location": "Hyderabad, India",
+    "short_location": "Hyderabad, India",
+    "multipleLocations": false
+   }
+  }
+ ],
+ "locations": [
+  "India"
+ ],
+ "totalCount": 215,
+ "request_id": false,
+ "meta_data": {
+  "ResponseMetadata": {
+   "requestId": "00feccde-3bef-4ab4-ad06-b49bf845451b:APAb7IQs1ci2dGpXzQVNJwSf/XP1eGA2ZA=="
+  }
+ },
+ "count": 215,
+ "languageCounts": {
+  "en-us": {
+   "displayName": "English",
+   "count": 215
+  }
+ },
+ "filter": {
+  "facetList": {
+   "city": [
+    {
+     "term": "Bangalore",
+     "count": 115
+    },
+    {
+     "term": "Gurgaon",
+     "count": 1
+    },
+    {
+     "term": "Hyderabad",
+     "count": 98
+    },
+    {
+     "term": "Mumbai",
+     "count": 1
+    }
+   ],
+   "country": [
+    {
+     "term": "India",
+     "count": 215
+    }
+   ],
+   "tags1": [
+    {
+     "term": "No",
+     "count": 214
+    },
+    {
+     "term": "Yes",
+     "count": 1
+    }
+   ]
+  },
+  "displayLimit": 10,
+  "brands": {
+   "all": [],
+   "shortlist": []
+  },
+  "categories": {
+   "all": [
+    {
+     "category": "Engineering",
+     "numJobs": 210
+    },
+    {
+     "category": "General Management/ Administration/ Support",
+     "numJobs": 1
+    },
+    {
+     "category": "Sales / Marketing",
+     "numJobs": 4
+    }
+   ],
+   "shortlist": [
+    {
+     "category": "Engineering",
+     "numJobs": 210
+    },
+    {
+     "category": "General Management/ Administration/ Support",
+     "numJobs": 1
+    },
+    {
+     "category": "Sales / Marketing",
+     "numJobs": 4
+    }
+   ]
+  },
+  "locations": {
+   "all": [
+    {
+     "city": "Bangalore",
+     "state": "Karnataka",
+     "country": "India",
+     "count": 115
+    },
+    {
+     "city": "Gurgaon",
+     "state": "Haryana",
+     "country": "India",
+     "count": 1
+    },
+    {
+     "city": "Hyderabad",
+     "state": "Telangana",
+     "country": "India",
+     "count": 98
+    },
+    {
+     "city": "Mumbai",
+     "state": "Maharashtra",
+     "country": "India",
+     "count": 1
+    }
+   ],
+   "shortlist": [
+    {
+     "city": "Bangalore",
+     "state": "Karnataka",
+     "country": "India",
+     "count": 115
+    },
+    {
+     "city": "Gurgaon",
+     "state": "Haryana",
+     "country": "India",
+     "count": 1
+    },
+    {
+     "city": "Hyderabad",
+     "state": "Telangana",
+     "country": "India",
+     "count": 98
+    },
+    {
+     "city": "Mumbai",
+     "state": "Maharashtra",
+     "country": "India",
+     "count": 1
+    }
+   ]
+  },
+  "experienceLevels": {
+   "all": [],
+   "shortlist": []
+  }
+ }
+}

@@ -98,6 +98,12 @@ public class BoardTokenSeeder {
     /** Atlassian's careers listing: one board for the whole company. */
     private static final Map<String, String> ATLASSIAN = Map.of("atlassian", "Atlassian");
 
+    /** Jibe careers sites, keyed {@code name/host/location}. */
+    private static final Map<String, String> JIBE = new LinkedHashMap<>();
+
+    /** D. E. Shaw India: one board, the whole site. */
+    private static final Map<String, String> DESHAW = Map.of(com.anuragbhandary.jobradar.fetch.DeShawIndiaFetcher.BOARD, "D. E. Shaw India");
+
     /** One board: the current month's "Ask HN: Who is hiring?" thread. */
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
@@ -375,6 +381,28 @@ public class BoardTokenSeeder {
         CAPGEMINI.put("en-ie", "Capgemini");
         CAPGEMINI.put("en-ae", "Capgemini");
 
+        // 2026-10-23. AMD: India 215, UK 30, Ireland 14, Germany 5. Booking
+        // Holdings (Booking.com's parent): Netherlands 60, India 28, UK 7.
+        for (String country : java.util.List.of("India", "United Kingdom", "Ireland", "Germany")) {
+            JIBE.put("amd/careers.amd.com/" + country, "AMD");
+        }
+        for (String country : java.util.List.of("Netherlands", "India", "United Kingdom")) {
+            JIBE.put("booking/jobs.booking.com/" + country, "Booking Holdings");
+        }
+
+        // 2026-10-23: Red Hat's whole site is 155 jobs; ASML's 680, mostly
+        // Veldhoven and Berlin (asml.com's own job pages send applicants here).
+        WORKDAY.put("redhat/wd5/jobs", "Red Hat");
+        WORKDAY.put("asml/wd3/ASMLEXT1", "ASML");
+
+        // 2026-10-23: Dell's careers site is Oracle's on its own host, 510 jobs.
+        // India 24, UK 9, Ireland 7, Germany 5, Netherlands 2.
+        ORACLE_HCM.put("dell/enterpriseplatform.dell.com/CX_1/300000000471053", "Dell");
+        ORACLE_HCM.put("dell/enterpriseplatform.dell.com/CX_1/300000000464969", "Dell");
+        ORACLE_HCM.put("dell/enterpriseplatform.dell.com/CX_1/300000000471044", "Dell");
+        ORACLE_HCM.put("dell/enterpriseplatform.dell.com/CX_1/300000000464909", "Dell");
+        ORACLE_HCM.put("dell/enterpriseplatform.dell.com/CX_1/300000000471236", "Dell");
+
         GOOGLE.put("India", "Google India");
         GOOGLE.put("Ireland", "Google Ireland");
         GOOGLE.put("Germany", "Google Germany");
@@ -493,7 +521,9 @@ public class BoardTokenSeeder {
                 + seedSource(Source.WORKABLE, WORKABLE)
                 + seedSource(Source.IBM, IBM)
                 + seedSource(Source.CAPGEMINI, CAPGEMINI)
-                + seedSource(Source.ATLASSIAN, ATLASSIAN);
+                + seedSource(Source.ATLASSIAN, ATLASSIAN)
+                + seedSource(Source.JIBE, JIBE)
+                + seedSource(Source.DESHAW, DESHAW);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

@@ -106,7 +106,7 @@ job-radar:
       # 2026-10-23: none of these can be fetched politely. SAP and Uber run the
       # same careers platform behind a Cloudflare challenge; Goldman's robots.txt
       # allows only single /roles/ pages and there is no sitemap of them;
-      # Flipkart's TurboHire page disallows all bots; TCS answers 403.
+      # Flipkart's TurboHire page disallows all bots. TCS (403) is left out by choice.
       - company: SAP
         city: Bengaluru, Gurugram, Germany
         url: https://jobs.sap.com/en/jobs/?location=India
@@ -121,14 +121,25 @@ job-radar:
       - company: Flipkart
         city: Bengaluru
         url: https://flipkart.turbohire.co/careerpage/4d757ba0-3d57-448a-b82c-238ed87ac90f
-      - company: TCS
-        city: India
-        url: https://ibegin.tcs.com/iBegin/jobs/search
-        note: "freshers apply through TCS NextStep (nextstep.tcs.com) off-campus drives"
       - company: Infosys
         city: India
         url: https://career.infosys.com/joblist
         note: "listed no jobs on 2026-10-23; freshers come in through off-campus drives"
+      # 2026-10-23, second batch. Meta's careers site refuses scripted requests
+      # (400) and LinkedIn lists its own jobs on linkedin.com, which forbids
+      # scraping; Zalando's job data sits in a private API; UBS answers 403.
+      - company: Meta
+        city: Bengaluru, Gurugram, London, Dublin
+        url: https://www.metacareers.com/jobs?offices[0]=Bangalore%2C%20India
+      - company: LinkedIn
+        city: Bengaluru
+        url: https://www.linkedin.com/jobs/search/?f_C=1337&location=India
+      - company: Zalando
+        city: Berlin, Dublin
+        url: https://jobs.zalando.com/en/jobs?location=Berlin
+      - company: UBS
+        city: Pune, Mumbai, Hyderabad
+        url: https://jobs.ubs.com/TGnewUI/Search/Home/Home?partnerid=25008&siteid=5012
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -705,7 +716,8 @@ job-radar:
                       # Eightfold tenants found by discovery, 2026-10-01.
                       morganstanley, bnymellon, aexp, micron,
                       # Own careers APIs added 2026-10-23.
-                      ibm, capgemini, atlassian]
+                      ibm, capgemini, atlassian,
+                      amd, booking, redhat, asml, dell, deshaw]
     big-tech-max-min-years: 1
 
   # ---------------------------------------------------------------------------

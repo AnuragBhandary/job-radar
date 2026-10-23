@@ -103,7 +103,7 @@ public class TokenProber {
                 // and Hacker News has one board.
                 case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW,
                         EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
-                        IBM, CAPGEMINI, ATLASSIAN -> 0;
+                        IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -149,7 +149,7 @@ public class TokenProber {
                     "Workday is not probed by token; add tenant/wdN/site and fetch it");
             // Each needs a host found by hand, so they are seeded like Workday.
             case EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
-                    IBM, CAPGEMINI, ATLASSIAN -> throw new IllegalArgumentException(
+                    IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW -> throw new IllegalArgumentException(
                     platform + " is not probed by token; seed it in BoardTokenSeeder");
         };
     }

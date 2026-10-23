@@ -146,4 +146,76 @@ class CareersApiFetchersTest {
             assertThatThrownBy(() -> fetcher.parse("{}")).isInstanceOf(FetchException.class);
         }
     }
+
+    @Nested
+    class Jibe {
+
+        private final JibeFetcher fetcher = new JibeFetcher(null, json);
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.JIBE);
+        }
+
+        @Test
+        @DisplayName("the canonical page is the URL, not iCIMS's login screen")
+        void mapsAJob() throws Exception {
+            RawPosting first = fetcher.parse(FixtureSupport.load("jibe-amd-india.json")).getFirst();
+            assertThat(first.externalId()).isEqualTo("89389");
+            assertThat(first.title()).isEqualTo("SOC Design verification engineer");
+            assertThat(first.location()).isEqualTo("Hyderabad, India");
+            assertThat(first.url()).isEqualTo("https://careers.amd.com/jobs/89389?lang=en-us");
+            assertThat(first.postedDate()).isEqualTo(LocalDate.of(2026, 9, 8));
+            assertThat(first.description()).contains("THE ROLE").doesNotContain("<p>");
+        }
+
+        @Test
+        @DisplayName("the token names the site and the country to search")
+        void parsesTheToken() throws Exception {
+            var board = JibeFetcher.Board.parse("booking/jobs.booking.com/United Kingdom");
+            assertThat(board.page(2))
+                    .isEqualTo("https://jobs.booking.com/api/jobs?location=United+Kingdom&page=2&limit=100");
+            assertThatThrownBy(() -> JibeFetcher.Board.parse("amd/careers.amd.com"))
+                    .isInstanceOf(FetchException.class);
+        }
+    }
+
+    @Nested
+    class DeShaw {
+
+        private final DeShawIndiaFetcher fetcher = new DeShawIndiaFetcher(null, json, null, StoredPostings.none());
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.DESHAW);
+        }
+
+        @Test
+        @DisplayName("only /careers/<slug>-<id> pages are jobs; culture and FAQ pages are not")
+        void listsJobPagesOnly() {
+            var listed = DeShawIndiaFetcher.listed(FixtureSupport.load("deshaw-sitemap.xml"));
+            assertThat(listed).singleElement().satisfies(job -> {
+                assertThat(job.id()).isEqualTo("6941");
+                assertThat(job.slugText()).isEqualTo("software engineer application engineering senior member");
+            });
+        }
+
+        @Test
+        @DisplayName("the JSON-LD gives the job, and the office named in the text gives the place")
+        void readsTheJobPage() {
+            var job = new DeShawIndiaFetcher.Listed("6941",
+                    "https://www.deshawindia.com/careers/software-engineer-application-engineering-senior-member-6941",
+                    "software engineer application engineering senior member");
+            RawPosting posting = fetcher.parsePage(FixtureSupport.load("deshaw-job.html"), job);
+            assertThat(posting.title()).isEqualTo("Software Engineer (Application Engineering) - Senior Member");
+            assertThat(posting.location()).startsWith("Hyderabad, India");
+            assertThat(posting.description()).contains("C# .NET Developer");
+            assertThat(posting.postedDate()).isNull();
+        }
+
+        @Test
+        void fallsBackToIndia() {
+            assertThat(DeShawIndiaFetcher.place("no office named")).isEqualTo("India");
+        }
+    }
 }
