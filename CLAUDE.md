@@ -288,6 +288,11 @@ openings" and similar from any directory. In short:
   internship (+10), senior or director as senior. Not "Executives", which
   Capgemini India puts on plain developer roles. The model sees a label as the
   title level it stands for (`FitScore.base`).
+- `browser-watch` cadence (2026-10-23, 47 pages): each page has `cadence:`
+  daily (14 large, frequent hirers: listed in every openings file), weekly (26:
+  in full on Mondays, a count otherwise) or monthly (7 that list nothing or
+  almost nothing: in full on the 1st). No cadence means daily. Give a new page
+  one when adding it.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

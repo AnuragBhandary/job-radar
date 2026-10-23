@@ -54,30 +54,41 @@ job-radar:
   # public job list. Not listed, because the page needs a login: Games24x7,
   # Groww (storyboard), Udaan. TheMathCompany's page did not render.
   browser-watch:
+    # cadence: daily pages are listed in every openings file; weekly ones in full
+    # on Mondays and as a count otherwise; monthly ones in full on the 1st. Daily
+    # is for the large, frequent hirers; monthly for pages that list nothing or
+    # almost nothing (2026-10-23, when the list reached 47).
     pages:
       - company: Upstox
+        cadence: weekly
         city: Mumbai
         url: https://upstox.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "tech roles were level II and product interns on 2026-09-29"
       - company: Tata 1mg
+        cadence: weekly
         city: Gurugram
         url: https://1mg.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "mostly pharma and operations; analyst roles appear (2026-09-29)"
       - company: Perfios
+        cadence: weekly
         city: Bengaluru, Mumbai
         url: https://perfios.darwinbox.in/ms/candidatev2/main/careers/allJobs
       - company: Darwinbox
+        cadence: weekly
         city: Hyderabad
         url: https://dbx.darwinbox.in/ms/candidatev2/main/careers/allJobs
       - company: smallcase
+        cadence: weekly
         city: Bengaluru
         url: https://smallcase.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "0 open jobs on 2026-09-28"
       - company: PhysicsWallah
+        cadence: monthly
         city: Noida
         url: https://pwhr.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "0 open jobs on 2026-09-28"
       - company: Unacademy
+        cadence: monthly
         city: Bengaluru
         url: https://unacademy.darwinbox.in/ms/candidatev2/main/careers/allJobs
         note: "business roles only on 2026-09-28"
@@ -85,6 +96,7 @@ job-radar:
       # job sitemap is empty). Apple is fetched since 2026-10-07 (APPLE). Google, Microsoft, Netflix,
       # Qualcomm, JPMorgan and Oracle are fetched (GOOGLE, EIGHTFOLD, ORACLE_HCM).
       - company: Meta
+        cadence: daily
         city: India, Dublin
         url: https://www.metacareers.com/jobsearch/?offices[0]=Bangalore%2C%20India&offices[1]=Gurgaon%2C%20India&offices[2]=Mumbai%2C%20India&offices[3]=Dublin%2C%20Ireland
         note: "mostly hardware and sales in India on 2026-10-01"
@@ -93,13 +105,16 @@ job-radar:
       # could not tell India from abroad. Heizen is a hand-built page of about
       # eight roles, not worth a fetcher.
       - company: Cognizant
+        cadence: daily
         city: India
         url: https://careers.cognizant.com/india-en/jobs/
       - company: HCLTech
+        cadence: daily
         city: India
         url: https://careers.hcltech.com/search/?q=&locationsearch=India&sortColumn=referencedate&sortDirection=desc
         note: "9,151 jobs worldwide on 2026-10-11; sorted newest first"
       - company: Heizen
+        cadence: weekly
         city: Remote, Hyderabad
         url: https://www.heizen.work/careers
         note: "Associate Software Engineer (0-2 years) and SDE intern open on 2026-10-11"
@@ -108,47 +123,55 @@ job-radar:
       # allows only single /roles/ pages and there is no sitemap of them;
       # Flipkart's TurboHire page disallows all bots. TCS (403) is left out by choice.
       - company: SAP
+        cadence: daily
         city: Bengaluru, Gurugram, Germany
         url: https://jobs.sap.com/en/jobs/?location=India
         note: "SAP Labs India hires graduates as Associate Developer"
       - company: Uber
+        cadence: daily
         city: Bengaluru, Hyderabad
         url: https://jobs.uber.com/en/jobs/?country=IND&team=Engineering
       - company: Goldman Sachs
+        cadence: daily
         city: Bengaluru, Hyderabad
         url: https://higher.gs.com/results?LOCATION=Bengaluru|Hyderabad&sort=POSTED_DATE
         note: "Analyst is the entry level"
       - company: Flipkart
+        cadence: daily
         city: Bengaluru
         url: https://flipkart.turbohire.co/careerpage/4d757ba0-3d57-448a-b82c-238ed87ac90f
       - company: Infosys
+        cadence: monthly
         city: India
         url: https://career.infosys.com/joblist
         note: "listed no jobs on 2026-10-23; freshers come in through off-campus drives"
       # 2026-10-23, second batch. Meta's careers site refuses scripted requests
       # (400) and LinkedIn lists its own jobs on linkedin.com, which forbids
       # scraping; Zalando's job data sits in a private API; UBS answers 403.
-      - company: Meta
-        city: Bengaluru, Gurugram, London, Dublin
-        url: https://www.metacareers.com/jobs?offices[0]=Bangalore%2C%20India
       - company: LinkedIn
+        cadence: daily
         city: Bengaluru
         url: https://www.linkedin.com/jobs/search/?f_C=1337&location=India
       - company: Zalando
+        cadence: weekly
         city: Berlin, Dublin
         url: https://jobs.zalando.com/en/jobs?location=Berlin
       - company: UBS
+        cadence: daily
         city: Pune, Mumbai, Hyderabad
         url: https://jobs.ubs.com/TGnewUI/Search/Home/Home?partnerid=25008&siteid=5012
       # 2026-10-23, third batch. Tech Mahindra's openings load by ASP.NET
       # postback; Nutanix is behind a Cloudflare challenge; MathWorks answers 403.
       - company: Tech Mahindra
+        cadence: daily
         city: India
         url: https://careers.techmahindra.com/CurrentOpportunity.aspx
       - company: Nutanix
+        cadence: daily
         city: Bengaluru, Pune
         url: https://careers.nutanix.com/en/jobs/?location=India
       - company: MathWorks
+        cadence: weekly
         city: Bengaluru, Hyderabad
         url: https://www.mathworks.com/company/jobs/opportunities/search?location=India
       # 2026-10-23, fourth batch. Zepto's site is behind a bot challenge (its
@@ -157,22 +180,28 @@ job-radar:
       # places and is mostly Dutch; Rabobank and Revolut answer 403.
       # Zomato/Blinkit (Eternal) post no jobs: applications by referral only.
       - company: Zepto
+        cadence: weekly
         city: Mumbai, Bengaluru
         url: https://www.zeptonow.com/careers
       - company: Postman
+        cadence: weekly
         city: Bengaluru
         url: https://www.postman.com/company/careers/open-positions/
       - company: Media.net
+        cadence: monthly
         city: Mumbai, Bengaluru
         url: https://careers.media.net/#openings
         note: "0 engineering and 1 data science opening on 2026-10-23"
       - company: ABN AMRO
+        cadence: weekly
         city: Amsterdam
         url: https://www.werkenbijabnamro.nl/en/vacancies
       - company: Rabobank
+        cadence: weekly
         city: Utrecht
         url: https://www.rabobank.jobs/en/vacancies/
       - company: Revolut
+        cadence: daily
         city: Bengaluru, Dublin, London
         url: https://www.revolut.com/careers/
       # 2026-10-23, fifth batch: BNP Paribas answers 403; NatWest is behind a
@@ -180,24 +209,30 @@ job-radar:
       # 2026-10-23, analytics firms. LatentView and Evalueserve are Darwinbox
       # (bot check); Mu Sigma lists no openings, only a contact form.
       - company: LatentView Analytics
+        cadence: weekly
         city: Chennai, Bengaluru
         url: https://latentview.darwinbox.in/ms/candidate/careers
       - company: Evalueserve
+        cadence: weekly
         city: Gurugram, Bengaluru, Mumbai
         url: https://www.evalueserve.com/jobs/
       - company: Mu Sigma
+        cadence: monthly
         city: Bengaluru
         url: https://www.mu-sigma.com/career/
         note: "no job list on 2026-10-23; hires graduates in yearly batches"
       # 2026-10-23, India tech centres: Home Depot's Workday lists no Indian
       # office; MSCI is iCIMS without a public feed; Rakuten's site did not answer.
       - company: Home Depot (THD India)
+        cadence: weekly
         city: Bengaluru
         url: https://careers.homedepot.com/job-search-results/?location=India
       - company: MSCI
+        cadence: weekly
         city: Mumbai, Pune
         url: https://careers.msci.com/
       - company: Rakuten
+        cadence: weekly
         city: Bengaluru
         url: https://rakuten.careers/
       # 2026-10-23, Indian product companies. Delhivery and Rapido are Darwinbox;
@@ -205,46 +240,59 @@ job-radar:
       # Lever board is gone; Zerodha and Nykaa post almost nothing.
       # PolicyBazaar and ShareChat publish no job list at all.
       - company: Delhivery
+        cadence: weekly
         city: Gurugram, Bengaluru
         url: https://delhivery.darwinbox.in/ms/candidate/careers
       - company: Rapido
+        cadence: weekly
         city: Bengaluru
         url: https://rapido.darwinbox.in/ms/candidate/careers
       - company: OYO
+        cadence: weekly
         city: Gurugram
         url: https://www.linkedin.com/company/oyo-rooms/jobs/
       - company: Chargebee
+        cadence: weekly
         city: Chennai, Bengaluru
         url: https://in.linkedin.com/company/chargebee/jobs/
       - company: Ather Energy
+        cadence: weekly
         city: Bengaluru
         url: https://www.atherenergy.com/careers
       - company: Dream Sports (Dream11)
+        cadence: weekly
         city: Mumbai
         url: https://www.dreamsports.group/lifeatdreamsports
       - company: Zerodha
+        cadence: monthly
         city: Bengaluru
         url: https://careers.zerodha.com/
         note: "one opening (video editor) on 2026-10-23"
       - company: Nykaa
+        cadence: monthly
         city: Mumbai, Gurugram
         url: https://careers.nykaa.com/
         note: "no postings on 2026-10-23"
       # 2026-10-23, UAE: Emirates Group's search is shut by robots.txt and its
       # sitemap is gone; noon lists only on LinkedIn; e& shows no job system.
       - company: Emirates Group
+        cadence: weekly
         city: Dubai
         url: https://www.emiratesgroupcareers.com/search-and-apply/
       - company: noon
+        cadence: weekly
         city: Dubai, Riyadh
         url: https://www.linkedin.com/company/nooncom/jobs
       - company: e& (Etisalat)
+        cadence: weekly
         city: Abu Dhabi, Dubai
         url: https://www.eand.com/en/careers.html
       - company: BNP Paribas
+        cadence: daily
         city: Mumbai, Chennai, Paris
         url: https://group.bnpparibas/en/careers/all-job-offers
       - company: NatWest
+        cadence: daily
         city: Bengaluru, Gurugram, Chennai, London
         url: https://jobs.natwestgroup.com/search/jobs
 
