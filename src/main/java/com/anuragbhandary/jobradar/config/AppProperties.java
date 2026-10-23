@@ -63,6 +63,12 @@ public record AppProperties(
          * The gap for one site ({@code microsoft.com}). A few sites answer 429 to a
          * request every half second but take every one at 1.5 s, and get their own.
          */
+        /** Whether this exact host (not just its operator) has its own delay. */
+        public boolean hasOwnDelay(String host) {
+            return siteDelaysMs != null && host != null && host.split("\\.").length > 2
+                    && siteDelaysMs.containsKey(host);
+        }
+
         public long delayFor(String site) {
             Long own = siteDelaysMs == null ? null : siteDelaysMs.get(site);
             return own == null ? delayBetweenRequestsMs : Math.max(own, delayBetweenRequestsMs);
@@ -124,6 +130,7 @@ public record AppProperties(
                 case ATLASSIAN -> "atlassian";
                 case DESHAW -> "deshaw";
                 case SOCGEN -> "socgen";
+                case ACCENTURE -> "accenture";
                 case null, default -> "";
             };
             for (String board : bigTechBoards) {

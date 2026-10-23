@@ -105,7 +105,7 @@ public class TokenProber {
                         EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
                         IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW, RIPPLEHIRE,
                         SPIRE2GROW, ZOHO_RECRUIT, SOCGEN, PHENOM,
-                        MAKEMYTRIP, URBANCOMPANY -> 0;
+                        MAKEMYTRIP, URBANCOMPANY, ACCENTURE -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -153,7 +153,7 @@ public class TokenProber {
             case EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
                     IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW, RIPPLEHIRE,
                     SPIRE2GROW, ZOHO_RECRUIT, SOCGEN, PHENOM,
-                    MAKEMYTRIP, URBANCOMPANY -> throw new IllegalArgumentException(
+                    MAKEMYTRIP, URBANCOMPANY, ACCENTURE -> throw new IllegalArgumentException(
                     platform + " is not probed by token; seed it in BoardTokenSeeder");
         };
     }

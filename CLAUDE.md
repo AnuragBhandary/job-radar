@@ -293,6 +293,18 @@ openings" and similar from any directory. In short:
   in full on Mondays, a count otherwise) or monthly (7 that list nothing or
   almost nothing: in full on the 1st). No cadence means daily. Give a new page
   one when adding it.
+- Accenture (2026-10-23): its Workday tenant answered 429 to every board from
+  10-21, even one request per 11 s, so `ACCENTURE` reads accenture.com's own
+  search (`/api/accenture/elastic/findjobs`, a form POST via
+  `HttpFetchClient.postForm`; robots.txt shuts only the search pages). Token
+  `country/countrySite/language[/band]`: India in its 0-2 and 2-5 bands (the
+  software roles mostly sit in 2-5 with "Minimum 2 year(s)"), the UK, Ireland,
+  the Netherlands and Germany (`Deutschland/de-de/de`) whole. The band is never
+  written into the text: the years reader takes the smallest number, and a
+  "2-5 years" line hid "5 to 12 years". The old Workday boards are disabled and
+  their 3,185 open postings closed. A 429 now waits 10 s then 20 s (or the
+  site's Retry-After), and a full host in `site-delays-ms` is paced on its own
+  queue apart from its operator.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

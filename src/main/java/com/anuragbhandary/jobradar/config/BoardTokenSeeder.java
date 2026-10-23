@@ -124,6 +124,21 @@ public class BoardTokenSeeder {
             // G42 (Abu Dhabi), 67 jobs on 2026-10-23.
             "g42/careers.g42.ai/global/en/sitemap1.xml", "G42");
 
+    /**
+     * accenture.com's job search, keyed {@code country/countrySite/language[/band]}.
+     * India is read in its 0-2 and 2-5 year bands (4,707 in 0-2 on 2026-10-23);
+     * Europe whole.
+     */
+    private static final Map<String, String> ACCENTURE = Map.of(
+            "India/in-en/en/0-2", "Accenture",
+            // The software roles ("Custom Software Engineer") sit mostly in 2-5,
+            // where many state a 2-year minimum; screening judges the rest.
+            "India/in-en/en/2-5", "Accenture",
+            "United Kingdom/gb-en/en", "Accenture",
+            "Ireland/ie-en/en", "Accenture",
+            "Netherlands/nl-en/en", "Accenture",
+            "Deutschland/de-de/de", "Accenture");
+
     /** Indian product companies on their own job APIs: one board each. */
     private static final Map<String, String> MAKEMYTRIP =
             Map.of(com.anuragbhandary.jobradar.fetch.MakeMyTripFetcher.BOARD, "MakeMyTrip");
@@ -190,8 +205,8 @@ public class BoardTokenSeeder {
         // 2026-10-11: Accenture lists 17,929 software jobs in India, and Workday
         // shows any one query only its newest 2,000, so the site is read as facet
         // slices. The "india" text search that discovery added found 2 of them.
-        WORKDAY.put("accenture/wd103/AccentureCareers/@India+Software Engineering", "Accenture");
-        WORKDAY.put("accenture/wd103/AccentureCareers/@India+AI & Data", "Accenture");
+        // Accenture's Workday slices were here until 2026-10-23, when the tenant's
+        // 429s made them unreadable; ACCENTURE reads accenture.com's search instead.
 
         // 2026-09-28: probed and counted; each had India engineering roles that day
         // (Okta 73, Zscaler 41, PubMatic 29, Commvault 9, Twilio 8, ChargePoint 6,
@@ -624,7 +639,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.SOCGEN, SOCGEN)
                 + seedSource(Source.PHENOM, PHENOM)
                 + seedSource(Source.MAKEMYTRIP, MAKEMYTRIP)
-                + seedSource(Source.URBANCOMPANY, URBANCOMPANY);
+                + seedSource(Source.URBANCOMPANY, URBANCOMPANY)
+                + seedSource(Source.ACCENTURE, ACCENTURE);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

@@ -118,6 +118,21 @@ public class HttpFetchClient {
     }
 
     /**
+     * POSTs a URL-encoded form and returns the response body.
+     *
+     * <p>accenture.com's job search reads a form, not JSON. Same throttle,
+     * retries and User-Agent as every other request.
+     */
+    public String postForm(String url, String formBody, String fixtureName) throws FetchException {
+        HttpResult result = execute(url, formBody, fixtureName, config.timeoutSeconds(),
+                java.util.Map.of("Content-Type", "application/x-www-form-urlencoded"));
+        if (result.isSuccess()) {
+            return result.body();
+        }
+        throw new FetchException("HTTP " + result.status() + " from " + url);
+    }
+
+    /**
      * As {@link #get}, with a longer wait for the response.
      *
      * <p>For the Internet Archive's URL index, which answers a whole-domain query
@@ -153,11 +168,15 @@ public class HttpFetchClient {
                         .header("User-Agent", config.userAgent())
                         .header("Accept", "application/json")
                         .timeout(Duration.ofSeconds(timeoutSeconds));
-                headers.forEach(request::header);
+                headers.forEach((name, value) -> {
+                    if (!name.equalsIgnoreCase("Content-Type")) {
+                        request.header(name, value);
+                    }
+                });
                 if (jsonBody == null) {
                     request.GET();
                 } else {
-                    request.header("Content-Type", "application/json")
+                    request.header("Content-Type", headers.getOrDefault("Content-Type", "application/json"))
                             .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
                 }
 
@@ -208,7 +227,11 @@ public class HttpFetchClient {
                 if (isRetryable(status)) {
                     log.warn("{} returned {} (attempt {}/{})",
                             url, status, attempt, config.maxRetries());
-                    backoff(attempt);
+                    if (status == 429) {
+                        backoffAfterTooManyRequests(response, attempt);
+                    } else {
+                        backoff(attempt);
+                    }
                     continue;
                 }
                 return new HttpResult(status, response.body());
@@ -312,12 +335,17 @@ public class HttpFetchClient {
      */
     private void throttle(String url) throws FetchException {
         String site = site(url);
-        long delayMs = config.delayFor(site);
+        String host = host(url);
+        // A host of its own in site-delays-ms (one Workday tenant, say) is paced
+        // on its own queue at its own gap, apart from the rest of its operator.
+        boolean ownHost = config.hasOwnDelay(host);
+        long delayMs = ownHost ? config.delayFor(host) : config.delayFor(site);
         if (delayMs <= 0) {
             return;
         }
-        int lanes = config.lanesFor(site);
-        String key = lanes == 1 ? site : site + "#" + Math.floorMod(host(url).hashCode(), lanes);
+        int lanes = ownHost ? 1 : config.lanesFor(site);
+        String key = ownHost ? host
+                : lanes == 1 ? site : site + "#" + Math.floorMod(host.hashCode(), lanes);
         Pace pace = paces.computeIfAbsent(key, k -> new Pace());
         synchronized (pace) {
             long waitMs = delayMs
@@ -356,6 +384,22 @@ public class HttpFetchClient {
         String[] labels = host.toLowerCase(java.util.Locale.ROOT).split("\\.");
         return labels.length <= 2 ? host
                 : labels[labels.length - 2] + "." + labels[labels.length - 1];
+    }
+
+    /**
+     * A 429 waits far longer than a 5xx: the site's own Retry-After when it sends
+     * one (capped at a minute), else 10 s, then 20 s. Accenture's Workday answered
+     * 429 to the 1/2/4 s backoff three times running and every one of its boards
+     * failed for days (2026-10-21 to 23); it sends no Retry-After.
+     */
+    private void backoffAfterTooManyRequests(HttpResponse<String> response, int attempt)
+            throws FetchException {
+        long waitMs = 10_000L * attempt;
+        java.util.Optional<String> retryAfter = response.headers().firstValue("Retry-After");
+        if (retryAfter.isPresent() && retryAfter.get().trim().matches("\\d{1,4}")) {
+            waitMs = Math.max(waitMs, Long.parseLong(retryAfter.get().trim()) * 1000L);
+        }
+        sleep(Math.min(waitMs, 60_000L));
     }
 
     private void backoff(int attempt) throws FetchException {

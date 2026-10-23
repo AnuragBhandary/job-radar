@@ -26,6 +26,13 @@ job-radar:
       # Workable's widget API answered 429 to nearly every board of the first
       # full fetch (119 of 119, 2026-10-21) at the default pace.
       "[workable.com]": 3000
+      # Accenture's Workday tenant answered 429 to every Accenture board for three
+      # days (2026-10-21 to 23) at the shared Workday pace, so it gets its own
+      # queue and a slower gap. A full host here is paced apart from its operator.
+      "[accenture.wd103.myworkdayjobs.com]": 4000
+      # accenture.com's own job search replaced those boards (ACCENTURE); a page a
+      # second and a half is gentle for a site of that size.
+      "[accenture.com]": 1500
     # Parallel lanes for operators that host many customers' sites; see
     # AppProperties.Http.lanesFor. Each lane still waits the full gap.
     operator-lanes:

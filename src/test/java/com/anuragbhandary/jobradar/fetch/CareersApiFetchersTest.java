@@ -466,4 +466,39 @@ class CareersApiFetchersTest {
             assertThat(first.description()).contains("Urban Company").doesNotContain("<span");
         }
     }
+
+    @Nested
+    class Accenture {
+
+        private final AccentureFetcher fetcher = new AccentureFetcher(null, json);
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.ACCENTURE);
+        }
+
+        @Test
+        @DisplayName("each job gets its city and country, a real link, and the level first")
+        void mapsAJob() throws Exception {
+            var board = AccentureFetcher.Board.parse("India/in-en/en/0-2");
+            List<RawPosting> postings = fetcher.parse(FixtureSupport.load("accenture-india.json"), board);
+            assertThat(postings).hasSize(2);
+            RawPosting first = postings.getFirst();
+            assertThat(first.location()).endsWith(", India");
+            assertThat(first.url()).startsWith("https://www.accenture.com/in-en/careers/jobdetails?id=");
+            // The band is not written into the text: it would undercut the job's own years.
+            assertThat(first.description()).startsWith("Accenture level: ")
+                    .doesNotContain("Experience: 0-2 years").doesNotContain("<b>");
+        }
+
+        @Test
+        @DisplayName("the band becomes the site's own experience filter")
+        void filtersOnTheBand() throws Exception {
+            String form = AccentureFetcher.Board.parse("India/in-en/en/0-2").form(200);
+            assertThat(java.net.URLDecoder.decode(form, java.nio.charset.StandardCharsets.UTF_8))
+                    .contains("startIndex=200").contains("jobCountry=India")
+                    .contains("\"items\":[\"Experience: 0-2 years\"]");
+            assertThat(AccentureFetcher.Board.parse("United Kingdom/gb-en/en").form(0)).contains("jobFilters=%5B%5D");
+        }
+    }
 }

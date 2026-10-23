@@ -81,5 +81,7 @@ public enum Source {
     /** MakeMyTrip's careers site, its own API over Darwinbox (added 2026-10-23). */
     MAKEMYTRIP,
     /** Urban Company's careers site, its own job API (added 2026-10-23). */
-    URBANCOMPANY
+    URBANCOMPANY,
+    /** accenture.com's own job search, one country per board (added 2026-10-23). */
+    ACCENTURE
 }
