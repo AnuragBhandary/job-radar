@@ -79,6 +79,31 @@ class FitScoreTest {
     }
 
     @Test
+    @DisplayName("an employer's own level counts where the title is silent")
+    void employerLabels() {
+        assertThat(labelled("Software Developer", "IBM level: Entry Level\n\nWe build...")).isEqualTo(FitScore.Level.ENTRY_LABEL);
+        assertThat(labelled("Data Analyst", "Capgemini level: Students/Graduates\n\nText")).isEqualTo(FitScore.Level.ENTRY_LABEL);
+        assertThat(labelled("Data Analyst", "Capgemini level: Absolvent*innen\n\nText")).isEqualTo(FitScore.Level.ENTRY_LABEL);
+        assertThat(labelled("Research Software", "IBM level: Internship\n\nText")).isEqualTo(FitScore.Level.INTERN_LABEL);
+        // Capgemini India puts "Executives" on plain developer roles: no signal.
+        assertThat(labelled("Java Developer", "Capgemini level: Executives\n\nText")).isEqualTo(FitScore.Level.NEUTRAL);
+        assertThat(labelled("Java Developer", "Acme level: Senior\n\nText")).isEqualTo(FitScore.Level.SENIOR_LABEL);
+        assertThat(labelled("Java Developer", "IBM level: Professional\n\nText")).isEqualTo(FitScore.Level.NEUTRAL);
+        // The title still wins: a senior title is senior whatever the label says.
+        assertThat(labelled("Senior Java Developer", "IBM level: Entry Level\n\nText")).isEqualTo(FitScore.Level.SENIOR);
+        // An entry label scores like an entry title.
+        int labelledScore = fit.fit(posting("Software Developer", "IBM level: Entry Level\n\nJava",
+                null, StrategicClass.INDIA_OTHER, "IN", null), TODAY).score();
+        int plainScore = fit.fit(posting("Software Developer", "IBM level: Professional\n\nJava",
+                null, StrategicClass.INDIA_OTHER, "IN", null), TODAY).score();
+        assertThat(labelledScore - plainScore).isEqualTo(20);
+    }
+
+    private static FitScore.Level labelled(String title, String description) {
+        return FitScore.level(posting(title, description, null, StrategicClass.INDIA_OTHER, "IN", null));
+    }
+
+    @Test
     @DisplayName("titles read as entry level, internship, second level or senior")
     void levels() {
         assertThat(level("Software Engineer, New Grad")).isEqualTo(FitScore.Level.ENTRY);

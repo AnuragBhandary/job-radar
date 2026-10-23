@@ -281,6 +281,13 @@ openings" and similar from any directory. In short:
   `SITEMAP` board beside its SmartRecruiters one. Careem was already in
   (Greenhouse). Emirates Group (robots.txt shuts its search), noon (LinkedIn
   only) and e& are on `browser-watch`.
+- Employer levels in the ranking (2026-10-23): where the title says nothing,
+  `FitScore.labelledLevel` reads the fetchers' first line ("IBM level: Entry
+  Level", "Capgemini level: Students/Graduates"): graduate, entry, junior and
+  Absolvent score as an entry title (+20), intern, student and trainee as an
+  internship (+10), senior or director as senior. Not "Executives", which
+  Capgemini India puts on plain developer roles. The model sees a label as the
+  title level it stands for (`FitScore.base`).
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

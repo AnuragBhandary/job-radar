@@ -172,8 +172,8 @@ public class FitScore {
         return new double[] {
                 1,
                 Math.min(6, parts.matched().size()) / 6.0,
-                flag(parts.level() == Level.ENTRY), flag(parts.level() == Level.INTERN),
-                flag(parts.level() == Level.SECOND), flag(parts.level() == Level.SENIOR),
+                flag(base(parts.level()) == Level.ENTRY), flag(base(parts.level()) == Level.INTERN),
+                flag(base(parts.level()) == Level.SECOND), flag(base(parts.level()) == Level.SENIOR),
                 flag(years != null && years == 0), flag(years != null && years == 1),
                 flag(years != null && years == 2), flag(years == null),
                 flag(parts.seniorWording() != null), flag(p.isGraduateSignal()), flag(parts.hidden()),
@@ -250,7 +250,7 @@ public class FitScore {
 
         // Only when the title has not already been marked down for the same thing.
         String seniorWording = null;
-        if (level != Level.SENIOR && p.getDescriptionText() != null) {
+        if (base(level) != Level.SENIOR && p.getDescriptionText() != null) {
             java.util.regex.Matcher senior = SENIOR_WORDING.matcher(p.getDescriptionText());
             if (senior.find()) {
                 seniorWording = senior.group().toLowerCase(Locale.ROOT);
@@ -295,7 +295,12 @@ public class FitScore {
         INTERN(10, "internship"),
         NEUTRAL(0, ""),
         SECOND(-10, "level II title"),
-        SENIOR(-30, "senior title");
+        SENIOR(-30, "senior title"),
+        // The employer's own level, where the title says nothing either way. Same
+        // points and the same model features as the title levels they stand for.
+        ENTRY_LABEL(20, "employer's level: entry"),
+        INTERN_LABEL(10, "employer's level: internship"),
+        SENIOR_LABEL(-30, "employer's level: senior");
 
         final int points;
         final String words;
@@ -304,6 +309,16 @@ public class FitScore {
             this.points = points;
             this.words = words;
         }
+    }
+
+    /** The level as the model sees it: an employer's label counts as its title level. */
+    static Level base(Level level) {
+        return switch (level) {
+            case ENTRY_LABEL -> Level.ENTRY;
+            case INTERN_LABEL -> Level.INTERN;
+            case SENIOR_LABEL -> Level.SENIOR;
+            default -> level;
+        };
     }
 
     static Level level(Posting p) {
@@ -320,6 +335,41 @@ public class FitScore {
         if (p.getSource() != com.anuragbhandary.jobradar.domain.Source.GOOGLE
                 && SECOND_LEVEL_TITLE.matcher(title).find()) {
             return Level.SECOND;
+        }
+        return labelledLevel(p.getDescriptionText());
+    }
+
+    /**
+     * The fetchers for employers that publish a level put it on the first line
+     * ("IBM level: Entry Level", "Capgemini level: Students/Graduates"). Graduate
+     * wins over student, so "Students/Graduates" is entry; German "Absolvent" is
+     * a graduate and "Studierende" a student.
+     */
+    private static final Pattern EMPLOYER_LEVEL = Pattern.compile("^[\\p{L}&. ]{2,40} level: ([^\\n]+)");
+    private static final Pattern LABEL_ENTRY = Pattern.compile(
+            "(?i)entry|graduate|absolvent|fresher|early career|new grad|junior");
+    private static final Pattern LABEL_INTERN = Pattern.compile("(?i)intern|student|studierende|trainee");
+    // Not "executive": Capgemini India labels plain "Java Full Stack Developer"
+    // roles "Executives" (2026-10-23), so the word says nothing about seniority.
+    private static final Pattern LABEL_SENIOR = Pattern.compile("(?i)director|senior");
+
+    static Level labelledLevel(String description) {
+        if (description == null) {
+            return Level.NEUTRAL;
+        }
+        java.util.regex.Matcher m = EMPLOYER_LEVEL.matcher(description);
+        if (!m.find()) {
+            return Level.NEUTRAL;
+        }
+        String label = m.group(1);
+        if (LABEL_ENTRY.matcher(label).find()) {
+            return Level.ENTRY_LABEL;
+        }
+        if (LABEL_INTERN.matcher(label).find()) {
+            return Level.INTERN_LABEL;
+        }
+        if (LABEL_SENIOR.matcher(label).find()) {
+            return Level.SENIOR_LABEL;
         }
         return Level.NEUTRAL;
     }
