@@ -37,12 +37,12 @@ public class SocieteGeneraleFetcher extends JsonLdSitemapFetcher {
     }
 
     @Override
-    protected String sitemapUrl() {
+    protected String sitemapUrl(String boardToken) {
         return "https://careers.societegenerale.com/sitemap.xml";
     }
 
     @Override
-    protected Pattern jobUrl() {
+    protected Pattern jobUrl(String boardToken) {
         return JOB_URL;
     }
 

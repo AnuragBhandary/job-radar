@@ -193,7 +193,8 @@ class CareersApiFetchersTest {
         @Test
         @DisplayName("only /careers/<slug>-<id> pages are jobs; culture and FAQ pages are not")
         void listsJobPagesOnly() {
-            var listed = fetcher.listed(FixtureSupport.load("deshaw-sitemap.xml"));
+            var listed = JsonLdSitemapFetcher.listed(FixtureSupport.load("deshaw-sitemap.xml"),
+                    fetcher.jobUrl(DeShawIndiaFetcher.BOARD));
             assertThat(listed).singleElement().satisfies(job -> {
                 assertThat(job.id()).isEqualTo("6941");
                 assertThat(job.slugText()).isEqualTo("software engineer application engineering senior member");
@@ -335,7 +336,8 @@ class CareersApiFetchersTest {
         @Test
         @DisplayName("only English job-offer pages are jobs, keyed by their reference")
         void listsJobPages() {
-            var listed = fetcher.listed(FixtureSupport.load("socgen-sitemap.xml"));
+            var listed = JsonLdSitemapFetcher.listed(FixtureSupport.load("socgen-sitemap.xml"),
+                    fetcher.jobUrl(SocieteGeneraleFetcher.BOARD));
             assertThat(listed).singleElement().satisfies(job -> {
                 assertThat(job.id()).isEqualTo("26000IZY");
                 assertThat(job.slugText()).isEqualTo("business analyst it sql");
@@ -353,6 +355,47 @@ class CareersApiFetchersTest {
             assertThat(posting.location()).isEqualTo("Bangalore, India");
             assertThat(posting.postedDate()).isEqualTo(LocalDate.of(2026, 10, 23));
             assertThat(posting.description()).contains("RWA");
+        }
+    }
+
+    @Nested
+    class Phenom {
+
+        private static final String TOKEN = "lowes/talent.lowes.com/in/en/sitemap1.xml";
+        private final PhenomFetcher fetcher = new PhenomFetcher(null, json, null, StoredPostings.none());
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.PHENOM);
+        }
+
+        @Test
+        @DisplayName("the locale's job URLs give the id and, from the slug after it, the title words")
+        void listsJobPages() throws Exception {
+            var listed = JsonLdSitemapFetcher.listed(FixtureSupport.load("phenom-lowes-india-sitemap.xml"),
+                    fetcher.jobUrl(TOKEN));
+            assertThat(listed).singleElement().satisfies(job -> {
+                assertThat(job.id()).isEqualTo("JR-02625299");
+                assertThat(job.slugText()).isEqualTo("Analyst EDI");
+            });
+            assertThat(fetcher.sitemapUrl(TOKEN)).isEqualTo("https://talent.lowes.com/in/en/sitemap1.xml");
+        }
+
+        @Test
+        @DisplayName("the JSON-LD gives city, country and the posted date")
+        void readsTheJobPage() {
+            var job = new JsonLdSitemapFetcher.Listed("JR-02625299",
+                    "https://talent.lowes.com/in/en/job/JR-02625299/Analyst-EDI", "Analyst EDI");
+            RawPosting posting = fetcher.parsePage(FixtureSupport.load("phenom-lowes-job.html"), job);
+            assertThat(posting.title()).isEqualTo("Analyst - EDI");
+            assertThat(posting.location()).isEqualTo("Bengaluru, India");
+            assertThat(posting.postedDate()).isEqualTo(LocalDate.of(2026, 9, 26));
+        }
+
+        @Test
+        void rejectsATokenWithoutASitemap() {
+            assertThatThrownBy(() -> PhenomFetcher.Board.parse("lowes/talent.lowes.com"))
+                    .isInstanceOf(FetchException.class);
         }
     }
 }

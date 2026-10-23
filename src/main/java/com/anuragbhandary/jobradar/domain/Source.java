@@ -75,5 +75,7 @@ public enum Source {
     /** Zoho Recruit portals, read from their RSS feed: Zoho (added 2026-10-23). */
     ZOHO_RECRUIT,
     /** Société Générale's own careers site (added 2026-10-23). */
-    SOCGEN
+    SOCGEN,
+    /** Careers sites on Phenom, one locale's sitemap per board: Lowe's India (added 2026-10-23). */
+    PHENOM
 }

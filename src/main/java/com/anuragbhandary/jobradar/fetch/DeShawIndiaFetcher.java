@@ -41,12 +41,12 @@ public class DeShawIndiaFetcher extends JsonLdSitemapFetcher {
     }
 
     @Override
-    protected String sitemapUrl() {
+    protected String sitemapUrl(String boardToken) {
         return "https://www.deshawindia.com/sitemap.xml";
     }
 
     @Override
-    protected Pattern jobUrl() {
+    protected Pattern jobUrl(String boardToken) {
         return JOB_URL;
     }
 

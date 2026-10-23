@@ -118,6 +118,10 @@ public class BoardTokenSeeder {
     private static final Map<String, String> SOCGEN =
             Map.of(com.anuragbhandary.jobradar.fetch.SocieteGeneraleFetcher.BOARD, "Societe Generale");
 
+    /** Phenom careers sites, keyed {@code name/host/locale/sitemapN.xml}. */
+    private static final Map<String, String> PHENOM =
+            Map.of("lowes/talent.lowes.com/in/en/sitemap1.xml", "Lowe's India");
+
     /** D. E. Shaw India: one board, the whole site. */
     private static final Map<String, String> DESHAW = Map.of(com.anuragbhandary.jobradar.fetch.DeShawIndiaFetcher.BOARD, "D. E. Shaw India");
 
@@ -370,6 +374,8 @@ public class BoardTokenSeeder {
         EIGHTFOLD.put("netflix/explore.jobs.netflix.net/netflix.com", "Netflix");
         EIGHTFOLD.put("qualcomm/careers.qualcomm.com/qualcomm.com", "Qualcomm");
         EIGHTFOLD.put("hsbc/portal.careers.hsbc.com/hsbc.com", "HSBC");
+        // John Deere (2026-10-23): jobs.deere.com links into this tenant; 358 jobs.
+        EIGHTFOLD.put("johndeere/johndeere.eightfold.ai/johndeere.com", "John Deere");
 
         // India pages in each sitemap on 2026-10-01: EY 1,747, Standard
         // Chartered 263, Intuit 27; Wipro lists 5,425 jobs, most in India.
@@ -385,6 +391,11 @@ public class BoardTokenSeeder {
         SITEMAP.put("ing/careers.ing.com/en/sitemap.xml", "ING");
         // Nomura's SuccessFactors site: 509 jobs, 286 in Mumbai (2026-10-23).
         SITEMAP.put("nomura/careers.nomura.com/sitemap.xml", "Nomura");
+        // Radancy sites of India tech centres (2026-10-23): Optum/UnitedHealth
+        // 5,656 jobs with 252 in Indian cities, Moody's 336 (42), Synchrony 45 (12).
+        SITEMAP.put("optum/careers.unitedhealthgroup.com/sitemap.xml", "Optum (UnitedHealth Group)");
+        SITEMAP.put("moodys/careers.moodys.com/en/sitemap.xml", "Moody's");
+        SITEMAP.put("synchrony/www.synchronycareers.com/sitemap.xml", "Synchrony");
 
         // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
@@ -425,6 +436,20 @@ public class BoardTokenSeeder {
         WORKDAY.put("shell/wd3/ShellCareers", "Shell");
         // 2026-10-23, analytics firms: Fractal's whole site, 119 jobs.
         WORKDAY.put("fractal/wd1/Careers", "Fractal");
+
+        // 2026-10-23, India tech centres. By the site's own country facet where
+        // it has one (one board per country, so a country that empties out fails
+        // only its own board): Thomson Reuters India 45, UK 36; S&P Global India
+        // 40, UK 58; Caterpillar India 174, Germany 43, UK 19. GE HealthCare has
+        // no country facet (offices like "IND19-01-Bengaluru"), so its whole site.
+        for (String country : java.util.List.of("India", "United Kingdom")) {
+            WORKDAY.put("thomsonreuters/wd5/External_Career_Site/@" + country, "Thomson Reuters");
+            WORKDAY.put("spgi/wd5/SPGI_Careers/@" + country, "S&P Global");
+        }
+        for (String country : java.util.List.of("India", "Germany", "United Kingdom")) {
+            WORKDAY.put("cat/wd5/CaterpillarCareers/@" + country, "Caterpillar");
+        }
+        WORKDAY.put("gehc/wd5/GEHC_ExternalSite", "GE HealthCare");
         // Tiger Analytics posts on Workable (232 jobs); its site links /j/ codes.
         WORKABLE.put("tiger-analytics", "Tiger Analytics");
         // ZS Associates is Jibe: India 52, UK 11.
@@ -583,7 +608,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.RIPPLEHIRE, RIPPLEHIRE)
                 + seedSource(Source.SPIRE2GROW, SPIRE2GROW)
                 + seedSource(Source.ZOHO_RECRUIT, ZOHO_RECRUIT)
-                + seedSource(Source.SOCGEN, SOCGEN);
+                + seedSource(Source.SOCGEN, SOCGEN)
+                + seedSource(Source.PHENOM, PHENOM);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

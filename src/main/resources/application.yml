@@ -189,6 +189,17 @@ job-radar:
         city: Bengaluru
         url: https://www.mu-sigma.com/career/
         note: "no job list on 2026-10-23; hires graduates in yearly batches"
+      # 2026-10-23, India tech centres: Home Depot's Workday lists no Indian
+      # office; MSCI is iCIMS without a public feed; Rakuten's site did not answer.
+      - company: Home Depot (THD India)
+        city: Bengaluru
+        url: https://careers.homedepot.com/job-search-results/?location=India
+      - company: MSCI
+        city: Mumbai, Pune
+        url: https://careers.msci.com/
+      - company: Rakuten
+        city: Bengaluru
+        url: https://rakuten.careers/
       - company: BNP Paribas
         city: Mumbai, Chennai, Paris
         url: https://group.bnpparibas/en/careers/all-job-offers

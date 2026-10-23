@@ -48,13 +48,13 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
         this.stored = stored;
     }
 
-    protected abstract String sitemapUrl();
+    protected abstract String sitemapUrl(String boardToken) throws FetchException;
 
     /**
      * Matches a job page inside {@code <loc>}: group 1 the URL, group 2 the slug
      * whose words stand for the title, group 3 the job id.
      */
-    protected abstract Pattern jobUrl();
+    protected abstract Pattern jobUrl(String boardToken) throws FetchException;
 
     /** Where the job is, from the JSON-LD posting or the job text. */
     protected abstract String place(JsonNode posting, String text);
@@ -73,7 +73,8 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
     public FetchBatch fetch(String boardToken) throws FetchException {
         StoredPostings.Known known = stored.open(source(), boardToken);
         List<RawPosting> postings = new ArrayList<>();
-        for (Listed job : listed(http.get(sitemapUrl(), "sitemap-" + boardToken))) {
+        String sitemap = http.get(sitemapUrl(boardToken), "sitemap-" + boardToken.replace('/', '-'));
+        for (Listed job : listed(sitemap, jobUrl(boardToken))) {
             if (!titleFilter.screen(TitleFilter.slugWithRanges(job.slugText())).accepted()) {
                 continue;
             }
@@ -82,7 +83,16 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
                 postings.add(reused);
                 continue;
             }
-            RawPosting read = parsePage(http.get(job.url(), null), job);
+            // A sitemap can lag behind closed jobs: Lowe's listed one that answered
+            // 410 Gone (2026-10-23). A missing page is skipped, not a failed board.
+            HttpFetchClient.HttpResult page = http.getRaw(job.url(), null);
+            if (!page.isSuccess()) {
+                if (page.status() == 404 || page.status() == 410) {
+                    continue;
+                }
+                throw new FetchException("HTTP " + page.status() + " from " + job.url());
+            }
+            RawPosting read = parsePage(page.body(), job);
             if (read != null) {
                 postings.add(read);
             }
@@ -91,10 +101,10 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
     }
 
     /** The job pages in the sitemap, without the site's other pages, each once. */
-    public List<Listed> listed(String sitemap) {
+    public static List<Listed> listed(String sitemap, Pattern jobUrl) {
         List<Listed> jobs = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
-        Matcher m = Pattern.compile("<loc>\\s*" + jobUrl().pattern() + "\\s*</loc>").matcher(sitemap);
+        Matcher m = Pattern.compile("<loc>\\s*" + jobUrl.pattern() + "\\s*</loc>").matcher(sitemap);
         while (m.find()) {
             if (seen.add(m.group(3))) {
                 jobs.add(new Listed(m.group(3), m.group(1), m.group(2).replace('-', ' ')));

@@ -256,6 +256,16 @@ openings" and similar from any directory. In short:
   out). Every other word still counts. Slugs get their slash back
   (`slugWithRanges`) before the JSON-LD sitemap fetchers screen them. 11
   stored verdicts changed; D. E. Shaw gained three Hyderabad candidates.
+- India tech centres (2026-10-23): Thomson Reuters, S&P Global and
+  Caterpillar are Workday boards on the site's own country facet, one board
+  per country (`.../@India`), so a country that empties out fails only its
+  own board; GE HealthCare is its whole site (no country facet). Optum, Moody's
+  and Synchrony are Radancy `SITEMAP` boards; John Deere is Eightfold
+  (`johndeere.eightfold.ai`). `PHENOM` reads Phenom sites one locale's
+  sitemap at a time on the `JsonLdSitemapFetcher` base, which now takes the
+  board token and skips job pages that answer 404 or 410 (Lowe's sitemap lags
+  closed jobs). Home Depot (no Indian office on its Workday), MSCI (iCIMS) and
+  Rakuten are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug
