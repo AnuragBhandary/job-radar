@@ -72,7 +72,10 @@ public class FetchService {
 
     /** Fetches every active board. */
     public List<FetchResult> fetchAll() {
-        return fetch(boards.findByActiveTrue());
+        List<FetchResult> results = fetch(boards.findByActiveTrue());
+        List<BoardToken> inactive = boards.findAll().stream().filter(b -> !b.isActive()).toList();
+        transaction.executeWithoutResult(status -> changes.closeRetired(inactive, Instant.now()));
+        return results;
     }
 
     /** Fetches every active board belonging to one ATS. */

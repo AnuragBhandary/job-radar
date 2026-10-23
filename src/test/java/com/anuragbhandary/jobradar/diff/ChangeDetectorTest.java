@@ -108,6 +108,20 @@ class ChangeDetectorTest {
     }
 
     @Test
+    @DisplayName("a switched-off board's postings close once unseen for a week")
+    void closesPostingsOfRetiredBoards() {
+        BoardToken retired = new BoardToken(Source.GREENHOUSE, "wayve", "Wayve");
+        retired.setActive(false);
+        Posting old = new Posting(Source.GREENHOUSE, "wayve", "1", "Controls Engineer");
+        when(postings.findBySourceAndBoardTokenAndLastSeenBeforeAndStatusNot(
+                eq(Source.GREENHOUSE), eq("wayve"), any(), eq(PostingStatus.CLOSED)))
+                .thenReturn(List.of(old));
+
+        assertThat(detector().closeRetired(List.of(retired), Instant.now())).isEqualTo(1);
+        assertThat(old.getStatus()).isEqualTo(PostingStatus.CLOSED);
+    }
+
+    @Test
     @DisplayName("a board that failed to fetch never closes its postings")
     void doesNotCloseUnhealthyBoards() {
         // A 404 makes every posting on a board look absent. Closing them would

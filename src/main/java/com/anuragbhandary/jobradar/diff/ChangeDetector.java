@@ -104,4 +104,27 @@ public class ChangeDetector {
         }
         return closed;
     }
+
+    /**
+     * Closes the postings of boards that are switched off, once they have gone
+     * unseen as long as a live board's would have to. A retired board is never
+     * fetched again, so nothing else would ever close them: on 2026-10-23, 2,295
+     * open postings (956 candidates) sat on 73 inactive boards, Oracle test
+     * copies and dead tokens among them.
+     */
+    public int closeRetired(List<BoardToken> inactiveBoards, Instant now) {
+        Instant cutoff = now.minus(Duration.ofDays(DAYS_MISSING_BEFORE_CLOSED));
+        int closed = 0;
+        for (BoardToken board : inactiveBoards) {
+            List<Posting> open = postings.findBySourceAndBoardTokenAndLastSeenBeforeAndStatusNot(
+                    board.getSource(), board.getToken(), cutoff, PostingStatus.CLOSED);
+            open.forEach(p -> p.setStatus(PostingStatus.CLOSED));
+            postings.saveAll(open);
+            closed += open.size();
+        }
+        if (closed > 0) {
+            log.info("Closed {} postings of switched-off boards", closed);
+        }
+        return closed;
+    }
 }
