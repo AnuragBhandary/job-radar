@@ -487,21 +487,23 @@ public class BoardTokenSeeder {
         WORKDAY.put("unilever/wd3/Unilever_Experienced_Professionals", "Unilever");
         WORKDAY.put("unilever/wd3/Unilever_Early_Careers", "Unilever");
 
-        // 2026-10-23, third batch, by search: India first, then any target
-        // country with five or more. eBay India 88; Palo Alto Networks India
-        // 162; Samsung (all its companies, sec) India 45; Cadence India 205.
+        // 2026-10-23, third batch. eBay, Samsung (all its companies, sec) and
+        // Cadence by the site's own country facet, one board per country; the
+        // free-text search they started on matched "India" in "Indiana". Palo
+        // Alto Networks has no country facet, so it stays a search ("Office -
+        // India - Bangalore" reads cleanly).
         for (String q : java.util.List.of("India", "Ireland", "Germany", "Netherlands")) {
-            WORKDAY.put("ebay/wd5/apply/" + q, "eBay");
+            WORKDAY.put("ebay/wd5/apply/@" + q, "eBay");
         }
         for (String q : java.util.List.of("India", "Germany", "Netherlands", "United Kingdom",
                 "United Arab Emirates")) {
             WORKDAY.put("paloaltonetworks/wd5/panwexternalcareers/" + q, "Palo Alto Networks");
         }
         for (String q : java.util.List.of("India", "Germany", "United Kingdom")) {
-            WORKDAY.put("sec/wd3/Samsung_Careers/" + q, "Samsung");
+            WORKDAY.put("sec/wd3/Samsung_Careers/@" + q, "Samsung");
         }
         for (String q : java.util.List.of("India", "Ireland", "Germany", "United Kingdom")) {
-            WORKDAY.put("cadence/wd1/External_Careers/" + q, "Cadence");
+            WORKDAY.put("cadence/wd1/External_Careers/@" + q, "Cadence");
         }
 
         // 2026-10-23: Dell's careers site is Oracle's on its own host, 510 jobs.
