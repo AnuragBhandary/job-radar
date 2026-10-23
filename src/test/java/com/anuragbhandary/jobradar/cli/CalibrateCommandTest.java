@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.anuragbhandary.jobradar.cli.CalibrateCommand.Decision;
 import com.anuragbhandary.jobradar.cli.CalibrateCommand.Outcome;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -63,7 +64,24 @@ class CalibrateCommandTest {
                         com.anuragbhandary.jobradar.pipeline.PipelineStage.APPLIED, "Data Engineer I",
                         "Apply now. Data resume: Amazon DE")));
         assertThat(out).contains("After applying (2 applications)");
-        assertThat(out).containsPattern("AMAZON\\s+2\\s+1\\s+0\\s+1");
+        assertThat(out).containsPattern("AMAZON\\s+2\\s+1\\s+0\\s+0\\s+1");
         assertThat(out).containsPattern("software resume\\s+1\\s+1");
+    }
+
+    @Test
+    void separatesSilenceFromAFreshWaitAndInfersTheResume() {
+        LocalDate today = LocalDate.of(2026, 10, 23);
+        String out = CalibrateCommand.outcomes(List.of(
+                new Decision(60, 60, new double[0], 0, "WORKDAY", "INDIA_OTHER", Outcome.PICKED,
+                        com.anuragbhandary.jobradar.pipeline.PipelineStage.APPLIED, "Data Analyst",
+                        "", LocalDate.of(2026, 9, 20)),
+                new Decision(60, 60, new double[0], 0, "WORKDAY", "INDIA_OTHER", Outcome.PICKED,
+                        com.anuragbhandary.jobradar.pipeline.PipelineStage.APPLIED, "Backend Engineer",
+                        "", LocalDate.of(2026, 10, 20))), today);
+        // One applied five weeks ago and heard nothing; one three days ago.
+        assertThat(out).containsPattern("WORKDAY\\s+2\\s+0\\s+0\\s+1\\s+1");
+        // Nothing noted: the category names the resume.
+        assertThat(out).containsPattern("data resume\\s+1").containsPattern("software resume\\s+1")
+                .doesNotContain("resume not noted");
     }
 }

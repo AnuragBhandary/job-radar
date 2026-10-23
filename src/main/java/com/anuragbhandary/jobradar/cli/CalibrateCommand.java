@@ -93,10 +93,15 @@ public class CalibrateCommand {
      * @param notes    the review's notes on it
      */
     record Decision(int fit, int hand, double[] features, int lanePoints, String source, String lane,
-            Outcome outcome, PipelineStage stage, String title, String notes) {
+            Outcome outcome, PipelineStage stage, String title, String notes, LocalDate appliedOn) {
 
         Decision(int fit, String source, String lane, Outcome outcome) {
-            this(fit, fit, new double[0], 0, source, lane, outcome, null, "", "");
+            this(fit, fit, new double[0], 0, source, lane, outcome, null, "", "", null);
+        }
+
+        Decision(int fit, int hand, double[] features, int lanePoints, String source, String lane,
+                Outcome outcome, PipelineStage stage, String title, String notes) {
+            this(fit, hand, features, lanePoints, source, lane, outcome, stage, title, notes, null);
         }
     }
 
@@ -145,14 +150,15 @@ public class CalibrateCommand {
                     posting.getStrategicClass() == null ? "UNKNOWN" : posting.getStrategicClass().name(),
                     outcome(interest), interest.getStage(),
                     posting.getTitle() == null ? "" : posting.getTitle(),
-                    interest.getNotes() == null ? "" : interest.getNotes()));
+                    interest.getNotes() == null ? "" : interest.getNotes(),
+                    interest.getAppliedOn()));
         }
         System.out.print(report(decisions, fitScore.minFit(), fitScore.learned()));
         System.out.println();
         System.out.print(learning(decisions, options.containsKey("learn"), options.containsKey("force")));
         System.out.println();
         System.out.print(suggestions(decisions, excludedWords()));
-        String outcomes = outcomes(decisions);
+        String outcomes = outcomes(decisions, today);
         if (!outcomes.isEmpty()) {
             System.out.println();
             System.out.print(outcomes);
@@ -369,8 +375,12 @@ public class CalibrateCommand {
         };
     }
 
-    /** Which resume the pick named in its note, as the review writes it. */
-    static String resume(String notes) {
+    /**
+     * Which resume went out: the one the note names, as the review writes it,
+     * else the one the role's category goes with. Half the applications (39 of
+     * 80 on 2026-10-23) named none, which left half the table unreadable.
+     */
+    static String resume(String notes, String title) {
         String n = notes.toLowerCase(Locale.ROOT);
         if (n.contains("data resume")) {
             return "data resume";
@@ -378,36 +388,54 @@ public class CalibrateCommand {
         if (n.contains("software resume")) {
             return "software resume";
         }
+        if (title != null && !title.isBlank()) {
+            return com.anuragbhandary.jobradar.domain.RoleCategory.of(title).resume()
+                    == com.anuragbhandary.jobradar.domain.RoleCategory.Resume.DATA
+                    ? "data resume" : "software resume";
+        }
         return "resume not noted";
     }
 
+    /** No reply this long after applying is its own outcome, apart from a fresh wait. */
+    static final int SILENT_AFTER_DAYS = 21;
+
     /** Empty until something has been applied to. */
     static String outcomes(List<Decision> decisions) {
+        return outcomes(decisions, LocalDate.now());
+    }
+
+    static String outcomes(List<Decision> decisions, LocalDate today) {
         List<Decision> sent = decisions.stream().filter(d -> applied(d.stage())).toList();
         if (sent.isEmpty()) {
             return "";
         }
         StringBuilder out = new StringBuilder("After applying (%d applications)%n".formatted(sent.size()));
-        outcomeTable(out, "source", sent, Decision::source);
-        outcomeTable(out, "lane", sent, Decision::lane);
-        outcomeTable(out, "resume", sent, d -> resume(d.notes()));
+        outcomeTable(out, "source", sent, Decision::source, today);
+        outcomeTable(out, "lane", sent, Decision::lane, today);
+        outcomeTable(out, "resume", sent, d -> resume(d.notes(), d.title()), today);
         return out.toString();
     }
 
     private static void outcomeTable(StringBuilder out, String heading, List<Decision> sent,
-            Function<Decision, String> key) {
+            Function<Decision, String> key, LocalDate today) {
         Map<String, int[]> rows = new TreeMap<>();
         for (Decision d : sent) {
-            int[] c = rows.computeIfAbsent(key.apply(d), k -> new int[4]);
+            int[] c = rows.computeIfAbsent(key.apply(d), k -> new int[5]);
             c[0]++;
             switch (d.stage()) {
                 case SCREENING, INTERVIEW, OFFER -> c[1]++;
                 case REJECTED -> c[2]++;
-                default -> c[3]++;
+                default -> {
+                    boolean silent = d.appliedOn() != null
+                            && !d.appliedOn().plusDays(SILENT_AFTER_DAYS).isAfter(today);
+                    c[silent ? 3 : 4]++;
+                }
             }
         }
-        out.append("%-24s %7s %9s %8s %7s%n".formatted(heading, "applied", "heard yes", "rejected", "waiting"));
-        rows.forEach((name, c) -> out.append("%-24s %7d %9d %8d %7d%n".formatted(name, c[0], c[1], c[2], c[3])));
+        out.append("%-24s %7s %9s %8s %10s %7s%n".formatted(heading, "applied", "heard yes", "rejected",
+                "silent " + SILENT_AFTER_DAYS + "d+", "waiting"));
+        rows.forEach((name, c) -> out.append("%-24s %7d %9d %8d %10d %7d%n".formatted(
+                name, c[0], c[1], c[2], c[3], c[4])));
         out.append('\n');
     }
 }

@@ -311,6 +311,12 @@ openings" and similar from any directory. In short:
   count), "**new**" when the failure began in the last 36 hours, otherwise how
   many days, plus boards that went empty in the last 48 hours. Eightfold
   tenants without `pcsx` (HP) are read from `/api/apply/v2/jobs/<id>`.
+- Housekeeping (2026-10-23): a full run closes the postings of switched-off
+  boards once unseen for a week (`ChangeDetector.closeRetired`). eBay,
+  Samsung and Cadence read by Workday country facet (`@India`); Palo Alto has
+  no facet and stays a search. `calibrate`'s after-applying table splits
+  "silent 21d+" (applied 3+ weeks ago, nothing heard) from a fresh wait, and
+  takes the resume from the role's category when the note names none.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug
