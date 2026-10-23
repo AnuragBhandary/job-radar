@@ -177,6 +177,18 @@ job-radar:
         url: https://www.revolut.com/careers/
       # 2026-10-23, fifth batch: BNP Paribas answers 403; NatWest is behind a
       # Cloudflare challenge.
+      # 2026-10-23, analytics firms. LatentView and Evalueserve are Darwinbox
+      # (bot check); Mu Sigma lists no openings, only a contact form.
+      - company: LatentView Analytics
+        city: Chennai, Bengaluru
+        url: https://latentview.darwinbox.in/ms/candidate/careers
+      - company: Evalueserve
+        city: Gurugram, Bengaluru, Mumbai
+        url: https://www.evalueserve.com/jobs/
+      - company: Mu Sigma
+        city: Bengaluru
+        url: https://www.mu-sigma.com/career/
+        note: "no job list on 2026-10-23; hires graduates in yearly batches"
       - company: BNP Paribas
         city: Mumbai, Chennai, Paris
         url: https://group.bnpparibas/en/careers/all-job-offers

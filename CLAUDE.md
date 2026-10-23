@@ -242,6 +242,13 @@ openings" and similar from any directory. In short:
   it. Nomura is a SuccessFactors `SITEMAP` board (Mumbai in its URLs); Shell,
   Lloyds and Unilever are whole Workday sites. BNP Paribas (403) and NatWest
   (Cloudflare) are on `browser-watch`.
+- Analytics firms (2026-10-23), for the data resume: Fractal (Workday),
+  Tredence (`RIPPLEHIRE`), ZS Associates (`JIBE`, India and UK) and Tiger
+  Analytics (Workable `tiger-analytics`, which is the US entity: Dallas, Toronto,
+  Chicago; no India board is published). EXL was already in (Oracle).
+  LatentView and Evalueserve are Darwinbox and Mu Sigma lists no openings, so
+  all three are on `browser-watch`. Not on big-tech-boards: its 1-year cap is
+  for firms with formal experience checks.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

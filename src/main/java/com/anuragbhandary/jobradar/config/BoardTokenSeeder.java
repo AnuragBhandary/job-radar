@@ -106,8 +106,10 @@ public class BoardTokenSeeder {
             Map.of("zoho/careers.zohocorp.com/Careers", "Zoho");
 
     /** RippleHire careers sites, keyed {@code name/host/careerSiteToken}. */
-    private static final Map<String, String> RIPPLEHIRE =
-            Map.of("ltm/ltimindtree.ripplehire.com/xviyQvbnyYZdGtozXoNm", "LTIMindtree");
+    private static final Map<String, String> RIPPLEHIRE = Map.of(
+            "ltm/ltimindtree.ripplehire.com/xviyQvbnyYZdGtozXoNm", "LTIMindtree",
+            // 2026-10-23: analytics firms, for the data resume.
+            "tredence/tredence.ripplehire.com/rzuz0vttMaz0VxxVzDiY", "Tredence");
 
     /** Jibe careers sites, keyed {@code name/host/location}. */
     private static final Map<String, String> JIBE = new LinkedHashMap<>();
@@ -421,6 +423,13 @@ public class BoardTokenSeeder {
         // 2026-10-23, fifth batch, whole sites: Shell 140 jobs (Rotterdam,
         // London, Hamburg, Gurgaon...), Lloyds 72 (UK), Unilever 255 + 1.
         WORKDAY.put("shell/wd3/ShellCareers", "Shell");
+        // 2026-10-23, analytics firms: Fractal's whole site, 119 jobs.
+        WORKDAY.put("fractal/wd1/Careers", "Fractal");
+        // Tiger Analytics posts on Workable (232 jobs); its site links /j/ codes.
+        WORKABLE.put("tiger-analytics", "Tiger Analytics");
+        // ZS Associates is Jibe: India 52, UK 11.
+        JIBE.put("zs/jobs.zs.com/India", "ZS Associates");
+        JIBE.put("zs/jobs.zs.com/United Kingdom", "ZS Associates");
         WORKDAY.put("lbg/wd3/lbg_Careers", "Lloyds Banking Group");
         WORKDAY.put("unilever/wd3/Unilever_Experienced_Professionals", "Unilever");
         WORKDAY.put("unilever/wd3/Unilever_Early_Careers", "Unilever");
