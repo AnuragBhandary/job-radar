@@ -218,4 +218,46 @@ class CareersApiFetchersTest {
             assertThat(DeShawIndiaFetcher.place("no office named")).isEqualTo("India");
         }
     }
+
+    @Nested
+    class RippleHire {
+
+        private final RippleHireFetcher fetcher = new RippleHireFetcher(null, json, null, StoredPostings.none());
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.RIPPLEHIRE);
+        }
+
+        @Test
+        @DisplayName("the list gives the city with the country, and the stated minimum")
+        void readsTheList() throws Exception {
+            var listed = fetcher.parseList(FixtureSupport.load("ripplehire-ltm-list.json"));
+            assertThat(listed).hasSize(2);
+            var first = listed.getFirst();
+            assertThat(first.id()).isEqualTo("903856");
+            assertThat(first.place()).isEqualTo("Bengaluru, India");
+            assertThat(first.experience()).isEqualTo("8 - 12 Years");
+            assertThat(first.minYears()).isEqualTo(8);
+            // "0 - 0 Years" is no statement at all, not an opening for freshers.
+            assertThat(listed.get(1).minYears()).isNull();
+            assertThat(listed.get(1).experience()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("the detail's HTML job text becomes plain text")
+        void readsTheDetail() throws Exception {
+            assertThat(fetcher.parseDetail(FixtureSupport.load("ripplehire-ltm-detail.json")))
+                    .isNotBlank().doesNotContain("<p>");
+        }
+
+        @Test
+        @DisplayName("list and job links carry the company's careers token")
+        void buildsUrls() throws Exception {
+            var board = RippleHireFetcher.Board.parse("ltm/ltimindtree.ripplehire.com/abc123");
+            assertThat(board.list(2)).startsWith("https://ltimindtree.ripplehire.com/candidate/candidatejobsearch?")
+                    .contains("%22page%22%3A2").contains("abc123");
+            assertThat(board.page("903856")).endsWith("#detail/job/903856");
+        }
+    }
 }

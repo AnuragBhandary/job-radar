@@ -67,5 +67,7 @@ public enum Source {
     /** Careers sites on Jibe (iCIMS): AMD, Booking Holdings (added 2026-10-23). */
     JIBE,
     /** D. E. Shaw India's own careers site (added 2026-10-23). */
-    DESHAW
+    DESHAW,
+    /** Careers sites on RippleHire: LTIMindtree (added 2026-10-23). */
+    RIPPLEHIRE
 }

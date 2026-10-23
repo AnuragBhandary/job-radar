@@ -217,6 +217,15 @@ openings" and similar from any directory. In short:
   seeds; Dell is Oracle on its own host (`dell/enterpriseplatform.dell.com/CX_1/<country id>`).
   Meta (400), LinkedIn (its jobs live on linkedin.com), Zalando (private API)
   and UBS (403) are on `browser-watch`.
+- Third batch (2026-10-23): `RIPPLEHIRE` reads RippleHire careers sites, token
+  `name/host/careerSiteToken` (LTIMindtree, `ltm/ltimindtree.ripplehire.com/...`).
+  The list is JSON when asked for it and states the experience range; the job
+  text is read only for a passing title whose stated minimum is 2 years or less
+  (others are stored with the range alone). "0 - 0 Years" means not stated.
+  eBay, Palo Alto Networks, Samsung (`sec/wd3/Samsung_Careers`) and Cadence are
+  Workday searches per country; Arm and Synopsys (Radancy) are `SITEMAP` boards.
+  Tech Mahindra (ASP.NET postbacks), Nutanix (Cloudflare) and MathWorks (403)
+  are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

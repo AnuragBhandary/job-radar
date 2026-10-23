@@ -98,6 +98,10 @@ public class BoardTokenSeeder {
     /** Atlassian's careers listing: one board for the whole company. */
     private static final Map<String, String> ATLASSIAN = Map.of("atlassian", "Atlassian");
 
+    /** RippleHire careers sites, keyed {@code name/host/careerSiteToken}. */
+    private static final Map<String, String> RIPPLEHIRE =
+            Map.of("ltm/ltimindtree.ripplehire.com/xviyQvbnyYZdGtozXoNm", "LTIMindtree");
+
     /** Jibe careers sites, keyed {@code name/host/location}. */
     private static final Map<String, String> JIBE = new LinkedHashMap<>();
 
@@ -360,6 +364,10 @@ public class BoardTokenSeeder {
         SITEMAP.put("ey/careers.ey.com/sitemap.xml", "EY");
         SITEMAP.put("stanchart/jobs.standardchartered.com/sitemap.xml", "Standard Chartered");
         SITEMAP.put("wipro/careers.wipro.com/sitemap.xml", "Wipro");
+        // 2026-10-23: Radancy sites; robots.txt shuts /search-jobs/ but not the
+        // job pages, whose URLs carry the city and whose JSON-LD has the rest.
+        SITEMAP.put("arm/careers.arm.com/sitemap.xml", "Arm");
+        SITEMAP.put("synopsys/careers.synopsys.com/sitemap.xml", "Synopsys");
 
         // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
@@ -394,6 +402,23 @@ public class BoardTokenSeeder {
         // Veldhoven and Berlin (asml.com's own job pages send applicants here).
         WORKDAY.put("redhat/wd5/jobs", "Red Hat");
         WORKDAY.put("asml/wd3/ASMLEXT1", "ASML");
+
+        // 2026-10-23, third batch, by search: India first, then any target
+        // country with five or more. eBay India 88; Palo Alto Networks India
+        // 162; Samsung (all its companies, sec) India 45; Cadence India 205.
+        for (String q : java.util.List.of("India", "Ireland", "Germany", "Netherlands")) {
+            WORKDAY.put("ebay/wd5/apply/" + q, "eBay");
+        }
+        for (String q : java.util.List.of("India", "Germany", "Netherlands", "United Kingdom",
+                "United Arab Emirates")) {
+            WORKDAY.put("paloaltonetworks/wd5/panwexternalcareers/" + q, "Palo Alto Networks");
+        }
+        for (String q : java.util.List.of("India", "Germany", "United Kingdom")) {
+            WORKDAY.put("sec/wd3/Samsung_Careers/" + q, "Samsung");
+        }
+        for (String q : java.util.List.of("India", "Ireland", "Germany", "United Kingdom")) {
+            WORKDAY.put("cadence/wd1/External_Careers/" + q, "Cadence");
+        }
 
         // 2026-10-23: Dell's careers site is Oracle's on its own host, 510 jobs.
         // India 24, UK 9, Ireland 7, Germany 5, Netherlands 2.
@@ -523,7 +548,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.CAPGEMINI, CAPGEMINI)
                 + seedSource(Source.ATLASSIAN, ATLASSIAN)
                 + seedSource(Source.JIBE, JIBE)
-                + seedSource(Source.DESHAW, DESHAW);
+                + seedSource(Source.DESHAW, DESHAW)
+                + seedSource(Source.RIPPLEHIRE, RIPPLEHIRE);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

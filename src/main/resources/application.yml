@@ -140,6 +140,17 @@ job-radar:
       - company: UBS
         city: Pune, Mumbai, Hyderabad
         url: https://jobs.ubs.com/TGnewUI/Search/Home/Home?partnerid=25008&siteid=5012
+      # 2026-10-23, third batch. Tech Mahindra's openings load by ASP.NET
+      # postback; Nutanix is behind a Cloudflare challenge; MathWorks answers 403.
+      - company: Tech Mahindra
+        city: India
+        url: https://careers.techmahindra.com/CurrentOpportunity.aspx
+      - company: Nutanix
+        city: Bengaluru, Pune
+        url: https://careers.nutanix.com/en/jobs/?location=India
+      - company: MathWorks
+        city: Bengaluru, Hyderabad
+        url: https://www.mathworks.com/company/jobs/opportunities/search?location=India
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -717,7 +728,8 @@ job-radar:
                       morganstanley, bnymellon, aexp, micron,
                       # Own careers APIs added 2026-10-23.
                       ibm, capgemini, atlassian,
-                      amd, booking, redhat, asml, dell, deshaw]
+                      amd, booking, redhat, asml, dell, deshaw,
+                      ebay, paloaltonetworks, sec, cadence, arm, synopsys, ltm]
     big-tech-max-min-years: 1
 
   # ---------------------------------------------------------------------------
