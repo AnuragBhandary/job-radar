@@ -398,4 +398,62 @@ class CareersApiFetchersTest {
                     .isInstanceOf(FetchException.class);
         }
     }
+
+    @Nested
+    class MakeMyTrip {
+
+        private final MakeMyTripFetcher fetcher = new MakeMyTripFetcher(null, json, null, StoredPostings.none());
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.MAKEMYTRIP);
+        }
+
+        @Test
+        @DisplayName("the list gives places without office codes and the stated range")
+        void readsTheList() throws Exception {
+            var listed = fetcher.parseList(FixtureSupport.load("makemytrip-jobs.json"));
+            assertThat(listed).hasSize(2);
+            var first = listed.getFirst();
+            assertThat(first.id()).isEqualTo("a6ad05d33be992");
+            assertThat(first.place()).isEqualTo("Gurgaon, Haryana, India");
+            assertThat(first.experience()).isEqualTo("2 - 4 years");
+            assertThat(first.minYears()).isEqualTo(2);
+            assertThat(first.created()).isEqualTo(LocalDate.of(2026, 10, 15));
+            // No stated range: read the text and let screening decide.
+            assertThat(listed.get(1).minYears()).isNull();
+            assertThat(listed.get(1).place()).contains("Noida, Uttar Pradesh, India");
+        }
+
+        @Test
+        @DisplayName("the detail carries the escaped job text and the Darwinbox apply link")
+        void readsTheDetail() throws Exception {
+            var detail = fetcher.parseDetail(FixtureSupport.load("makemytrip-detail.json"));
+            assertThat(detail.path("applyUrl").asText()).contains("darwinbox.in");
+            assertThat(Html.toPlainText(Html.unescape(detail.path("job_decription").asText()))).doesNotContain("<p>");
+        }
+    }
+
+    @Nested
+    class UrbanCompany {
+
+        private final UrbanCompanyFetcher fetcher = new UrbanCompanyFetcher(null, json);
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.URBANCOMPANY);
+        }
+
+        @Test
+        @DisplayName("each job has its text, place and careers-page link")
+        void mapsAJob() throws Exception {
+            List<RawPosting> postings = fetcher.parse(FixtureSupport.load("urbancompany-jobs.json"));
+            assertThat(postings).hasSize(2);
+            RawPosting first = postings.getFirst();
+            assertThat(first.location()).isEqualTo("Chennai, Tamil Nadu, India");
+            assertThat(first.url()).isEqualTo(
+                    "https://careers.urbancompany.com/jobDetail?id=40731ce1-1110-4acf-becb-b5558ad634e4");
+            assertThat(first.description()).contains("Urban Company").doesNotContain("<span");
+        }
+    }
 }

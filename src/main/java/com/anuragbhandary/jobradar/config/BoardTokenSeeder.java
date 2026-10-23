@@ -122,6 +122,12 @@ public class BoardTokenSeeder {
     private static final Map<String, String> PHENOM =
             Map.of("lowes/talent.lowes.com/in/en/sitemap1.xml", "Lowe's India");
 
+    /** Indian product companies on their own job APIs: one board each. */
+    private static final Map<String, String> MAKEMYTRIP =
+            Map.of(com.anuragbhandary.jobradar.fetch.MakeMyTripFetcher.BOARD, "MakeMyTrip");
+    private static final Map<String, String> URBANCOMPANY =
+            Map.of(com.anuragbhandary.jobradar.fetch.UrbanCompanyFetcher.BOARD, "Urban Company");
+
     /** D. E. Shaw India: one board, the whole site. */
     private static final Map<String, String> DESHAW = Map.of(com.anuragbhandary.jobradar.fetch.DeShawIndiaFetcher.BOARD, "D. E. Shaw India");
 
@@ -450,6 +456,8 @@ public class BoardTokenSeeder {
             WORKDAY.put("cat/wd5/CaterpillarCareers/@" + country, "Caterpillar");
         }
         WORKDAY.put("gehc/wd5/GEHC_ExternalSite", "GE HealthCare");
+        // Sprinklr's whole site, 71 jobs (2026-10-23).
+        WORKDAY.put("sprinklr/wd1/careers", "Sprinklr");
         // Tiger Analytics posts on Workable (232 jobs); its site links /j/ codes.
         WORKABLE.put("tiger-analytics", "Tiger Analytics");
         // ZS Associates is Jibe: India 52, UK 11.
@@ -609,7 +617,9 @@ public class BoardTokenSeeder {
                 + seedSource(Source.SPIRE2GROW, SPIRE2GROW)
                 + seedSource(Source.ZOHO_RECRUIT, ZOHO_RECRUIT)
                 + seedSource(Source.SOCGEN, SOCGEN)
-                + seedSource(Source.PHENOM, PHENOM);
+                + seedSource(Source.PHENOM, PHENOM)
+                + seedSource(Source.MAKEMYTRIP, MAKEMYTRIP)
+                + seedSource(Source.URBANCOMPANY, URBANCOMPANY);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

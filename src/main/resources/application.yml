@@ -200,6 +200,36 @@ job-radar:
       - company: Rakuten
         city: Bengaluru
         url: https://rakuten.careers/
+      # 2026-10-23, Indian product companies. Delhivery and Rapido are Darwinbox;
+      # OYO and Chargebee list only on LinkedIn; Ather answers 403; Dream Sports'
+      # Lever board is gone; Zerodha and Nykaa post almost nothing.
+      # PolicyBazaar and ShareChat publish no job list at all.
+      - company: Delhivery
+        city: Gurugram, Bengaluru
+        url: https://delhivery.darwinbox.in/ms/candidate/careers
+      - company: Rapido
+        city: Bengaluru
+        url: https://rapido.darwinbox.in/ms/candidate/careers
+      - company: OYO
+        city: Gurugram
+        url: https://www.linkedin.com/company/oyo-rooms/jobs/
+      - company: Chargebee
+        city: Chennai, Bengaluru
+        url: https://in.linkedin.com/company/chargebee/jobs/
+      - company: Ather Energy
+        city: Bengaluru
+        url: https://www.atherenergy.com/careers
+      - company: Dream Sports (Dream11)
+        city: Mumbai
+        url: https://www.dreamsports.group/lifeatdreamsports
+      - company: Zerodha
+        city: Bengaluru
+        url: https://careers.zerodha.com/
+        note: "one opening (video editor) on 2026-10-23"
+      - company: Nykaa
+        city: Mumbai, Gurugram
+        url: https://careers.nykaa.com/
+        note: "no postings on 2026-10-23"
       - company: BNP Paribas
         city: Mumbai, Chennai, Paris
         url: https://group.bnpparibas/en/careers/all-job-offers

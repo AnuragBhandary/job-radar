@@ -1,0 +1,66 @@
+{
+ "allJobs": [
+  {
+   "job_id": "a6ad05d33be992",
+   "job_code": "JOB_2205",
+   "group_company": "MakeMyTrip (India) Limited",
+   "parent_department": "Flights",
+   "department": "International Flights",
+   "division": "MMTGC",
+   "business_unit": "Product Management",
+   "location": [
+    "Gurgaon, Haryana, India (Gurgaon_MMT)"
+   ],
+   "location_city": [
+    "Gurgaon"
+   ],
+   "location_country": "India",
+   "job_title": "Associate Product Manager (Flights- Funnel)",
+   "post_on_careers_page": 1,
+   "post_on_refer_page": 0,
+   "post_on_ijp_page": 0,
+   "employee_type": "Employee",
+   "job_created_timestamp": "15-10-2026 10:27:23",
+   "job_updated_timestamp": "23-10-2026 22:08:58",
+   "experience_to": "4",
+   "experience_from": "2",
+   "is_remote": 0,
+   "designation_code": "MR292"
+  },
+  {
+   "job_id": "a67860c32611e1",
+   "job_code": "JOB_1368",
+   "group_company": "MakeMyTrip (India) Limited",
+   "parent_department": "Hotels",
+   "department": "Alternate Accommodation",
+   "division": "MMTGC",
+   "business_unit": "Supply",
+   "location": [
+    "Ahmedabad, Gujarat, India (Ahmedabad_MMT)",
+    "Agra, Uttar Pradesh, India (Agra_MMT)",
+    "Manali, Himachal Pradesh, India (Manali_MMT)",
+    "Noida, Uttar Pradesh, India (Noida_MMT)"
+   ],
+   "location_city": [
+    "Ahmedabad",
+    "Agra",
+    "Manali",
+    "Noida"
+   ],
+   "location_country": "India",
+   "job_title": "Business Development Manager - Noida",
+   "post_on_careers_page": 1,
+   "post_on_refer_page": 1,
+   "post_on_ijp_page": 0,
+   "employee_type": "Employee",
+   "job_created_timestamp": "14-01-2025 12:33:14",
+   "job_updated_timestamp": "23-10-2026 21:57:20",
+   "experience_to": "",
+   "experience_from": "",
+   "is_remote": 0,
+   "designation_code": "MR161"
+  }
+ ],
+ "businessUnits": [],
+ "locations": []
+}

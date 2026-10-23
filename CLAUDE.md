@@ -266,6 +266,14 @@ openings" and similar from any directory. In short:
   board token and skips job pages that answer 404 or 410 (Lowe's sitemap lags
   closed jobs). Home Depot (no Indian office on its Workday), MSCI (iCIMS) and
   Rakuten are on `browser-watch`.
+- Indian product companies (2026-10-23): `MAKEMYTRIP` reads
+  careers.makemytrip.com's own `/api/jobs` and `/api/jobDetails` (its Darwinbox
+  data, minus Darwinbox's bot check), text only for a passing title asking 2
+  years or less; `URBANCOMPANY` posts once to Urban Company's `getAllJobs`;
+  Sprinklr is a whole Workday site. Delhivery, Rapido (Darwinbox), OYO,
+  Chargebee (LinkedIn only), Ather (403), Dream Sports (Lever board gone),
+  Zerodha and Nykaa (almost nothing posted) are on `browser-watch`;
+  PolicyBazaar and ShareChat publish no list.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug
