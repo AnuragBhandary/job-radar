@@ -89,6 +89,15 @@ public class BoardTokenSeeder {
     /** Avature careers sites, keyed {@code name/host/lang/portal[/search]}. */
     private static final Map<String, String> AVATURE = new LinkedHashMap<>();
 
+    /** IBM's careers search, keyed by its Location facet value (a country). */
+    private static final Map<String, String> IBM = new LinkedHashMap<>();
+
+    /** Capgemini's job search, keyed by the API's country code ({@code en-in}). */
+    private static final Map<String, String> CAPGEMINI = new LinkedHashMap<>();
+
+    /** Atlassian's careers listing: one board for the whole company. */
+    private static final Map<String, String> ATLASSIAN = Map.of("atlassian", "Atlassian");
+
     /** One board: the current month's "Ask HN: Who is hiring?" thread. */
     private static final Map<String, String> HACKER_NEWS =
             Map.of(HackerNewsFetcher.BOARD, "HN Who is hiring");
@@ -350,6 +359,22 @@ public class BoardTokenSeeder {
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
         AVATURE.put("deloitte/usijobs.deloitte.com/en_US/careersUSI", "Deloitte USI");
 
+        // 2026-10-23: careers.ibm.com is behind an AWS WAF challenge, so IBM is
+        // read through the ibm.com search API instead. India 1,038 jobs, UK 59,
+        // Germany 24, Ireland 5, UAE 4, Netherlands 2.
+        for (String country : java.util.List.of("India", "Ireland", "Germany", "Netherlands",
+                "United Kingdom", "United Arab Emirates")) {
+            IBM.put(country, "IBM");
+        }
+
+        // 2026-10-23: India 746, UK 527, Netherlands 353, Germany 312, UAE 6, Ireland 5.
+        CAPGEMINI.put("en-in", "Capgemini");
+        CAPGEMINI.put("en-gb", "Capgemini");
+        CAPGEMINI.put("nl-nl", "Capgemini");
+        CAPGEMINI.put("de-de", "Capgemini");
+        CAPGEMINI.put("en-ie", "Capgemini");
+        CAPGEMINI.put("en-ae", "Capgemini");
+
         GOOGLE.put("India", "Google India");
         GOOGLE.put("Ireland", "Google Ireland");
         GOOGLE.put("Germany", "Google Germany");
@@ -465,7 +490,10 @@ public class BoardTokenSeeder {
                 + seedSource(Source.AVATURE, AVATURE)
                 + seedSource(Source.PERSONIO, PERSONIO)
                 + seedSource(Source.TEAMTAILOR, TEAMTAILOR)
-                + seedSource(Source.WORKABLE, WORKABLE);
+                + seedSource(Source.WORKABLE, WORKABLE)
+                + seedSource(Source.IBM, IBM)
+                + seedSource(Source.CAPGEMINI, CAPGEMINI)
+                + seedSource(Source.ATLASSIAN, ATLASSIAN);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

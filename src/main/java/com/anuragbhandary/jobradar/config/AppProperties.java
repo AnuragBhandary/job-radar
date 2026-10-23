@@ -119,6 +119,9 @@ public record AppProperties(
                 case AMAZON -> "amazon";
                 case GOOGLE -> "google";
                 case APPLE -> "apple";
+                case IBM -> "ibm";
+                case CAPGEMINI -> "capgemini";
+                case ATLASSIAN -> "atlassian";
                 case null, default -> "";
             };
             for (String board : bigTechBoards) {

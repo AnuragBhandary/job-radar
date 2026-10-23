@@ -1,0 +1,53 @@
+{
+ "took": 13,
+ "timed_out": false,
+ "_shards": {
+  "total": 20,
+  "successful": 20,
+  "skipped": 0,
+  "failed": 0
+ },
+ "hits": {
+  "total": {
+   "value": 1038,
+   "relation": "eq"
+  },
+  "max_score": null,
+  "hits": [
+   {
+    "_index": "genesis-prod-1788036777996",
+    "_id": "5a834890e66f8a0d9f99ec3f597a7213c5ba3121897493a92410769f418b572d",
+    "_score": null,
+    "_source": {
+     "url": "https://careers.ibm.com/careers/JobDetail?jobId=137866",
+     "dcdate": "2026-10-23",
+     "title": "PROCESS INNOVATION PROFESSIONAL-RECORD TO REPORT",
+     "body": "A career in IBM Consulting embraces long-term relationships and close collaboration with clients across the globe. In this role, you will work for IBM BPO, part of Consulting that, accelerates digital transformation using agile methodologies, process mining, and AI-powered workflows.    You'll work with visionaries across multiple industries to improve the hybrid cloud and AI journey for the most innovative and valuable companies in the world. Your ability to accelerate impact and make meaningful change for your clients is enabled by our strategic partner ecosystem and our robust technology platforms across the IBM portfolio, including IBM Software and Red Hat.    Curiosity and a constant quest for knowledge serve as the foundation to success in IBM Consulting. In your role, you'll be supported by mentors and coaches who will encourage you to challenge the norm, investigate ideas outside of your role, and come up with creative solutions resulting in groundbreaking impact for a wide network of clients. Our culture of evolution and empathy centers on long-term career growth and learning opportunities in an environment that embraces your unique skills and experience.      As an Assistant Manager - Record to Report (R2R), you are responsible for general accounting which includes reconciliations, preparation of Balance Sheet and Profit and Loss account, Fixed Assets Accounting, Intercompany Accounting, Cash & Bank Accounting financial analysis and reporting.    Your primary respon",
+     "field_keyword_05": "India",
+     "field_keyword_18": "Professional",
+     "field_keyword_19": "CHENNAI, IN"
+    },
+    "sort": [
+     1792713600000
+    ]
+   },
+   {
+    "_index": "genesis-prod-1788036777996",
+    "_id": "a29bce1ce6fef219a617e01aa6b82afa21e8646c985bef49dcfb382255958b02",
+    "_score": null,
+    "_source": {
+     "url": "https://careers.ibm.com/careers/JobDetail?jobId=138148",
+     "dcdate": "2026-10-23",
+     "title": "Data Engineer-Data Platforms-SnowFlake",
+     "body": "A career in IBM Consulting is built on long-term client relationships and close collaboration worldwide. You'll work with leading companies across industries, helping them shape their hybrid cloud and AI journeys. With support from our strategic partners, robust IBM technology, and Red Hat, you'll have the tools to drive meaningful change and accelerate client impact. At IBM Consulting, curiosity fuels success. You'll be encouraged to challenge the norm, explore new ideas, and create innovative solutions that deliver real results. Our culture of growth and empathy focuses on your long-term career development while valuing your unique skills and experiences. As a Data Engineer specializing in Data Platforms-SnowFlake, you play a critical role in building and enhancing Snowflake platforms for clients' Data and AI use cases. This position focuses on implementing Data and AI use cases on Snowflake platforms. Your primary responsibilities will include: • Implement Data and AI Use Cases: Implement data and AI use cases on Snowflake platforms, ensuring seamless integration and optimal performance. • Enhance Snowflake Platform: Build and enhance Snowflake platforms to meet the evolving needs of clients' Data and AI use cases. • Leverage Key Skills: Apply expertise in Snowflake, data engineering, and cloud computing to deliver high-quality solutions. • Snowflake Platform Expertise: Experience with Snowflake platforms, including building, enhancing, and implementing data and AI use cas",
+     "field_keyword_05": "India",
+     "field_keyword_18": "Professional",
+     "field_keyword_19": "Bangalore, IN"
+    },
+    "sort": [
+     1792713600000
+    ]
+   }
+  ]
+ }
+}

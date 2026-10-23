@@ -196,6 +196,16 @@ openings" and similar from any directory. In short:
   about 4 s a page at 6 jobs a page, so its list alone takes ~9 minutes.
   Cognizant (403), HCLTech (location loaded by script, job API closed by
   robots.txt) and Heizen (hand-built page) are on `browser-watch` instead.
+- Three employers are read through their own careers APIs (2026-10-23), one
+  fetcher each: `IBM` (token = the Location facet's country, `India`; ibm.com's
+  search API, since careers.ibm.com is behind an AWS WAF challenge), `CAPGEMINI`
+  (token = the API's `country_code`, `en-in`) and `ATLASSIAN` (one board, the
+  whole listing). Each list carries the full job text, so no job page is read.
+  IBM and Capgemini put their own level ("IBM level: Professional", "Capgemini
+  level: Experienced Professionals") on the description's first line, because
+  their India jobs rarely state years. SAP, Uber (Cloudflare challenge), Goldman
+  Sachs (robots.txt allows only single roles), Flipkart (TurboHire disallows all
+  bots), TCS (403) and Infosys (listed nothing) are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

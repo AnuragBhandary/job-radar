@@ -57,5 +57,11 @@ public enum Source {
     AVATURE,
     PERSONIO,
     TEAMTAILOR,
-    WORKABLE
+    WORKABLE,
+    /** IBM's careers search API, one country per board (added 2026-10-23). */
+    IBM,
+    /** Capgemini's job-search API, one country per board (added 2026-10-23). */
+    CAPGEMINI,
+    /** Atlassian's careers listing, the whole company in one board (added 2026-10-23). */
+    ATLASSIAN
 }
