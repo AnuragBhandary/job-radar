@@ -96,6 +96,11 @@ public class EightfoldFetcher implements AtsFetcher {
                     .formatted(host, id, domain);
         }
 
+        /** The older job API, for tenants without pcsx (HP answered 404 to it, 2026-10-23). */
+        String detailV2(String id) {
+            return "https://%s/api/apply/v2/jobs/%s?domain=%s".formatted(host, id, domain);
+        }
+
         /**
          * The page a person applies on, by position id. The sitemap's own
          * {@code /careers/job/<id>-<slug>} page answered 404 on NTT DATA's site
@@ -208,7 +213,16 @@ public class EightfoldFetcher implements AtsFetcher {
     /** Returns null, as {@link WorkdayFetcher} does, when one job cannot be read. */
     private RawPosting withDetail(Board board, Listed job) {
         try {
-            return parseDetail(http.get(board.detail(job.id()), null), job);
+            String body;
+            try {
+                body = http.get(board.detail(job.id()), null);
+            } catch (FetchException e) {
+                if (e.getMessage() == null || !e.getMessage().startsWith("HTTP 404")) {
+                    throw e;
+                }
+                body = http.get(board.detailV2(job.id()), null);
+            }
+            return parseDetail(body, job);
         } catch (Exception e) {
             log.debug("Skipping {}: {}", job.url(), e.getMessage());
             return null;
@@ -216,24 +230,28 @@ public class EightfoldFetcher implements AtsFetcher {
     }
 
     RawPosting parseDetail(String body, Listed job) throws FetchException {
-        JsonNode data;
+        JsonNode root;
         try {
-            data = json.readTree(body).path("data");
+            root = json.readTree(body);
         } catch (Exception e) {
             throw new FetchException("Unreadable detail for " + job.url(), e);
         }
+        // pcsx wraps the job in "data" (jobDescription, postedTs); the v2 API is
+        // the job itself (job_description, t_create).
+        boolean v2 = !root.has("data") && root.has("name");
+        JsonNode data = v2 ? root : root.path("data");
         String title = data.path("name").asText(null);
         if (title == null || title.isBlank()) {
             throw new FetchException("No title in the detail for " + job.url());
         }
         List<String> locations = new ArrayList<>();
         data.path("locations").forEach(l -> locations.add(l.asText()));
-        long posted = data.path("postedTs").asLong(0);
+        long posted = data.path(v2 ? "t_create" : "postedTs").asLong(0);
         return new RawPosting(
                 job.id(),
                 title.trim(),
                 String.join("; ", locations),
-                Html.toPlainText(data.path("jobDescription").asText("")),
+                Html.toPlainText(data.path(v2 ? "job_description" : "jobDescription").asText("")),
                 job.url(),
                 posted > 0 ? dateOf(posted) : null);
     }

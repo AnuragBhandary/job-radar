@@ -151,4 +151,19 @@ class EightfoldFetcherTest {
                 .publicUrl("563327934537258"))
                 .isEqualTo("https://nttdata.eightfold.ai/careers?pid=563327934537258&domain=nttdata.com");
     }
+
+    @Test
+    @DisplayName("a tenant without pcsx is read from the v2 job API's own field names")
+    void readsTheV2Detail() throws Exception {
+        var fetcher = new EightfoldFetcher(null, new com.fasterxml.jackson.databind.ObjectMapper(), null, null, null);
+        var job = new EightfoldFetcher.Listed("23456740", "https://apply.hp.com/careers/job/23456740", "manager");
+        RawPosting posting = fetcher.parseDetail("""
+                {"id": "23456740", "name": "Software Engineer", "locations": ["Bengaluru, Karnataka, India"],
+                 "job_description": "<p>Build things</p>", "t_create": 1718236800}
+                """, job);
+        assertThat(posting.title()).isEqualTo("Software Engineer");
+        assertThat(posting.location()).isEqualTo("Bengaluru, Karnataka, India");
+        assertThat(posting.description()).isEqualTo("Build things");
+        assertThat(posting.postedDate()).isEqualTo(java.time.LocalDate.of(2024, 6, 13));
+    }
 }
