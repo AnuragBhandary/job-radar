@@ -305,6 +305,12 @@ openings" and similar from any directory. In short:
   their 3,185 open postings closed. A 429 now waits 10 s then 20 s (or the
   site's Retry-After), and a full host in `site-delays-ms` is paced on its own
   queue apart from its operator.
+- Broken boards (2026-10-23): `board_token.failing_since` is set on a board's
+  first failure and cleared on success. Every openings and handoff file opens
+  with "Boards to fix": broken boards biggest first (by their last posting
+  count), "**new**" when the failure began in the last 36 hours, otherwise how
+  many days, plus boards that went empty in the last 48 hours. Eightfold
+  tenants without `pcsx` (HP) are read from `/api/apply/v2/jobs/<id>`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

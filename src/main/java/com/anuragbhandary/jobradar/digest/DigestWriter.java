@@ -133,6 +133,7 @@ public class DigestWriter {
             }
         }
         out.append("\n\n");
+        boardsToFix(out, digest.boards(), java.time.Instant.now());
         header(out, digest);
 
         if (digest.salaryFloorsNeedReverification()) {
@@ -230,6 +231,50 @@ public class DigestWriter {
                     out.append("- ").append(count).append(" — ").append(reason).append('\n'));
         }
         return out.toString();
+    }
+
+    /**
+     * Boards that broke, first in the file and biggest first, so a board that
+     * used to bring thousands of postings is not one name in a run-on line.
+     * Accenture's boards (2,000 postings each) failed for three days that way.
+     * A failure that began in the last 36 hours is marked new. Boards that went
+     * empty in the last two days are named too: a site that changes shape often
+     * answers with nothing rather than an error.
+     */
+    static void boardsToFix(StringBuilder out, List<BoardToken> boards, Instant now) {
+        List<BoardToken> broken = boards.stream()
+                .filter(BoardToken::isBroken)
+                .sorted(Comparator.comparing((BoardToken b) ->
+                        b.getLastPostingCount() == null ? 0 : b.getLastPostingCount()).reversed())
+                .toList();
+        List<BoardToken> justEmptied = boards.stream()
+                .filter(b -> !b.isBroken() && b.getEmptySince() != null)
+                .filter(b -> java.time.Duration.between(b.getEmptySince(), now).toHours() < 48)
+                .toList();
+        if (broken.isEmpty() && justEmptied.isEmpty()) {
+            return;
+        }
+        out.append("## Boards to fix (").append(broken.size() + justEmptied.size()).append(")\n");
+        for (BoardToken b : broken) {
+            boolean fresh = b.getFailingSince() != null
+                    && java.time.Duration.between(b.getFailingSince(), now).toHours() < 36;
+            out.append("- ").append(fresh ? "**new** " : "")
+                    .append(b.getSource()).append('/').append(b.getToken());
+            if (b.getFailingSince() != null && !fresh) {
+                out.append(" — failing ").append(b.daysFailing(now)).append(" day(s)");
+            }
+            if (b.getLastPostingCount() != null && b.getLastPostingCount() > 0) {
+                out.append(", was ").append(b.getLastPostingCount()).append(" postings");
+            }
+            String error = b.getLastError();
+            out.append(": ").append(error.length() > 120 ? error.substring(0, 120) + "..." : error).append('\n');
+        }
+        for (BoardToken b : justEmptied) {
+            out.append("- ").append(b.getSource()).append('/').append(b.getToken())
+                    .append(" — answered with nothing since ").append(WHEN.format(b.getEmptySince()))
+                    .append(" (moved, or between hiring rounds?)\n");
+        }
+        out.append('\n');
     }
 
     /**

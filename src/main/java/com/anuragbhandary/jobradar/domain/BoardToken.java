@@ -67,6 +67,14 @@ public class BoardToken {
     private String lastError;
 
     /**
+     * When the current run of failures began, or null while the board works.
+     * Accenture's five boards failed for three days (2026-10-21 to 23) with the
+     * error only in a run-on status line; this is what says "since when".
+     */
+    @Column(name = "failing_since")
+    private Instant failingSince;
+
+    /**
      * Where this employer is, ISO-3166 alpha-2, or null.
      *
      * <p>On the board rather than on each posting because it is a fact about the
@@ -97,6 +105,7 @@ public class BoardToken {
         this.lastFetchedAt = at;
         this.lastPostingCount = postingCount;
         this.lastError = null;
+        this.failingSince = null;
         if (postingCount > 0) {
             this.emptySince = null;
         } else if (this.emptySince == null) {
@@ -117,6 +126,18 @@ public class BoardToken {
     public void recordFailure(String error, Instant at) {
         this.lastFetchedAt = at;
         this.lastError = error;
+        if (this.failingSince == null) {
+            this.failingSince = at;
+        }
+    }
+
+    public Instant getFailingSince() {
+        return failingSince;
+    }
+
+    /** Whole days this board has failed, or 0 while it works or since when is unknown. */
+    public long daysFailing(Instant now) {
+        return failingSince == null ? 0 : java.time.Duration.between(failingSince, now).toDays();
     }
 
     public Long getId() {
