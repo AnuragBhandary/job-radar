@@ -112,6 +112,10 @@ public class BoardTokenSeeder {
     /** Jibe careers sites, keyed {@code name/host/location}. */
     private static final Map<String, String> JIBE = new LinkedHashMap<>();
 
+    /** Société Générale: one board, the English job pages of its sitemap. */
+    private static final Map<String, String> SOCGEN =
+            Map.of(com.anuragbhandary.jobradar.fetch.SocieteGeneraleFetcher.BOARD, "Societe Generale");
+
     /** D. E. Shaw India: one board, the whole site. */
     private static final Map<String, String> DESHAW = Map.of(com.anuragbhandary.jobradar.fetch.DeShawIndiaFetcher.BOARD, "D. E. Shaw India");
 
@@ -377,6 +381,8 @@ public class BoardTokenSeeder {
         SITEMAP.put("synopsys/careers.synopsys.com/sitemap.xml", "Synopsys");
         // ING is Radancy too: 723 jobs, Amsterdam 35 and Frankfurt 47 among them.
         SITEMAP.put("ing/careers.ing.com/en/sitemap.xml", "ING");
+        // Nomura's SuccessFactors site: 509 jobs, 286 in Mumbai (2026-10-23).
+        SITEMAP.put("nomura/careers.nomura.com/sitemap.xml", "Nomura");
 
         // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");
@@ -411,6 +417,13 @@ public class BoardTokenSeeder {
         // Veldhoven and Berlin (asml.com's own job pages send applicants here).
         WORKDAY.put("redhat/wd5/jobs", "Red Hat");
         WORKDAY.put("asml/wd3/ASMLEXT1", "ASML");
+
+        // 2026-10-23, fifth batch, whole sites: Shell 140 jobs (Rotterdam,
+        // London, Hamburg, Gurgaon...), Lloyds 72 (UK), Unilever 255 + 1.
+        WORKDAY.put("shell/wd3/ShellCareers", "Shell");
+        WORKDAY.put("lbg/wd3/lbg_Careers", "Lloyds Banking Group");
+        WORKDAY.put("unilever/wd3/Unilever_Experienced_Professionals", "Unilever");
+        WORKDAY.put("unilever/wd3/Unilever_Early_Careers", "Unilever");
 
         // 2026-10-23, third batch, by search: India first, then any target
         // country with five or more. eBay India 88; Palo Alto Networks India
@@ -560,7 +573,8 @@ public class BoardTokenSeeder {
                 + seedSource(Source.DESHAW, DESHAW)
                 + seedSource(Source.RIPPLEHIRE, RIPPLEHIRE)
                 + seedSource(Source.SPIRE2GROW, SPIRE2GROW)
-                + seedSource(Source.ZOHO_RECRUIT, ZOHO_RECRUIT);
+                + seedSource(Source.ZOHO_RECRUIT, ZOHO_RECRUIT)
+                + seedSource(Source.SOCGEN, SOCGEN);
         if (added > 0) {
             log.info("Seeded {} new board tokens ({} total)", added, boards.count());
         }

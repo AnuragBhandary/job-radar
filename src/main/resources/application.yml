@@ -175,6 +175,14 @@ job-radar:
       - company: Revolut
         city: Bengaluru, Dublin, London
         url: https://www.revolut.com/careers/
+      # 2026-10-23, fifth batch: BNP Paribas answers 403; NatWest is behind a
+      # Cloudflare challenge.
+      - company: BNP Paribas
+        city: Mumbai, Chennai, Paris
+        url: https://group.bnpparibas/en/careers/all-job-offers
+      - company: NatWest
+        city: Bengaluru, Gurugram, Chennai, London
+        url: https://jobs.natwestgroup.com/search/jobs
 
   # ---------------------------------------------------------------------------
   # Country strategy.
@@ -753,7 +761,8 @@ job-radar:
                       # Own careers APIs added 2026-10-23.
                       ibm, capgemini, atlassian,
                       amd, booking, redhat, asml, dell, deshaw,
-                      ebay, paloaltonetworks, sec, cadence, arm, synopsys, ltm, ing]
+                      ebay, paloaltonetworks, sec, cadence, arm, synopsys, ltm, ing,
+                      shell, lbg, unilever, nomura, socgen]
     big-tech-max-min-years: 1
 
   # ---------------------------------------------------------------------------

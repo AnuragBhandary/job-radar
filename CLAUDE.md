@@ -234,6 +234,14 @@ openings" and similar from any directory. In short:
   Developers") when four letters or longer; exclusions stay exact (15 verdicts
   changed, all plurals). Zepto, Postman, Media.net, ABN AMRO, Rabobank and
   Revolut are on `browser-watch`; Zomato/Blinkit (Eternal) post no jobs.
+- Fifth batch (2026-10-23): `JsonLdSitemapFetcher` is the base for an
+  employer's own site whose sitemap lists job pages with JSON-LD but whose URLs
+  `SitemapFetcher` cannot use; each subclass names its sitemap, job-URL pattern
+  (url, slug, id) and how it places a job. `DESHAW` and `SOCGEN` (Societe
+  Generale, English `/en/job-offers/` pages, JSON-LD city and a real date) use
+  it. Nomura is a SuccessFactors `SITEMAP` board (Mumbai in its URLs); Shell,
+  Lloyds and Unilever are whole Workday sites. BNP Paribas (403) and NatWest
+  (Cloudflare) are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

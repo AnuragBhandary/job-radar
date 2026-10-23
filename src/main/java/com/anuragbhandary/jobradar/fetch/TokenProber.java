@@ -104,7 +104,7 @@ public class TokenProber {
                 case AMAZON, WORKDAY, HACKER_NEWS, JOBICY, WE_WORK_REMOTELY, ARBEITNOW,
                         EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
                         IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW, RIPPLEHIRE,
-                        SPIRE2GROW, ZOHO_RECRUIT -> 0;
+                        SPIRE2GROW, ZOHO_RECRUIT, SOCGEN -> 0;
             };
         } catch (Exception e) {
             return 0;
@@ -151,7 +151,7 @@ public class TokenProber {
             // Each needs a host found by hand, so they are seeded like Workday.
             case EIGHTFOLD, GOOGLE, ORACLE_HCM, APPLE, SITEMAP, AVATURE,
                     IBM, CAPGEMINI, ATLASSIAN, JIBE, DESHAW, RIPPLEHIRE,
-                    SPIRE2GROW, ZOHO_RECRUIT -> throw new IllegalArgumentException(
+                    SPIRE2GROW, ZOHO_RECRUIT, SOCGEN -> throw new IllegalArgumentException(
                     platform + " is not probed by token; seed it in BoardTokenSeeder");
         };
     }

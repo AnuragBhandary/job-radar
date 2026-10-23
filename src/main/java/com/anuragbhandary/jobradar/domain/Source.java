@@ -73,5 +73,7 @@ public enum Source {
     /** Careers sites on Spire2Grow: Myntra (added 2026-10-23). */
     SPIRE2GROW,
     /** Zoho Recruit portals, read from their RSS feed: Zoho (added 2026-10-23). */
-    ZOHO_RECRUIT
+    ZOHO_RECRUIT,
+    /** Société Générale's own careers site (added 2026-10-23). */
+    SOCGEN
 }

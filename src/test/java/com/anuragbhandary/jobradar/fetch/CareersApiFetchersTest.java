@@ -193,7 +193,7 @@ class CareersApiFetchersTest {
         @Test
         @DisplayName("only /careers/<slug>-<id> pages are jobs; culture and FAQ pages are not")
         void listsJobPagesOnly() {
-            var listed = DeShawIndiaFetcher.listed(FixtureSupport.load("deshaw-sitemap.xml"));
+            var listed = fetcher.listed(FixtureSupport.load("deshaw-sitemap.xml"));
             assertThat(listed).singleElement().satisfies(job -> {
                 assertThat(job.id()).isEqualTo("6941");
                 assertThat(job.slugText()).isEqualTo("software engineer application engineering senior member");
@@ -203,7 +203,7 @@ class CareersApiFetchersTest {
         @Test
         @DisplayName("the JSON-LD gives the job, and the office named in the text gives the place")
         void readsTheJobPage() {
-            var job = new DeShawIndiaFetcher.Listed("6941",
+            var job = new JsonLdSitemapFetcher.Listed("6941",
                     "https://www.deshawindia.com/careers/software-engineer-application-engineering-senior-member-6941",
                     "software engineer application engineering senior member");
             RawPosting posting = fetcher.parsePage(FixtureSupport.load("deshaw-job.html"), job);
@@ -215,7 +215,7 @@ class CareersApiFetchersTest {
 
         @Test
         void fallsBackToIndia() {
-            assertThat(DeShawIndiaFetcher.place("no office named")).isEqualTo("India");
+            assertThat(DeShawIndiaFetcher.offices("no office named")).isEqualTo("India");
         }
     }
 
@@ -318,6 +318,41 @@ class CareersApiFetchersTest {
         @Test
         void rejectsSomethingElse() {
             assertThatThrownBy(() -> fetcher.parse("<html></html>")).isInstanceOf(FetchException.class);
+        }
+    }
+
+    @Nested
+    class SocieteGenerale {
+
+        private final SocieteGeneraleFetcher fetcher =
+                new SocieteGeneraleFetcher(null, json, null, StoredPostings.none());
+
+        @Test
+        void reportsSource() {
+            assertThat(fetcher.source()).isEqualTo(Source.SOCGEN);
+        }
+
+        @Test
+        @DisplayName("only English job-offer pages are jobs, keyed by their reference")
+        void listsJobPages() {
+            var listed = fetcher.listed(FixtureSupport.load("socgen-sitemap.xml"));
+            assertThat(listed).singleElement().satisfies(job -> {
+                assertThat(job.id()).isEqualTo("26000IZY");
+                assertThat(job.slugText()).isEqualTo("business analyst it sql");
+            });
+        }
+
+        @Test
+        @DisplayName("the JSON-LD gives city, country and a real posted date")
+        void readsTheJobPage() {
+            var job = new JsonLdSitemapFetcher.Listed("26000IZY",
+                    "https://careers.societegenerale.com/en/job-offers/business-analyst-it-sql-26000IZY-en",
+                    "business analyst it sql");
+            RawPosting posting = fetcher.parsePage(FixtureSupport.load("socgen-job.html"), job);
+            assertThat(posting.title()).startsWith("Business Analyst - IT/SQL");
+            assertThat(posting.location()).isEqualTo("Bangalore, India");
+            assertThat(posting.postedDate()).isEqualTo(LocalDate.of(2026, 10, 23));
+            assertThat(posting.description()).contains("RWA");
         }
     }
 }

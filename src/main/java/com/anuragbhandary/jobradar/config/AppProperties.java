@@ -123,6 +123,7 @@ public record AppProperties(
                 case CAPGEMINI -> "capgemini";
                 case ATLASSIAN -> "atlassian";
                 case DESHAW -> "deshaw";
+                case SOCGEN -> "socgen";
                 case null, default -> "";
             };
             for (String board : bigTechBoards) {
