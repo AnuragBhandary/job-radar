@@ -393,6 +393,16 @@ class CareersApiFetchersTest {
         }
 
         @Test
+        @DisplayName("an empty JSON-LD address falls back to the page's cityCountry")
+        void placeFromPageData() {
+            var job = new JsonLdSitemapFetcher.Listed("X1", "https://careers.g42.ai/global/en/job/X1/Engineer", "Engineer");
+            String html = "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\","
+                    + "\"jobLocation\":{\"@type\":\"Place\",\"address\":{\"@type\":\"PostalAddress\"}}}</script>"
+                    + "<script>phApp.ddo={\"cityCountry\":\"Abu Dhabi, United Arab Emirates\"}</script>";
+            assertThat(fetcher.parsePage(html, job).location()).isEqualTo("Abu Dhabi, United Arab Emirates");
+        }
+
+        @Test
         void rejectsATokenWithoutASitemap() {
             assertThatThrownBy(() -> PhenomFetcher.Board.parse("lowes/talent.lowes.com"))
                     .isInstanceOf(FetchException.class);

@@ -274,6 +274,13 @@ openings" and similar from any directory. In short:
   Chargebee (LinkedIn only), Ather (403), Dream Sports (Lever board gone),
   Zerodha and Nykaa (almost nothing posted) are on `browser-watch`;
   PolicyBazaar and ShareChat publish no list.
+- UAE (2026-10-23): G42 is a `PHENOM` board; Phenom pages whose JSON-LD
+  address is empty are placed from the page's `cityCountry`
+  (`JsonLdSitemapFetcher.placeFromPage`). Delivery Hero's own sitemap
+  (`careers.deliveryhero.com/vacanciessitemap.xml`, talabat included) is a
+  `SITEMAP` board beside its SmartRecruiters one. Careem was already in
+  (Greenhouse). Emirates Group (robots.txt shuts its search), noon (LinkedIn
+  only) and e& are on `browser-watch`.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

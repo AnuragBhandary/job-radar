@@ -119,8 +119,10 @@ public class BoardTokenSeeder {
             Map.of(com.anuragbhandary.jobradar.fetch.SocieteGeneraleFetcher.BOARD, "Societe Generale");
 
     /** Phenom careers sites, keyed {@code name/host/locale/sitemapN.xml}. */
-    private static final Map<String, String> PHENOM =
-            Map.of("lowes/talent.lowes.com/in/en/sitemap1.xml", "Lowe's India");
+    private static final Map<String, String> PHENOM = Map.of(
+            "lowes/talent.lowes.com/in/en/sitemap1.xml", "Lowe's India",
+            // G42 (Abu Dhabi), 67 jobs on 2026-10-23.
+            "g42/careers.g42.ai/global/en/sitemap1.xml", "G42");
 
     /** Indian product companies on their own job APIs: one board each. */
     private static final Map<String, String> MAKEMYTRIP =
@@ -402,6 +404,9 @@ public class BoardTokenSeeder {
         SITEMAP.put("optum/careers.unitedhealthgroup.com/sitemap.xml", "Optum (UnitedHealth Group)");
         SITEMAP.put("moodys/careers.moodys.com/en/sitemap.xml", "Moody's");
         SITEMAP.put("synchrony/www.synchronycareers.com/sitemap.xml", "Synchrony");
+        // Delivery Hero's own careers site, talabat (UAE, 49) included: 744 jobs,
+        // where its SmartRecruiters board kept only two open (2026-10-23).
+        SITEMAP.put("deliveryhero/careers.deliveryhero.com/vacanciessitemap.xml", "Delivery Hero (incl. talabat)");
 
         // 2026-10-11: Siemens India 782 jobs; Deloitte's US-India offices 651.
         AVATURE.put("siemens/jobs.siemens.com/en_US/externaljobs/India", "Siemens");

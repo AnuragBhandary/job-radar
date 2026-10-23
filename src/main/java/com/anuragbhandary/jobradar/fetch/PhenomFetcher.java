@@ -86,6 +86,15 @@ public class PhenomFetcher extends JsonLdSitemapFetcher {
         return String.join("; ", places);
     }
 
+    /** G42's JSON-LD address is empty; Phenom's page data still says "cityCountry". */
+    private static final Pattern CITY_COUNTRY = Pattern.compile("\"cityCountry\":\"([^\"]+)\"");
+
+    @Override
+    protected String placeFromPage(String html) {
+        java.util.regex.Matcher m = CITY_COUNTRY.matcher(html);
+        return m.find() ? m.group(1) : null;
+    }
+
     @Override
     protected LocalDate postedDate(JsonNode posting) {
         String value = posting.path("datePosted").asText("");

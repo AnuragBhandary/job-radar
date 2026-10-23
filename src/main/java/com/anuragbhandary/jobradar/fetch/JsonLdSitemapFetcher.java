@@ -64,6 +64,11 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
         return List.of("description", "responsibilities", "skills");
     }
 
+    /** Where the job is, from the page outside the JSON-LD, when the JSON-LD has no place. */
+    protected String placeFromPage(String html) {
+        return null;
+    }
+
     /** The posted date, where the site's datePosted means one. None by default. */
     protected LocalDate postedDate(JsonNode posting) {
         return null;
@@ -136,8 +141,13 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
                     text.append(text.isEmpty() ? "" : "\n\n").append(part);
                 }
             }
+            String place = place(posting, text.toString());
+            if (place == null || place.isBlank()) {
+                String fromPage = placeFromPage(html);
+                place = fromPage == null ? "" : fromPage;
+            }
             return new RawPosting(job.id(), Html.toPlainText(title).trim(),
-                    place(posting, text.toString()), text.toString(), job.url(), postedDate(posting));
+                    place, text.toString(), job.url(), postedDate(posting));
         }
         return null;
     }

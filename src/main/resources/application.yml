@@ -230,6 +230,17 @@ job-radar:
         city: Mumbai, Gurugram
         url: https://careers.nykaa.com/
         note: "no postings on 2026-10-23"
+      # 2026-10-23, UAE: Emirates Group's search is shut by robots.txt and its
+      # sitemap is gone; noon lists only on LinkedIn; e& shows no job system.
+      - company: Emirates Group
+        city: Dubai
+        url: https://www.emiratesgroupcareers.com/search-and-apply/
+      - company: noon
+        city: Dubai, Riyadh
+        url: https://www.linkedin.com/company/nooncom/jobs
+      - company: e& (Etisalat)
+        city: Abu Dhabi, Dubai
+        url: https://www.eand.com/en/careers.html
       - company: BNP Paribas
         city: Mumbai, Chennai, Paris
         url: https://group.bnpparibas/en/careers/all-job-offers
