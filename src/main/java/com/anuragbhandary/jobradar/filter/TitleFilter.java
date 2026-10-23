@@ -76,6 +76,30 @@ public class TitleFilter {
                     + "(?!\\s*[-\u2013]?\\s*(?:year|yr|month|mo|week|day))",
             Pattern.CASE_INSENSITIVE);
 
+    /**
+     * The upper end of a range title: "Analyst/Senior Analyst", "Member / Sr.
+     * Member", "Engineer/Lead Engineer". Group 1 is what comes before the slash
+     * (back to the start or the previous slash), group 2 the seniority word.
+     */
+    private static final Pattern RANGE_UPPER = Pattern.compile(
+            "(^|/)([^/]*?)\\s*/\\s*(senior|sr\\.?|lead|principal)\\s+");
+
+    /**
+     * A slug's range title, whose slash was lost: "analyst senior analyst data
+     * analytics", "member senior member tech ops". The same word on both sides of
+     * the seniority word is what marks it.
+     */
+    private static final Pattern SLUG_RANGE = Pattern.compile(
+            "\\b([a-z]+) (senior|sr|lead|principal) \\1\\b");
+
+    /**
+     * A lower end that is itself mid-level: "Middle/Senior", "Advanced/Senior",
+     * "Experienced/Senior", Brazil's "PL/SR" (pleno). The first diff of the range
+     * rule let all of these through.
+     */
+    private static final Pattern MID_LEVEL = Pattern.compile(
+            "\\b(middle|mid|mid-level|advanced|experienced|pl|pleno|intermediate|regular)\\b");
+
     private final AppProperties.Screening screening;
     private final Map<String, Pattern> patterns = new ConcurrentHashMap<>();
 
@@ -102,6 +126,8 @@ public class TitleFilter {
                         title.toLowerCase(Locale.ROOT).replace('_', ' '))
                 .replaceAll(" ");
 
+        normalised = withoutRangeUpper(normalised);
+
         String excluded = firstMatch(normalised, screening.titleExclude());
         if (excluded != null) {
             return FilterVerdict.reject("title excluded on '" + excluded + "'");
@@ -121,6 +147,39 @@ public class TitleFilter {
             return FilterVerdict.reject("title is not a software role");
         }
         return FilterVerdict.accept();
+    }
+
+    /**
+     * The title with the senior end of a range taken out, when the lower end is
+     * itself clean: "analyst/senior analyst - p&l" reads as "analyst/analyst -
+     * p&l", so the domain and other words still count. D. E. Shaw, Societe
+     * Generale and the analytics firms advertise one opening at two levels this
+     * way, and "senior" rejected the junior half too (until 2026-10-23). A range
+     * that starts senior ("Senior Analyst/Lead Analyst") is left alone.
+     */
+    String withoutRangeUpper(String normalised) {
+        java.util.regex.Matcher m = RANGE_UPPER.matcher(normalised);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            String lower = m.group(2);
+            boolean lowerIsClean = !lower.isBlank()
+                    && firstMatch(lower, screening.titleExclude()) == null
+                    && !MID_LEVEL.matcher(lower).find();
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(
+                    lowerIsClean ? m.group(1) + lower + "/" : m.group()));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    /**
+     * A URL slug's words with any range title given its slash back, so the
+     * range rule above can see it: "analyst senior analyst data analytics"
+     * becomes "analyst/senior analyst data analytics".
+     */
+    public static String slugWithRanges(String slugText) {
+        return slugText == null ? null
+                : SLUG_RANGE.matcher(slugText.toLowerCase(Locale.ROOT)).replaceAll("$1/$2 $1");
     }
 
     /**

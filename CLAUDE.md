@@ -249,6 +249,13 @@ openings" and similar from any directory. In short:
   LatentView and Evalueserve are Darwinbox and Mu Sigma lists no openings, so
   all three are on `browser-watch`. Not on big-tech-boards: its 1-year cap is
   for firms with formal experience checks.
+- Range titles (2026-10-23): "Analyst/Senior Analyst", "SDET / Senior SDET",
+  "Consultant/Senior Consultant" keep their junior end; `withoutRangeUpper`
+  drops the seniority word after the slash when the part before it is clean
+  and not itself mid-level (Middle/Senior, Experienced/Senior, PL/SR stay
+  out). Every other word still counts. Slugs get their slash back
+  (`slugWithRanges`) before the JSON-LD sitemap fetchers screen them. 11
+  stored verdicts changed; D. E. Shaw gained three Hyderabad candidates.
 - Big employers on their own sites are seeded the same way, in `BoardTokenSeeder`:
   Eightfold (`EIGHTFOLD`, `name/host/domain`: Microsoft, Netflix, Qualcomm; read
   from the site's sitemap, then one detail request per job that passes the slug

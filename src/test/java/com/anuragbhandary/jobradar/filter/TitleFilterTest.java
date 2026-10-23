@@ -69,6 +69,35 @@ class TitleFilterTest {
     }
 
     @Test
+    @DisplayName("a range title keeps its junior end: 'Analyst/Senior Analyst'")
+    void rangeTitles() {
+        assertThat(filter.screen("Analyst/Senior Analyst - Data Analytics").accepted()).isTrue();
+        assertThat(filter.screen("Software Engineer / Sr. Software Engineer").accepted()).isTrue();
+        assertThat(filter.screen("Data Engineer/Lead Data Engineer").accepted()).isTrue();
+        // A range that starts senior is still senior.
+        assertThat(filter.screen("Senior Analyst/Lead Analyst - Data").accepted()).isFalse();
+        // Removing "senior" leaves every other word to be judged: a manager stays out.
+        assertThat(filter.screen("Manager/Senior Manager - Data").accepted()).isFalse();
+        // A mid-level lower end is not junior: Middle/Senior, Experienced/Senior, PL/SR.
+        assertThat(filter.screen("Middle/Senior Backend Engineer").accepted()).isFalse();
+        assertThat(filter.screen("Experienced / Senior Fullstack Engineer").accepted()).isFalse();
+        assertThat(filter.screen("PL/SR Front-end Developer (React)").accepted()).isFalse();
+        // A plain senior title is untouched.
+        assertThat(filter.screen("Senior Data Analyst").accepted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a slug's range title gets its slash back")
+    void slugRanges() {
+        assertThat(TitleFilter.slugWithRanges("analyst senior analyst data analytics corporate actions"))
+                .isEqualTo("analyst/senior analyst data analytics corporate actions");
+        assertThat(TitleFilter.slugWithRanges("senior software engineer linux engineering"))
+                .isEqualTo("senior software engineer linux engineering");
+        assertThat(filter.screen(TitleFilter.slugWithRanges("member senior member tech ops gai tech")).reason())
+                .doesNotContain("senior");
+    }
+
+    @Test
     @DisplayName("exclusion beats inclusion")
     void exclusionWins() {
         // "Senior Software Engineer" contains "software". A filter that checked

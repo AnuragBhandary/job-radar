@@ -74,7 +74,7 @@ public abstract class JsonLdSitemapFetcher implements AtsFetcher {
         StoredPostings.Known known = stored.open(source(), boardToken);
         List<RawPosting> postings = new ArrayList<>();
         for (Listed job : listed(http.get(sitemapUrl(), "sitemap-" + boardToken))) {
-            if (!titleFilter.screen(job.slugText()).accepted()) {
+            if (!titleFilter.screen(TitleFilter.slugWithRanges(job.slugText())).accepted()) {
                 continue;
             }
             RawPosting reused = known.reuse(job.id());
